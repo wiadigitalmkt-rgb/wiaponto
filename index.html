@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>WiaPonto | Gestão de Ponto Eletrônico Inteligente & Simplificada</title>
+  <title>PontoMax | Gestão de Ponto Eletrônico Inteligente & Simplificada</title>
   
   <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
@@ -66,7 +66,7 @@
           <i data-lucide="clock" class="w-6 h-6"></i>
         </div>
         <div class="flex flex-col">
-          <span class="font-heading font-extrabold text-xl text-ponto-navy tracking-tight leading-none">WiaPonto</span>
+          <span class="font-heading font-extrabold text-xl text-ponto-navy tracking-tight leading-none">PontoMax</span>
           <span class="text-[10px] font-semibold text-slate-400 tracking-wider uppercase mt-0.5">Portal do Colaborador</span>
         </div>
       </a>
@@ -89,178 +89,201 @@
     </div>
   </header>
 
-  <!-- HERO SECTION COM PREVIEW DA DASHBOARD -->
-  <section class="relative pt-12 pb-20 md:pt-20 md:pb-32 bg-gradient-to-b from-white via-slate-50 to-ponto-bg overflow-hidden">
+  <!-- HERO SECTION SIDE-BY-SIDE (TEXTO À ESQUERDA, MOCKUP À DIREITA) -->
+  <section class="relative pt-12 pb-20 md:pt-16 md:pb-24 bg-gradient-to-b from-white via-slate-50 to-ponto-bg overflow-hidden">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
       
-      <!-- HEADLINE PRINCIPAL -->
-      <div class="text-center max-w-3xl mx-auto space-y-6">
-        <div class="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-orange-50 border border-orange-200 text-ponto-orange text-xs font-bold tracking-wide uppercase">
-          <i data-lucide="sparkles" class="w-4 h-4"></i> Conforme Portaria 671 do MTP
-        </div>
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
         
-        <h1 class="font-heading text-4xl sm:text-5xl lg:text-6xl font-extrabold text-ponto-navy leading-tight tracking-tight">
-          Controle de ponto simples, seguro e <span class="text-ponto-orange">sem complicações</span>
-        </h1>
-        
-        <p class="text-base sm:text-lg text-slate-600 font-normal leading-relaxed">
-          Gerencie a jornada dos seus colaboradores em tempo real. Ponto web e mobile, espelho de ponto automático, cálculos de horas extras e emissão de holerites em um só lugar.
-        </p>
-
-        <!-- BOTÕES HERO -->
-        <div class="flex flex-col sm:flex-row items-center justify-center gap-4 pt-2">
-          <a href="#planos" class="w-full sm:w-auto px-8 py-4 rounded-2xl bg-ponto-orange hover:bg-ponto-orangeHover text-white font-bold text-base shadow-xl shadow-ponto-orange/30 transition-all transform hover:-translate-y-0.5 flex items-center justify-center gap-2">
-            Começar 14 Dias Grátis <i data-lucide="chevron-right" class="w-5 h-5"></i>
-          </a>
-          <a href="#espelho" class="w-full sm:w-auto px-8 py-4 rounded-2xl bg-white border border-slate-200 text-ponto-navy font-bold text-base hover:bg-slate-50 transition-all shadow-sm flex items-center justify-center gap-2">
-            <i data-lucide="play-circle" class="w-5 h-5 text-ponto-orange"></i> Ver Como Funciona
-          </a>
-        </div>
-
-        <div class="flex items-center justify-center gap-6 text-xs font-semibold text-slate-500 pt-2">
-          <span class="flex items-center gap-1.5"><i data-lucide="check-circle" class="w-4 h-4 text-emerald-500"></i> Sem cartão de crédito</span>
-          <span class="flex items-center gap-1.5"><i data-lucide="check-circle" class="w-4 h-4 text-emerald-500"></i> Configuração em 5 min</span>
-        </div>
-      </div>
-
-      <!-- SIMULAÇÃO DA INTERFACE DO SISTEMA (BASEADA NOS PRINTS) -->
-      <div class="mt-14 relative max-w-5xl mx-auto">
-        <div class="bg-ponto-navy rounded-3xl p-2 sm:p-4 shadow-2xl shadow-ponto-navy/30 border border-slate-700">
+        <!-- COLUNA DA ESQUERDA: TEXTOS & CTAs -->
+        <div class="lg:col-span-5 space-y-6 text-left">
           
-          <!-- SIMULAÇÃO MOCKUP DO PORTAL DO COLABORADOR -->
-          <div class="bg-ponto-bg rounded-2xl overflow-hidden shadow-inner flex flex-col md:flex-row min-h-[460px]">
+          <div class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-orange-50 border border-orange-200 text-ponto-orange text-xs font-bold tracking-wide uppercase">
+            <i data-lucide="sparkles" class="w-3.5 h-3.5"></i> Conforme Portaria 671 do MTP
+          </div>
+          
+          <h1 class="font-heading text-4xl sm:text-5xl font-extrabold text-ponto-navy leading-tight tracking-tight">
+            Controle de ponto simples, seguro e <span class="text-ponto-orange">sem complicações</span>
+          </h1>
+          
+          <p class="text-base text-slate-600 font-normal leading-relaxed">
+            Gerencie a jornada dos seus colaboradores em tempo real. Ponto web e mobile, espelho de ponto automático, cálculos de horas extras e emissão de holerites em um só lugar.
+          </p>
+
+          <!-- BOTÕES HERO -->
+          <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 pt-2">
+            <a href="#planos" class="px-6 py-3.5 rounded-xl bg-ponto-orange hover:bg-ponto-orangeHover text-white font-bold text-sm shadow-xl shadow-ponto-orange/25 transition-all transform hover:-translate-y-0.5 flex items-center justify-center gap-2">
+              Começar 14 Dias Grátis <i data-lucide="chevron-right" class="w-4 h-4"></i>
+            </a>
+            <a href="#espelho" class="px-6 py-3.5 rounded-xl bg-white border border-slate-200 text-ponto-navy font-bold text-sm hover:bg-slate-50 transition-all shadow-sm flex items-center justify-center gap-2">
+              <i data-lucide="play-circle" class="w-4 h-4 text-ponto-orange"></i> Ver Como Funciona
+            </a>
+          </div>
+
+          <!-- BENEFÍCIOS RÁPIDOS -->
+          <div class="flex items-center gap-6 text-xs font-semibold text-slate-500 pt-2">
+            <span class="flex items-center gap-1.5"><i data-lucide="check-circle" class="w-4 h-4 text-emerald-500"></i> Sem cartão de crédito</span>
+            <span class="flex items-center gap-1.5"><i data-lucide="check-circle" class="w-4 h-4 text-emerald-500"></i> Configuração em 5 min</span>
+          </div>
+
+        </div>
+
+        <!-- COLUNA DA DIREITA: MOCKUP DO SISTEMA BATE-PONTO -->
+        <div class="lg:col-span-7 relative">
+          
+          <!-- FRAME ESTILO NAVEGADOR DO WIAGEO -->
+          <div class="bg-ponto-navy rounded-2xl p-2.5 sm:p-3 shadow-2xl shadow-ponto-navy/30 border border-slate-700">
             
-            <!-- SIDEBAR DO SISTEMA (FIEL AO PRINT) -->
-            <div class="w-full md:w-64 bg-ponto-navy text-white p-4 flex flex-col justify-between shrink-0">
-              <div class="space-y-6">
-                <!-- LOGO DENTRO DA DASHBOARD -->
-                <div class="flex items-center gap-3 px-2">
-                  <div class="w-8 h-8 rounded-xl bg-ponto-orange flex items-center justify-center text-white">
-                    <i data-lucide="clock" class="w-4 h-4"></i>
-                  </div>
-                  <div>
-                    <div class="font-bold text-sm leading-none">WiaPonto</div>
-                    <div class="text-[9px] text-slate-400 mt-0.5">Portal do Colaborador</div>
-                  </div>
-                </div>
-
-                <!-- USUARIO LOGADO -->
-                <div class="bg-white/5 border border-white/10 rounded-xl p-2.5 flex items-center gap-2.5">
-                  <div class="w-7 h-7 rounded-lg bg-ponto-orange text-white font-bold text-xs flex items-center justify-center">W</div>
-                  <div class="overflow-hidden">
-                    <div class="text-xs font-bold truncate">Wianet Admin</div>
-                    <div class="text-[9px] text-slate-400 truncate">wianettelecom@gmail.com</div>
-                  </div>
-                </div>
-
-                <!-- MENU LATERAL DA DASHBOARD -->
-                <div class="space-y-1 text-xs">
-                  <div class="flex items-center justify-between px-3 py-2.5 rounded-xl bg-ponto-orange font-bold text-white shadow-md">
-                    <div class="flex items-center gap-2.5"><i data-lucide="home" class="w-4 h-4"></i> Início</div>
-                    <i data-lucide="chevron-right" class="w-3.5 h-3.5"></i>
-                  </div>
-                  <div class="flex items-center gap-2.5 px-3 py-2.5 text-slate-300 hover:bg-white/5 rounded-xl"><i data-lucide="clock" class="w-4 h-4"></i> Bate-Ponto</div>
-                  <div class="flex items-center gap-2.5 px-3 py-2.5 text-slate-300 hover:bg-white/5 rounded-xl"><i data-lucide="calendar" class="w-4 h-4"></i> Espelho de Ponto</div>
-                  <div class="flex items-center gap-2.5 px-3 py-2.5 text-slate-300 hover:bg-white/5 rounded-xl"><i data-lucide="file-text" class="w-4 h-4"></i> Solicitações</div>
-                  <div class="flex items-center gap-2.5 px-3 py-2.5 text-slate-300 hover:bg-white/5 rounded-xl"><i data-lucide="dollar-sign" class="w-4 h-4"></i> Contra-Cheque</div>
-                  <div class="flex items-center gap-2.5 px-3 py-2.5 text-slate-300 hover:bg-white/5 rounded-xl"><i data-lucide="briefcase" class="w-4 h-4"></i> Pró-Labore</div>
-                </div>
+            <!-- HEADER DO NAVEGADOR (PONTINHOS COLORIDOS) -->
+            <div class="flex items-center justify-between pb-2.5 border-b border-slate-700/60 px-2">
+              <div class="flex items-center gap-1.5">
+                <span class="w-3 h-3 rounded-full bg-rose-500 inline-block"></span>
+                <span class="w-3 h-3 rounded-full bg-amber-500 inline-block"></span>
+                <span class="w-3 h-3 rounded-full bg-emerald-500 inline-block"></span>
               </div>
-
-              <div class="pt-4 border-t border-white/10 text-xs text-slate-400 flex items-center gap-2">
-                <i data-lucide="log-out" class="w-4 h-4"></i> Sair
+              <div class="bg-ponto-navyLight px-4 py-0.5 rounded-md text-[10px] text-slate-300 font-mono flex items-center gap-1.5 border border-white/5">
+                <i data-lucide="lock" class="w-3 h-3 text-emerald-400"></i> https://app.pontomax.com.br/dashboard
+              </div>
+              <div class="text-[10px] text-slate-400 font-semibold flex items-center gap-1">
+                Abrir <i data-lucide="external-link" class="w-3 h-3"></i>
               </div>
             </div>
 
-            <!-- PAINEL PRINCIPAL DA DASHBOARD (FIEL AO PRINT 1) -->
-            <div class="flex-grow p-4 md:p-6 space-y-6">
+            <!-- INTERFACE INTERNA DO SISTEMA -->
+            <div class="bg-ponto-bg rounded-xl overflow-hidden shadow-inner flex flex-col md:flex-row mt-2">
               
-              <!-- HEADING DA DASHBOARD -->
-              <div>
-                <h3 class="text-xl font-bold text-ponto-navy flex items-center gap-2">
-                  Bom dia, Wianet! 👋
-                </h3>
-                <p class="text-xs text-slate-400 mt-0.5">terça-feira, 28 de julho de 2026</p>
+              <!-- SIDEBAR DO SISTEMA -->
+              <div class="w-full md:w-48 bg-ponto-navy text-white p-3 flex flex-col justify-between shrink-0 border-r border-white/5">
+                <div class="space-y-4">
+                  <!-- LOGO DENTRO DA DASHBOARD -->
+                  <div class="flex items-center gap-2 px-1">
+                    <div class="w-7 h-7 rounded-xl bg-ponto-orange flex items-center justify-center text-white">
+                      <i data-lucide="clock" class="w-3.5 h-3.5"></i>
+                    </div>
+                    <div>
+                      <div class="font-bold text-xs leading-none">PontoMax</div>
+                      <div class="text-[8px] text-slate-400 mt-0.5">Portal do Colaborador</div>
+                    </div>
+                  </div>
+
+                  <!-- USUARIO LOGADO -->
+                  <div class="bg-white/5 border border-white/10 rounded-lg p-2 flex items-center gap-2">
+                    <div class="w-6 h-6 rounded-md bg-ponto-orange text-white font-bold text-[10px] flex items-center justify-center">W</div>
+                    <div class="overflow-hidden">
+                      <div class="text-[10px] font-bold truncate">Wianet Admin</div>
+                      <div class="text-[8px] text-slate-400 truncate">wianettelecom@gmail...</div>
+                    </div>
+                  </div>
+
+                  <!-- MENU LATERAL DA DASHBOARD -->
+                  <div class="space-y-0.5 text-[11px]">
+                    <div class="flex items-center justify-between px-2.5 py-1.5 rounded-lg bg-ponto-orange font-bold text-white shadow-sm">
+                      <div class="flex items-center gap-2"><i data-lucide="home" class="w-3.5 h-3.5"></i> Início</div>
+                      <i data-lucide="chevron-right" class="w-3 h-3"></i>
+                    </div>
+                    <div class="flex items-center gap-2 px-2.5 py-1.5 text-slate-300 hover:bg-white/5 rounded-lg"><i data-lucide="clock" class="w-3.5 h-3.5"></i> Bate-Ponto</div>
+                    <div class="flex items-center gap-2 px-2.5 py-1.5 text-slate-300 hover:bg-white/5 rounded-lg"><i data-lucide="calendar" class="w-3.5 h-3.5"></i> Espelho de Ponto</div>
+                    <div class="flex items-center gap-2 px-2.5 py-1.5 text-slate-300 hover:bg-white/5 rounded-lg"><i data-lucide="file-text" class="w-3.5 h-3.5"></i> Solicitações</div>
+                    <div class="flex items-center gap-2 px-2.5 py-1.5 text-slate-300 hover:bg-white/5 rounded-lg"><i data-lucide="dollar-sign" class="w-3.5 h-3.5"></i> Contra-Cheque</div>
+                    <div class="flex items-center gap-2 px-2.5 py-1.5 text-slate-300 hover:bg-white/5 rounded-lg"><i data-lucide="briefcase" class="w-3.5 h-3.5"></i> Pró-Labore</div>
+                  </div>
+                </div>
+
+                <div class="pt-3 border-t border-white/10 text-[10px] text-slate-400 flex items-center gap-1.5 mt-4">
+                  <i data-lucide="log-out" class="w-3.5 h-3.5"></i> Sair
+                </div>
               </div>
 
-              <!-- CARDS DE RESUMO SUPERIOR -->
-              <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
-                <div class="bg-white p-3.5 rounded-2xl border border-slate-200/80 shadow-sm flex items-center gap-3">
-                  <div class="w-9 h-9 rounded-xl bg-ponto-navy text-white flex items-center justify-center"><i data-lucide="calendar" class="w-4 h-4"></i></div>
-                  <div>
-                    <div class="text-lg font-bold text-ponto-navy leading-none">0</div>
-                    <div class="text-[10px] text-slate-400 mt-1">Dias este mês</div>
-                  </div>
+              <!-- PAINEL PRINCIPAL DA DASHBOARD -->
+              <div class="flex-grow p-4 space-y-4">
+                
+                <!-- HEADING DA DASHBOARD -->
+                <div>
+                  <h3 class="text-base font-bold text-ponto-navy flex items-center gap-1.5">
+                    Bom dia, Wianet! 👋
+                  </h3>
+                  <p class="text-[10px] text-slate-400 mt-0.5">terça-feira, 28 de julho de 2026</p>
                 </div>
 
-                <div class="bg-white p-3.5 rounded-2xl border border-slate-200/80 shadow-sm flex items-center gap-3">
-                  <div class="w-9 h-9 rounded-xl bg-amber-500 text-white flex items-center justify-center"><i data-lucide="file-text" class="w-4 h-4"></i></div>
-                  <div>
-                    <div class="text-lg font-bold text-ponto-navy leading-none">2</div>
-                    <div class="text-[10px] text-slate-400 mt-1">Solicitações pendentes</div>
-                  </div>
-                </div>
-
-                <div class="bg-white p-3.5 rounded-2xl border border-slate-200/80 shadow-sm flex items-center gap-3">
-                  <div class="w-9 h-9 rounded-xl bg-emerald-500 text-white flex items-center justify-center"><i data-lucide="trending-up" class="w-4 h-4"></i></div>
-                  <div>
-                    <div class="text-lg font-bold text-ponto-navy leading-none">8h/dia</div>
-                    <div class="text-[10px] text-slate-400 mt-1">Jornada padrão</div>
-                  </div>
-                </div>
-
-                <div class="bg-white p-3.5 rounded-2xl border border-slate-200/80 shadow-sm flex items-center gap-3">
-                  <div class="w-9 h-9 rounded-xl bg-ponto-navy text-white flex items-center justify-center"><i data-lucide="users" class="w-4 h-4"></i></div>
-                  <div>
-                    <div class="text-lg font-bold text-ponto-navy leading-none">CLT</div>
-                    <div class="text-[10px] text-slate-400 mt-1">Regime</div>
-                  </div>
-                </div>
-              </div>
-
-              <!-- CARD DE REGISTRO DE PONTO DE HOJE -->
-              <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
-                <div class="lg:col-span-2 bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm space-y-4">
-                  <div class="flex items-center justify-between border-b border-slate-100 pb-3">
-                    <span class="text-xs font-bold text-ponto-navy flex items-center gap-1.5"><i data-lucide="clock" class="w-4 h-4 text-ponto-orange"></i> Ponto de Hoje</span>
-                    <span class="text-[11px] text-slate-400">terça-feira, 28 de julho</span>
-                  </div>
-
-                  <div class="grid grid-cols-4 gap-2 text-center">
-                    <div class="bg-slate-50 p-2 rounded-xl border border-slate-100">
-                      <span class="text-[10px] text-slate-400 block mb-1">Entrada</span>
-                      <span class="text-xs font-bold text-slate-400">--:--</span>
-                    </div>
-                    <div class="bg-slate-50 p-2 rounded-xl border border-slate-100">
-                      <span class="text-[10px] text-slate-400 block mb-1">Intervalo</span>
-                      <span class="text-xs font-bold text-slate-400">--:--</span>
-                    </div>
-                    <div class="bg-slate-50 p-2 rounded-xl border border-slate-100">
-                      <span class="text-[10px] text-slate-400 block mb-1">Retorno</span>
-                      <span class="text-xs font-bold text-slate-400">--:--</span>
-                    </div>
-                    <div class="bg-slate-50 p-2 rounded-xl border border-slate-100">
-                      <span class="text-[10px] text-slate-400 block mb-1">Saída</span>
-                      <span class="text-xs font-bold text-slate-400">--:--</span>
+                <!-- CARDS DE RESUMO SUPERIOR -->
+                <div class="grid grid-cols-2 gap-2">
+                  <div class="bg-white p-2.5 rounded-xl border border-slate-200/80 shadow-sm flex items-center gap-2">
+                    <div class="w-7 h-7 rounded-lg bg-ponto-navy text-white flex items-center justify-center shrink-0"><i data-lucide="calendar" class="w-3.5 h-3.5"></i></div>
+                    <div>
+                      <div class="text-sm font-bold text-ponto-navy leading-none">0</div>
+                      <div class="text-[9px] text-slate-400 mt-0.5">Dias este mês</div>
                     </div>
                   </div>
 
-                  <button class="w-full bg-ponto-orange hover:bg-ponto-orangeHover text-white font-bold text-sm py-3 rounded-xl shadow-lg shadow-ponto-orange/20 flex items-center justify-center gap-2 transition-all">
-                    Registrar Entrada <i data-lucide="arrow-right" class="w-4 h-4"></i>
+                  <div class="bg-white p-2.5 rounded-xl border border-slate-200/80 shadow-sm flex items-center gap-2">
+                    <div class="w-7 h-7 rounded-lg bg-amber-500 text-white flex items-center justify-center shrink-0"><i data-lucide="file-text" class="w-3.5 h-3.5"></i></div>
+                    <div>
+                      <div class="text-sm font-bold text-ponto-navy leading-none">2</div>
+                      <div class="text-[9px] text-slate-400 mt-0.5">Solicitações</div>
+                    </div>
+                  </div>
+
+                  <div class="bg-white p-2.5 rounded-xl border border-slate-200/80 shadow-sm flex items-center gap-2">
+                    <div class="w-7 h-7 rounded-lg bg-emerald-500 text-white flex items-center justify-center shrink-0"><i data-lucide="trending-up" class="w-3.5 h-3.5"></i></div>
+                    <div>
+                      <div class="text-sm font-bold text-ponto-navy leading-none">8h/dia</div>
+                      <div class="text-[9px] text-slate-400 mt-0.5">Jornada padrão</div>
+                    </div>
+                  </div>
+
+                  <div class="bg-white p-2.5 rounded-xl border border-slate-200/80 shadow-sm flex items-center gap-2">
+                    <div class="w-7 h-7 rounded-lg bg-ponto-navy text-white flex items-center justify-center shrink-0"><i data-lucide="users" class="w-3.5 h-3.5"></i></div>
+                    <div>
+                      <div class="text-sm font-bold text-ponto-navy leading-none">CLT</div>
+                      <div class="text-[9px] text-slate-400 mt-0.5">Regime</div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- CARD DE REGISTRO DE PONTO DE HOJE -->
+                <div class="bg-white p-3.5 rounded-xl border border-slate-200/80 shadow-sm space-y-3">
+                  <div class="flex items-center justify-between border-b border-slate-100 pb-2">
+                    <span class="text-[11px] font-bold text-ponto-navy flex items-center gap-1"><i data-lucide="clock" class="w-3.5 h-3.5 text-ponto-orange"></i> Ponto de Hoje</span>
+                    <span class="text-[9px] text-slate-400">28 de julho</span>
+                  </div>
+
+                  <div class="grid grid-cols-4 gap-1.5 text-center">
+                    <div class="bg-slate-50 p-1.5 rounded-lg border border-slate-100">
+                      <span class="text-[8px] text-slate-400 block">Entrada</span>
+                      <span class="text-[10px] font-bold text-slate-400">--:--</span>
+                    </div>
+                    <div class="bg-slate-50 p-1.5 rounded-lg border border-slate-100">
+                      <span class="text-[8px] text-slate-400 block">Intervalo</span>
+                      <span class="text-[10px] font-bold text-slate-400">--:--</span>
+                    </div>
+                    <div class="bg-slate-50 p-1.5 rounded-lg border border-slate-100">
+                      <span class="text-[8px] text-slate-400 block">Retorno</span>
+                      <span class="text-[10px] font-bold text-slate-400">--:--</span>
+                    </div>
+                    <div class="bg-slate-50 p-1.5 rounded-lg border border-slate-100">
+                      <span class="text-[8px] text-slate-400 block">Saída</span>
+                      <span class="text-[10px] font-bold text-slate-400">--:--</span>
+                    </div>
+                  </div>
+
+                  <button class="w-full bg-ponto-orange hover:bg-ponto-orangeHover text-white font-bold text-xs py-2 rounded-lg shadow-md shadow-ponto-orange/20 flex items-center justify-center gap-1.5 transition-all">
+                    Registrar Entrada <i data-lucide="arrow-right" class="w-3.5 h-3.5"></i>
                   </button>
                 </div>
 
                 <!-- CARD DESTAQUE DO MÊS -->
-                <div class="bg-ponto-navyLight text-white p-5 rounded-2xl flex flex-col justify-between relative overflow-hidden shadow-sm">
-                  <div class="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-ponto-orange text-white text-[10px] font-bold w-fit">
-                    <i data-lucide="star" class="w-3 h-3 fill-current"></i> Destaque do Mês
+                <div class="bg-ponto-navyLight text-white p-3 rounded-xl flex items-center justify-between relative overflow-hidden">
+                  <div>
+                    <div class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-ponto-orange text-white text-[8px] font-bold mb-1">
+                      <i data-lucide="star" class="w-2.5 h-2.5 fill-current"></i> Destaque do Mês
+                    </div>
+                    <h4 class="text-xs font-bold tracking-wide">WIA DIGITAL</h4>
                   </div>
-                  <div class="py-4">
-                    <h4 class="text-lg font-bold tracking-wide">WIA DIGITAL</h4>
-                    <p class="text-xs text-slate-300 mt-1">Pontualidade exemplar e 100% de presença.</p>
+                  <div class="text-[9px] text-slate-300 text-right">
+                    Pontualidade 100%
                   </div>
-                  <div class="text-[10px] text-slate-400 border-t border-white/10 pt-2">Atualizado em tempo real</div>
                 </div>
+
               </div>
 
             </div>
@@ -268,23 +291,23 @@
           </div>
 
         </div>
+
       </div>
 
     </div>
   </section>
 
-  <!-- SEÇÃO DE RECURSOS (BASEADA NOS MENUS DO SISTEMA) -->
+  <!-- SEÇÃO DE RECURSOS -->
   <section id="recursos" class="py-20 bg-white border-y border-slate-200/80">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
       
       <div class="text-center max-w-2xl mx-auto mb-16 space-y-3">
         <h2 class="font-heading text-3xl font-bold text-ponto-navy tracking-tight">Tudo o que sua empresa precisa em uma única plataforma</h2>
-        <p class="text-slate-600 text-sm sm:text-base">Esqueça planilhas manuais e complicações com a contabilidade. O WiaPonto automatiza do registro à folha de pagamento.</p>
+        <p class="text-slate-600 text-sm sm:text-base">Esqueça planilhas manuais e complicações com a contabilidade. O PontoMax automatiza do registro à folha de pagamento.</p>
       </div>
 
       <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
         
-        <!-- Feature 1 -->
         <div class="bg-ponto-bg p-6 rounded-3xl border border-slate-200/80 hover:border-ponto-orange/40 transition-all hover:shadow-xl group">
           <div class="w-12 h-12 rounded-2xl bg-ponto-orange/10 text-ponto-orange flex items-center justify-center font-bold mb-5 group-hover:bg-ponto-orange group-hover:text-white transition-all">
             <i data-lucide="clock" class="w-6 h-6"></i>
@@ -293,7 +316,6 @@
           <p class="text-slate-600 text-sm leading-relaxed">Registro com geolocalização e fotos. Perfeito para equipes presenciais, externas ou em modelo home office.</p>
         </div>
 
-        <!-- Feature 2 -->
         <div class="bg-ponto-bg p-6 rounded-3xl border border-slate-200/80 hover:border-ponto-orange/40 transition-all hover:shadow-xl group">
           <div class="w-12 h-12 rounded-2xl bg-ponto-navy/10 text-ponto-navy flex items-center justify-center font-bold mb-5 group-hover:bg-ponto-navy group-hover:text-white transition-all">
             <i data-lucide="calendar" class="w-6 h-6"></i>
@@ -302,16 +324,14 @@
           <p class="text-slate-600 text-sm leading-relaxed">Relatórios detalhados com cálculos instantâneos de horas trabalhadas, atrasos, HE 50%, HE 100% e faltas.</p>
         </div>
 
-        <!-- Feature 3 -->
         <div class="bg-ponto-bg p-6 rounded-3xl border border-slate-200/80 hover:border-ponto-orange/40 transition-all hover:shadow-xl group">
           <div class="w-12 h-12 rounded-2xl bg-emerald-500/10 text-emerald-600 flex items-center justify-center font-bold mb-5 group-hover:bg-emerald-500 group-hover:text-white transition-all">
-            <i data-lucide="file-check-2" class="w-4 h-4"></i>
+            <i data-lucide="file-check-2" class="w-6 h-6"></i>
           </div>
           <h3 class="font-heading text-lg font-bold text-ponto-navy mb-2">Gestão de Solicitações</h3>
           <p class="text-slate-600 text-sm leading-relaxed">Abono de faltas, envio de atestados médicos e ajustes de ponto com aprovação rápida do gestor.</p>
         </div>
 
-        <!-- Feature 4 -->
         <div class="bg-ponto-bg p-6 rounded-3xl border border-slate-200/80 hover:border-ponto-orange/40 transition-all hover:shadow-xl group">
           <div class="w-12 h-12 rounded-2xl bg-ponto-navy/10 text-ponto-navy flex items-center justify-center font-bold mb-5 group-hover:bg-ponto-navy group-hover:text-white transition-all">
             <i data-lucide="dollar-sign" class="w-6 h-6"></i>
@@ -320,7 +340,6 @@
           <p class="text-slate-600 text-sm leading-relaxed">Disponibilização digital dos holerites para os colaboradores acessarem a qualquer hora com total segurança.</p>
         </div>
 
-        <!-- Feature 5 -->
         <div class="bg-ponto-bg p-6 rounded-3xl border border-slate-200/80 hover:border-ponto-orange/40 transition-all hover:shadow-xl group">
           <div class="w-12 h-12 rounded-2xl bg-amber-500/10 text-amber-600 flex items-center justify-center font-bold mb-5 group-hover:bg-amber-500 group-hover:text-white transition-all">
             <i data-lucide="briefcase" class="w-6 h-6"></i>
@@ -329,7 +348,6 @@
           <p class="text-slate-600 text-sm leading-relaxed">Módulo exclusivo para gestão de retiradas de sócios e diretores de forma integrada à contabilidade.</p>
         </div>
 
-        <!-- Feature 6 -->
         <div class="bg-ponto-bg p-6 rounded-3xl border border-slate-200/80 hover:border-ponto-orange/40 transition-all hover:shadow-xl group">
           <div class="w-12 h-12 rounded-2xl bg-blue-500/10 text-blue-600 flex items-center justify-center font-bold mb-5 group-hover:bg-blue-500 group-hover:text-white transition-all">
             <i data-lucide="shield-check" class="w-6 h-6"></i>
@@ -343,7 +361,7 @@
     </div>
   </section>
 
-  <!-- SEÇÃO DEMO DO ESPELHO DE PONTO (BASEADA NO PRINT 2) -->
+  <!-- SEÇÃO DEMO DO ESPELHO DE PONTO -->
   <section id="espelho" class="py-20 bg-ponto-bg">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
       
@@ -382,10 +400,8 @@
           </a>
         </div>
 
-        <!-- PREVIEW TABELA DO ESPELHO DE PONTO (FIEL AO PRINT 2) -->
         <div class="lg:col-span-7 bg-white rounded-3xl p-4 sm:p-6 border border-slate-200/80 shadow-xl overflow-x-auto">
           
-          <!-- CONTROLES DA TABELA -->
           <div class="flex flex-wrap items-center justify-between gap-3 mb-4 pb-4 border-b border-slate-100">
             <div class="flex items-center gap-2">
               <button class="p-1.5 rounded-lg border border-slate-200 hover:bg-slate-50 text-slate-500"><i data-lucide="chevron-left" class="w-4 h-4"></i></button>
@@ -398,7 +414,6 @@
             </div>
           </div>
 
-          <!-- MOCKUP TABELA -->
           <table class="w-full text-left border-collapse text-[11px]">
             <thead>
               <tr class="bg-ponto-navy text-white font-semibold">
@@ -476,7 +491,6 @@
 
       <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
         
-        <!-- Plano Starter -->
         <div class="bg-slate-50 border border-slate-200/80 rounded-3xl p-8 flex flex-col justify-between hover:shadow-xl transition-all">
           <div class="space-y-4">
             <h3 class="font-heading text-xl font-bold text-ponto-navy">Starter</h3>
@@ -495,7 +509,6 @@
           <a href="#" class="mt-8 w-full py-3 rounded-xl border border-ponto-navy text-ponto-navy font-bold text-xs hover:bg-ponto-navy hover:text-white transition-all text-center">Testar 14 Dias Grátis</a>
         </div>
 
-        <!-- Plano Pro (Destaque) -->
         <div class="bg-ponto-navy text-white border-2 border-ponto-orange rounded-3xl p-8 flex flex-col justify-between shadow-2xl relative">
           <div class="absolute -top-3.5 right-6 bg-ponto-orange text-white text-[10px] font-bold uppercase tracking-wider px-3 py-1 rounded-full">
             Mais Popular
@@ -518,7 +531,6 @@
           <a href="#" class="mt-8 w-full py-3.5 rounded-xl bg-ponto-orange hover:bg-ponto-orangeHover text-white font-bold text-xs shadow-lg shadow-ponto-orange/30 transition-all text-center">Começar Agora</a>
         </div>
 
-        <!-- Plano Corporate -->
         <div class="bg-slate-50 border border-slate-200/80 rounded-3xl p-8 flex flex-col justify-between hover:shadow-xl transition-all">
           <div class="space-y-4">
             <h3 class="font-heading text-xl font-bold text-ponto-navy">Corporate</h3>
@@ -563,9 +575,9 @@
         <div class="w-7 h-7 rounded-lg bg-ponto-orange flex items-center justify-center text-white font-bold">
           <i data-lucide="clock" class="w-4 h-4"></i>
         </div>
-        <span class="font-heading font-bold text-sm text-white">WiaPonto</span>
+        <span class="font-heading font-bold text-sm text-white">PontoMax</span>
         <span class="text-slate-600">|</span>
-        <span>© 2026 WiaPonto. Todos os direitos reservados.</span>
+        <span>© 2026 PontoMax. Todos os direitos reservados.</span>
       </div>
 
       <div class="flex items-center gap-6">

@@ -1,4 +1,4 @@
-import { createClient } from '@supabase/supabase-supabase-js';
+import { createClient } from '@supabase/supabase-js';
 
 // As variáveis do Supabase (Insira suas chaves do painel do Supabase se tiver)
 const supabaseUrl = process.env.VITE_SUPABASE_URL || 'https://seu-projeto.supabase.co';

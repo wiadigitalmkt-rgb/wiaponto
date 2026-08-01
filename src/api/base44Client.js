@@ -1,17 +1,47 @@
 import { createClient } from '@supabase/supabase-js';
 
-// As variáveis do Supabase (Insira suas chaves do painel do Supabase se tiver)
-const supabaseUrl = process.env.VITE_SUPABASE_URL || 'https://seu-projeto.supabase.co';
-const supabaseAnonKey = process.env.VITE_SUPABASE_ANON_KEY || 'sua-chave-anonima-aqui';
+// Pega as variáveis configuradas na Vercel / .env
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://seu-projeto.supabase.co';
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'sua-chave-anonima';
 
-// Inicializa o cliente do Supabase
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
-// Camada de compatibilidade (Mock/Adaptador) para não quebrar chamadas antigas do Base44
+// Ponte de compatibilidade para simular o Base44 usando o Supabase
 export const base44 = {
-  auth: supabase.auth,
+  auth: {
+    // Mapeia chamadas antigas de cadastro
+    register: async (email, password, metadata = {}) => {
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: { data: metadata }
+      });
+      if (error) throw error;
+      return data;
+    },
+    // Mapeia chamadas antigas de login
+    login: async (email, password) => {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password
+      });
+      if (error) throw error;
+      return data;
+    },
+    // Mapeia logout
+    logout: async () => {
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
+      return true;
+    },
+    // Mapeia busca do usuário atual
+    getUser: async () => {
+      const { data: { user }, error } = await supabase.auth.getUser();
+      if (error) throw error;
+      return user;
+    }
+  },
   entities: {
-    // Redireciona buscas de tabelas/entidades para o Supabase
     get: async (tableName) => {
       const { data, error } = await supabase.from(tableName).select('*');
       if (error) throw error;

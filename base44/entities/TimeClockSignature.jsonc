@@ -1,0 +1,84 @@
+{
+  "name": "TimeClockSignature",
+  "type": "object",
+  "properties": {
+    "employee_email": {
+      "type": "string"
+    },
+    "month": {
+      "type": "number"
+    },
+    "year": {
+      "type": "number"
+    },
+    "employee_signature_url": {
+      "type": "string"
+    },
+    "employee_signed_at": {
+      "type": "string"
+    },
+    "admin_signature_url": {
+      "type": "string"
+    },
+    "admin_signed_at": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "employee_signed",
+        "fully_signed"
+      ],
+      "default": "pending"
+    }
+  },
+  "required": [
+    "employee_email",
+    "month",
+    "year"
+  ],
+  "rls": {
+    "create": {
+      "$or": [
+        {
+          "data.employee_email": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "read": {
+      "$or": [
+        {
+          "data.employee_email": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "update": {
+      "$or": [
+        {
+          "data.employee_email": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

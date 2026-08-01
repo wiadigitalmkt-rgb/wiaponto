@@ -1,0 +1,157 @@
+{
+  "name": "TimeClock",
+  "type": "object",
+  "properties": {
+    "date": {
+      "type": "string",
+      "description": "Data do ponto (YYYY-MM-DD)"
+    },
+    "employee_email": {
+      "type": "string",
+      "description": "Email do colaborador"
+    },
+    "employee_name": {
+      "type": "string",
+      "description": "Nome do colaborador"
+    },
+    "entry_time": {
+      "type": "string",
+      "description": "Hor\u00e1rio de entrada (HH:mm)"
+    },
+    "entry_photo": {
+      "type": "string",
+      "description": "URL da foto de entrada"
+    },
+    "entry_address": {
+      "type": "string",
+      "description": "Endere\u00e7o de entrada"
+    },
+    "entry_lat": {
+      "type": "number",
+      "description": "Latitude de entrada"
+    },
+    "entry_lng": {
+      "type": "number",
+      "description": "Longitude de entrada"
+    },
+    "break_time": {
+      "type": "string",
+      "description": "Hor\u00e1rio de intervalo (HH:mm)"
+    },
+    "break_photo": {
+      "type": "string",
+      "description": "URL da foto de intervalo"
+    },
+    "break_address": {
+      "type": "string",
+      "description": "Endere\u00e7o de intervalo"
+    },
+    "break_lat": {
+      "type": "number",
+      "description": "Latitude de intervalo"
+    },
+    "break_lng": {
+      "type": "number",
+      "description": "Longitude de intervalo"
+    },
+    "return_time": {
+      "type": "string",
+      "description": "Hor\u00e1rio de retorno (HH:mm)"
+    },
+    "return_photo": {
+      "type": "string",
+      "description": "URL da foto de retorno"
+    },
+    "return_address": {
+      "type": "string",
+      "description": "Endere\u00e7o de retorno"
+    },
+    "return_lat": {
+      "type": "number",
+      "description": "Latitude de retorno"
+    },
+    "return_lng": {
+      "type": "number",
+      "description": "Longitude de retorno"
+    },
+    "exit_time": {
+      "type": "string",
+      "description": "Hor\u00e1rio de sa\u00edda (HH:mm)"
+    },
+    "exit_photo": {
+      "type": "string",
+      "description": "URL da foto de sa\u00edda"
+    },
+    "exit_address": {
+      "type": "string",
+      "description": "Endere\u00e7o de sa\u00edda"
+    },
+    "exit_lat": {
+      "type": "number",
+      "description": "Latitude de sa\u00edda"
+    },
+    "exit_lng": {
+      "type": "number",
+      "description": "Longitude de sa\u00edda"
+    },
+    "entry_justification": {
+      "type": "string",
+      "description": "Justificativa de atraso na entrada"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "incomplete",
+        "complete"
+      ],
+      "default": "incomplete"
+    }
+  },
+  "required": [
+    "date",
+    "employee_email"
+  ],
+  "rls": {
+    "create": {
+      "$or": [
+        {
+          "data.employee_email": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "read": {
+      "$or": [
+        {
+          "data.employee_email": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "update": {
+      "$or": [
+        {
+          "data.employee_email": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

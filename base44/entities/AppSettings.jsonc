@@ -1,0 +1,61 @@
+{
+  "name": "AppSettings",
+  "type": "object",
+  "properties": {
+    "work_start_time": {
+      "type": "string",
+      "default": "08:00",
+      "description": "Hor\u00e1rio de in\u00edcio da jornada"
+    },
+    "work_end_time": {
+      "type": "string",
+      "default": "17:00",
+      "description": "Hor\u00e1rio de fim da jornada"
+    },
+    "lunch_duration_minutes": {
+      "type": "number",
+      "default": 60,
+      "description": "Dura\u00e7\u00e3o do intervalo em minutos"
+    },
+    "tolerance_minutes": {
+      "type": "number",
+      "default": 10,
+      "description": "Toler\u00e2ncia CLT em minutos"
+    },
+    "saturday_schedule_start": {
+      "type": "string",
+      "description": "Data de refer\u00eancia para escala de s\u00e1bados (YYYY-MM-DD)"
+    },
+    "employee_of_month_name": {
+      "type": "string"
+    },
+    "employee_of_month_photo": {
+      "type": "string"
+    },
+    "employee_of_month_role": {
+      "type": "string"
+    },
+    "employee_of_month_reason": {
+      "type": "string"
+    }
+  },
+  "required": [],
+  "rls": {
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "read": null,
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

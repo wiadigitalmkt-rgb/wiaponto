@@ -5,22 +5,41 @@ const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
+// Função auxiliar para tratar entradas de email/senha (objeto vs argumentos)
+const parseAuthCredentials = (arg1, arg2) => {
+  let email = '';
+  let password = '';
+  let metadata = {};
+
+  if (typeof arg1 === 'object' && arg1 !== null) {
+    email = arg1.email || arg1.username || '';
+    password = arg1.password || '';
+    metadata = arg1.metadata || {};
+  } else {
+    email = arg1 || '';
+    password = arg2 || '';
+  }
+
+  return { email, password, metadata };
+};
+
 export const base44 = {
   auth: {
-    // Método de Login com Email e Senha (cobre chamadas novas e antigas)
-    loginViaEmailPassword: async (email, password) => {
+    loginViaEmailPassword: async (arg1, arg2) => {
+      const { email, password } = parseAuthCredentials(arg1, arg2);
       const { data, error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) throw error;
       return data;
     },
-    login: async (email, password) => {
+    login: async (arg1, arg2) => {
+      const { email, password } = parseAuthCredentials(arg1, arg2);
       const { data, error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) throw error;
       return data;
     },
 
-    // Método de Cadastro (cobre chamadas novas e antigas)
-    register: async (email, password, metadata = {}) => {
+    register: async (arg1, arg2, arg3) => {
+      const { email, password, metadata } = parseAuthCredentials(arg1, arg2);
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
@@ -29,7 +48,8 @@ export const base44 = {
       if (error) throw error;
       return data;
     },
-    signUp: async (email, password, metadata = {}) => {
+    signUp: async (arg1, arg2, arg3) => {
+      const { email, password, metadata } = parseAuthCredentials(arg1, arg2);
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
@@ -39,7 +59,6 @@ export const base44 = {
       return data;
     },
 
-    // Login com Google
     loginWithGoogle: async () => {
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
@@ -51,14 +70,12 @@ export const base44 = {
       return data;
     },
 
-    // Logout
     logout: async () => {
       const { error } = await supabase.auth.signOut();
       if (error) throw error;
       return true;
     },
 
-    // Busca de Usuário Atual
     getUser: async () => {
       const { data: { user }, error } = await supabase.auth.getUser();
       if (error) throw error;
@@ -71,7 +88,6 @@ export const base44 = {
     }
   },
 
-  // Ponte para o banco de dados do Supabase
   entities: {
     get: async (tableName) => {
       const { data, error } = await supabase.from(tableName).select('*');

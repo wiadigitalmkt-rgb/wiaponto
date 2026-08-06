@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -11,22 +11,41 @@ export default function Login() {
   const [showPw, setShowPw] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
     setLoading(true);
+
     try {
-      await base44.auth.loginViaEmailPassword(email, password);
-      window.location.href = '/';
+      // Tenta realizar o login via Supabase
+      const response = await base44.auth.loginViaEmailPassword(email, password);
+      
+      if (response?.user || response?.session) {
+        // Redireciona usando o React Router sem dar F5 na página
+        navigate('/', { replace: true });
+      } else {
+        window.location.href = '/';
+      }
     } catch (err) {
-      setError(err?.message || 'Email ou senha incorretos.');
+      console.error('Erro ao logar:', err);
+      setError(err?.message || 'E-mail ou senha incorretos.');
+    } finally {
       setLoading(false);
     }
   };
 
-  const handleGoogle = () => {
-    base44.auth.loginWithProvider('google', '/');
+  const handleGoogle = async () => {
+    try {
+      if (base44.auth.loginWithGoogle) {
+        await base44.auth.loginWithGoogle();
+      } else if (base44.auth.loginWithProvider) {
+        await base44.auth.loginWithProvider('google', '/');
+      }
+    } catch (err) {
+      setError(err?.message || 'Erro ao conectar com Google.');
+    }
   };
 
   return (

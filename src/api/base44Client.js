@@ -1,15 +1,25 @@
 import { createClient } from '@supabase/supabase-js';
 
-// Pega as variáveis configuradas na Vercel / .env
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://seu-projeto.supabase.co';
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'sua-chave-anonima';
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://ezmibiuwkdrbiyynkdrb.supabase.co';
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
-// Ponte de compatibilidade para simular o Base44 usando o Supabase
 export const base44 = {
   auth: {
-    // Mapeia chamadas antigas de cadastro
+    // Método de Login com Email e Senha (cobre chamadas novas e antigas)
+    loginViaEmailPassword: async (email, password) => {
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) throw error;
+      return data;
+    },
+    login: async (email, password) => {
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) throw error;
+      return data;
+    },
+
+    // Método de Cadastro (cobre chamadas novas e antigas)
     register: async (email, password, metadata = {}) => {
       const { data, error } = await supabase.auth.signUp({
         email,
@@ -19,28 +29,49 @@ export const base44 = {
       if (error) throw error;
       return data;
     },
-    // Mapeia chamadas antigas de login
-    login: async (email, password) => {
-      const { data, error } = await supabase.auth.signInWithPassword({
+    signUp: async (email, password, metadata = {}) => {
+      const { data, error } = await supabase.auth.signUp({
         email,
-        password
+        password,
+        options: { data: metadata }
       });
       if (error) throw error;
       return data;
     },
-    // Mapeia logout
+
+    // Login com Google
+    loginWithGoogle: async () => {
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: window.location.origin
+        }
+      });
+      if (error) throw error;
+      return data;
+    },
+
+    // Logout
     logout: async () => {
       const { error } = await supabase.auth.signOut();
       if (error) throw error;
       return true;
     },
-    // Mapeia busca do usuário atual
+
+    // Busca de Usuário Atual
     getUser: async () => {
+      const { data: { user }, error } = await supabase.auth.getUser();
+      if (error) throw error;
+      return user;
+    },
+    me: async () => {
       const { data: { user }, error } = await supabase.auth.getUser();
       if (error) throw error;
       return user;
     }
   },
+
+  // Ponte para o banco de dados do Supabase
   entities: {
     get: async (tableName) => {
       const { data, error } = await supabase.from(tableName).select('*');

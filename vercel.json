@@ -1,0 +1,16 @@
+{
+  "rewrites": [
+    {
+      "source": "/api/apps/public/prod/public-settings-by-id/:path*",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/api/:path*",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/:(.*)",
+      "destination": "/index.html"
+    }
+  ]
+}

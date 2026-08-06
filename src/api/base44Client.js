@@ -5,6 +5,32 @@ const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
+// Interceptador para fingir respostas do Base44 que costumam dar 404
+if (typeof window !== 'undefined' && window.fetch) {
+  const originalFetch = window.fetch;
+  window.fetch = async function (...args) {
+    const url = typeof args[0] === 'string' ? args[0] : args[0]?.url || '';
+
+    // Intercepta chamadas de configurações/estado do Base44
+    if (url.includes('/public-settings-by-id/') || url.includes('/api/apps/public/')) {
+      return new Response(
+        JSON.stringify({
+          id: 'wiaponto',
+          name: 'Wiaponto',
+          settings: {},
+          status: 'active'
+        }),
+        {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' }
+        }
+      );
+    }
+
+    return originalFetch.apply(this, args);
+  };
+}
+
 const parseAuthCredentials = (arg1, arg2) => {
   let email = '';
   let password = '';
@@ -23,6 +49,11 @@ const parseAuthCredentials = (arg1, arg2) => {
 };
 
 export const base44 = {
+  // Simula o método .request(...) que algumas rotas do Base44 chamam diretamente
+  request: async (endpoint, options) => {
+    return { status: 'success', data: {} };
+  },
+
   auth: {
     loginViaEmailPassword: async (arg1, arg2) => {
       const { email, password } = parseAuthCredentials(arg1, arg2);

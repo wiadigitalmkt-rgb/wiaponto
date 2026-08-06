@@ -5,7 +5,6 @@ const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
-// Função auxiliar para tratar entradas de email/senha (objeto vs argumentos)
 const parseAuthCredentials = (arg1, arg2) => {
   let email = '';
   let password = '';
@@ -29,13 +28,23 @@ export const base44 = {
       const { email, password } = parseAuthCredentials(arg1, arg2);
       const { data, error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) throw error;
-      return data;
+      return {
+        user: data.user,
+        session: data.session,
+        token: data.session?.access_token,
+        ...data.user
+      };
     },
     login: async (arg1, arg2) => {
       const { email, password } = parseAuthCredentials(arg1, arg2);
       const { data, error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) throw error;
-      return data;
+      return {
+        user: data.user,
+        session: data.session,
+        token: data.session?.access_token,
+        ...data.user
+      };
     },
 
     register: async (arg1, arg2, arg3) => {
@@ -46,7 +55,11 @@ export const base44 = {
         options: { data: metadata }
       });
       if (error) throw error;
-      return data;
+      return {
+        user: data.user,
+        session: data.session,
+        ...data.user
+      };
     },
     signUp: async (arg1, arg2, arg3) => {
       const { email, password, metadata } = parseAuthCredentials(arg1, arg2);
@@ -56,7 +69,11 @@ export const base44 = {
         options: { data: metadata }
       });
       if (error) throw error;
-      return data;
+      return {
+        user: data.user,
+        session: data.session,
+        ...data.user
+      };
     },
 
     loginWithGoogle: async () => {
@@ -78,36 +95,36 @@ export const base44 = {
 
     getUser: async () => {
       const { data: { user }, error } = await supabase.auth.getUser();
-      if (error) throw error;
-      return user;
+      if (error && error.name !== 'AuthSessionMissingError') throw error;
+      return user || null;
     },
     me: async () => {
       const { data: { user }, error } = await supabase.auth.getUser();
-      if (error) throw error;
-      return user;
+      if (error && error.name !== 'AuthSessionMissingError') throw error;
+      return user || null;
     }
   },
 
   entities: {
     get: async (tableName) => {
       const { data, error } = await supabase.from(tableName).select('*');
-      if (error) throw error;
+      if (error) return [];
       return data;
     },
     find: async (tableName, query = {}) => {
       const { data, error } = await supabase.from(tableName).select('*').match(query);
-      if (error) throw error;
+      if (error) return [];
       return data;
     },
     create: async (tableName, recordData) => {
       const { data, error } = await supabase.from(tableName).insert([recordData]).select();
       if (error) throw error;
-      return data[0];
+      return data ? data[0] : recordData;
     },
     update: async (tableName, id, recordData) => {
       const { data, error } = await supabase.from(tableName).update(recordData).eq('id', id).select();
       if (error) throw error;
-      return data[0];
+      return data ? data[0] : recordData;
     },
     delete: async (tableName, id) => {
       const { error } = await supabase.from(tableName).delete().eq('id', id);

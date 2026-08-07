@@ -1,15 +1,7 @@
 {
   "rewrites": [
     {
-      "source": "/api/apps/public/prod/public-settings-by-id/null",
-      "destination": "/api/settings"
-    },
-    {
-      "source": "/api/apps/public/prod/public-settings-by-id/:id",
-      "destination": "/api/settings"
-    },
-    {
-      "source": "/:path*",
+      "source": "/(.*)",
       "destination": "/index.html"
     }
   ]

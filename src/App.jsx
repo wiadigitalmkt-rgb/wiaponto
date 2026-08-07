@@ -1,12 +1,11 @@
 import { Toaster } from "@/components/ui/toaster"
 import { QueryClientProvider } from '@tanstack/react-query'
 import { queryClientInstance } from '@/lib/query-client'
-import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
+import { BrowserRouter as Router, Route, Routes, Navigate } from 'react-router-dom';
 import PageNotFound from './lib/PageNotFound';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
 import ProtectedRoute from '@/components/ProtectedRoute';
-import { Navigate } from 'react-router-dom';
 import Layout from './components/Layout';
 import Login from './pages/Login';
 import Register from './pages/Register';
@@ -29,7 +28,6 @@ import CompanySettings from './pages/admin/CompanySettings';
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
 
-  // Show loading spinner while checking app public settings or auth
   if (isLoadingPublicSettings || isLoadingAuth) {
     return (
       <div className="fixed inset-0 flex items-center justify-center">
@@ -38,27 +36,28 @@ const AuthenticatedApp = () => {
     );
   }
 
-  // Handle authentication errors
   if (authError) {
     if (authError.type === 'user_not_registered') {
       return <UserNotRegisteredError />;
     } else if (authError.type === 'auth_required') {
-      // Redirect to login automatically
       navigateToLogin();
       return null;
     }
   }
 
-  // Render the main app
   return (
     <Routes>
+      {/* Rotas Públicas */}
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />
       <Route path="/reset-password" element={<ResetPassword />} />
+
+      {/* Rotas Protegidas */}
       <Route element={<ProtectedRoute unauthenticatedElement={<Navigate to="/login" replace />} />}>
+        
+        {/* Rotas do Colaborador (COM Menu Lateral / Layout) */}
         <Route element={<Layout />}>
-          {/* Rotas do Colaborador */}
           <Route path="/" element={<Home />} />
           <Route path="/ponto" element={<PunchClock />} />
           <Route path="/espelho" element={<TimeClockMirror />} />
@@ -67,21 +66,21 @@ const AuthenticatedApp = () => {
           <Route path="/configuracoes" element={<Settings />} />
           <Route path="/prolabore" element={<ProLabore />} />
           <Route path="/admin-old" element={<Admin />} />
-
-          {/* Novas Rotas do Admin */}
-          <Route path="/admin" element={<AdminDashboard />} />
-          <Route path="/admin/colaboradores" element={<Employees />} />
-          <Route path="/admin/empresa" element={<CompanySettings />} />
         </Route>
+
+        {/* Novas Rotas do Admin (SEM Menu Lateral / Tela Cheia) */}
+        <Route path="/admin" element={<AdminDashboard />} />
+        <Route path="/admin/colaboradores" element={<Employees />} />
+        <Route path="/admin/empresa" element={<CompanySettings />} />
+
       </Route>
+
       <Route path="*" element={<PageNotFound />} />
     </Routes>
   );
 };
 
-
 function App() {
-
   return (
     <AuthProvider>
       <QueryClientProvider client={queryClientInstance}>
@@ -91,7 +90,7 @@ function App() {
         <Toaster />
       </QueryClientProvider>
     </AuthProvider>
-  )
+  );
 }
 
 export default App;

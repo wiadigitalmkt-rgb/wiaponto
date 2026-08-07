@@ -4,24 +4,56 @@ import {
   Clock, 
   FileText, 
   ChevronRight, 
+  ChevronDown,
   Calendar,
   ExternalLink,
-  MessageSquare
+  MessageSquare,
+  Edit2,
+  Plus
 } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
 export default function AdminPonto() {
   const [selectedMonth, setSelectedMonth] = useState('Agosto/2026');
   const [selectedUser, setSelectedUser] = useState('Joquebede de...');
+  const [expandedRow, setExpandedRow] = useState(null);
 
-  // Dados mockados
+  const toggleRow = (id) => {
+    setExpandedRow(expandedRow === id ? null : id);
+  };
+
+  // Dados mockados estruturados com os batimentos diários
   const registros = [
-    { id: 1, data: '06/08/2026 - Quinta-feira', horaExtra: '2h', trabalhado: '10h' },
-    { id: 2, data: '07/08/2026 - Sexta-feira', horaExtra: '0h', trabalhado: '0h' },
+    { 
+      id: 1, 
+      data: '06/08/2026 - Quinta-feira', 
+      horaExtra: '2h', 
+      trabalhado: '10h',
+      batidas: [
+        { entrada: '08:00', saida: '12:00', saldo: '04:00' },
+        { entrada: '14:00', saida: '20:00', saldo: '06:00' },
+        { entrada: '23:12', saida: '-', saldo: '-' }
+      ]
+    },
+    { 
+      id: 2, 
+      data: '07/08/2026 - Sexta-feira', 
+      horaExtra: '1h', 
+      trabalhado: '9h',
+      batidas: [
+        { entrada: '08:00', saida: '12:00', saldo: '04:00' },
+        { entrada: '14:00', saida: '19:00', saldo: '05:00' }
+      ]
+    },
   ];
 
   return (
     <div className="min-h-screen bg-[#edf2f7] flex flex-col font-sans text-slate-700">
-      {/* Topo do PontoMax Padronizado (Importado do componente único) */}
       <Navbar selectedCompany="Sua Empresa" />
 
       <div className="flex flex-1">
@@ -114,22 +146,93 @@ export default function AdminPonto() {
 
             {/* Linhas da Tabela */}
             <div className="divide-y divide-slate-100">
-              {registros.map((item) => (
-                <div key={item.id} className="grid grid-cols-12 px-6 py-4 items-center text-sm hover:bg-slate-50 transition-colors">
-                  <div className="col-span-8 flex items-center space-x-3">
-                    <ChevronRight className="w-4 h-4 text-slate-400 cursor-pointer" />
-                    <span className="font-medium text-slate-700">{item.data}</span>
+              {registros.map((item) => {
+                const isExpanded = expandedRow === item.id;
+                return (
+                  <div key={item.id} className="transition-colors">
+                    {/* Linha Resumida */}
+                    <div 
+                      onClick={() => toggleRow(item.id)}
+                      className="grid grid-cols-12 px-6 py-4 items-center text-sm hover:bg-slate-50 cursor-pointer"
+                    >
+                      <div className="col-span-8 flex items-center space-x-3">
+                        {isExpanded ? (
+                          <ChevronDown className="w-4 h-4 text-slate-500" />
+                        ) : (
+                          <ChevronRight className="w-4 h-4 text-slate-400" />
+                        )}
+                        <span className="font-medium text-slate-700">{item.data}</span>
+                      </div>
+                      <div className="col-span-2 text-right font-medium text-slate-600">{item.horaExtra}</div>
+                      <div className="col-span-2 text-right font-semibold text-slate-800">{item.trabalhado}</div>
+                    </div>
+
+                    {/* Conteúdo Expandido */}
+                    {isExpanded && (
+                      <div className="px-12 py-4 bg-slate-50/60 border-t border-b border-slate-100 text-xs">
+                        {/* Ações superiores */}
+                        <div className="flex items-center justify-between mb-4">
+                          <DropdownMenu>
+                            <DropdownMenuTrigger className="flex items-center space-x-1 border border-slate-300 bg-white px-3 py-1.5 rounded-md font-medium text-slate-700 hover:bg-slate-50 focus:outline-none">
+                              <span>Adicionar</span>
+                              <ChevronDown className="w-3.5 h-3.5" />
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="start" className="bg-white">
+                              <DropdownMenuItem className="cursor-pointer">Adicionar ponto</DropdownMenuItem>
+                              <DropdownMenuItem className="cursor-pointer">Falta justificada</DropdownMenuItem>
+                              <DropdownMenuItem className="cursor-pointer">Trocar jornada</DropdownMenuItem>
+                              <DropdownMenuItem className="cursor-pointer">Anotação</DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+
+                          <button className="text-slate-500 hover:text-slate-700 font-medium">
+                            Ver histórico
+                          </button>
+                        </div>
+
+                        {/* Cabeçalho da sub-tabela */}
+                        <div className="grid grid-cols-12 text-slate-400 font-bold uppercase text-[10px] mb-2 pr-12">
+                          <div className="col-span-4 text-center">ENTRADA</div>
+                          <div className="col-span-4 text-center">SAÍDA</div>
+                          <div className="col-span-4 text-right">SALDO</div>
+                        </div>
+
+                        {/* Lista de Batimentos */}
+                        <div className="space-y-2">
+                          {item.batidas.map((b, idx) => (
+                            <div key={idx} className="grid grid-cols-12 items-center bg-white border border-slate-200 rounded-md py-2 px-3 shadow-sm">
+                              <div className="col-span-4 flex items-center justify-center space-x-1 text-slate-700 font-mono">
+                                <span>{b.entrada}</span>
+                              </div>
+                              <div className="col-span-4 flex items-center justify-center space-x-1 text-slate-700 font-mono">
+                                <span>{b.saida}</span>
+                              </div>
+                              <div className="col-span-4 flex items-center justify-end space-x-4">
+                                <span className="font-mono text-slate-600">{b.saldo}</span>
+                                <button className="text-emerald-600 hover:underline text-xs flex items-center">
+                                  Editar
+                                </button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+
+                        {/* Rodapé do dia */}
+                        <div className="flex justify-between items-center mt-4 pt-3 border-t border-slate-200/60 text-slate-600 font-medium">
+                          <span>Horas extras: <strong>{item.horaExtra}</strong></span>
+                          <span>Trabalhado: <strong>{item.trabalhado}</strong></span>
+                        </div>
+                      </div>
+                    )}
                   </div>
-                  <div className="col-span-2 text-right font-medium text-slate-600">{item.horaExtra}</div>
-                  <div className="col-span-2 text-right font-semibold text-slate-800">{item.trabalhado}</div>
-                </div>
-              ))}
+                );
+              })}
 
               {/* Linha de Totais */}
               <div className="grid grid-cols-12 px-6 py-4 items-center text-sm font-bold bg-slate-50/30">
                 <div className="col-span-8"></div>
-                <div className="col-span-2 text-right text-slate-800">2h</div>
-                <div className="col-span-2 text-right text-slate-800">10h</div>
+                <div className="col-span-2 text-right text-slate-800">3h</div>
+                <div className="col-span-2 text-right text-slate-800">19h</div>
               </div>
             </div>
           </div>

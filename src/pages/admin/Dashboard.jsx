@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { 
   Users, 
   Clock, 
@@ -104,8 +105,9 @@ export default function Dashboard() {
             {modules.map((m, idx) => {
               const Icon = m.icon;
               return (
-                <div 
-                  key={idx} 
+                <Link 
+                  key={idx}
+                  to={m.path}
                   className="relative group bg-white p-5 rounded-lg border border-slate-200/80 shadow-sm hover:shadow-md hover:border-[#ff8b00] transition cursor-pointer flex flex-col items-center text-center"
                 >
                   {m.isNew && (
@@ -117,7 +119,7 @@ export default function Dashboard() {
                     <Icon size={22} />
                   </div>
                   <span className="text-xs font-bold text-slate-700 group-hover:text-[#1a2c6a] transition">{m.title}</span>
-                </div>
+                </Link>
               );
             })}
           </div>
@@ -154,9 +156,9 @@ export default function Dashboard() {
                 </div>
               </div>
               <div className="p-4 border-t border-slate-100 mt-6 bg-slate-50/50">
-                <button className="text-xs font-bold text-[#ff8b00] hover:underline">
+                <Link to="/admin/ponto" className="text-xs font-bold text-[#ff8b00] hover:underline">
                   Ver todos os pontos
-                </button>
+                </Link>
               </div>
             </div>
 

@@ -29,7 +29,8 @@ import PontoEletronico from './pages/admin/Ponto';
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
 
-  if (isLoadingPublicSettings || isLoadingAuth) {
+  // Se estiver carregando auth apenas (liberando a renderização caso publicSettings retorne null)
+  if (isLoadingAuth) {
     return (
       <div className="fixed inset-0 flex items-center justify-center">
         <div className="w-8 h-8 border-4 border-slate-200 border-t-slate-800 rounded-full animate-spin"></div>
@@ -57,7 +58,7 @@ const AuthenticatedApp = () => {
       {/* Rotas Protegidas */}
       <Route element={<ProtectedRoute unauthenticatedElement={<Navigate to="/login" replace />} />}>
         
-        {/* Rotas do Colaborador (COM Menu Lateral / Layout) */}
+        {/* Rotas do Colaborador (COM Menu) */}
         <Route element={<Layout />}>
           <Route path="/" element={<Home />} />
           <Route path="/ponto" element={<PunchClock />} />
@@ -69,7 +70,7 @@ const AuthenticatedApp = () => {
           <Route path="/admin-old" element={<Admin />} />
         </Route>
 
-        {/* Novas Rotas do Admin (Todas em nível plano e explícito) */}
+        {/* Novas Rotas do Admin */}
         <Route path="/admin" element={<AdminDashboard />} />
         <Route path="/admin/ponto" element={<PontoEletronico />} />
         <Route path="/admin/colaboradores" element={<Employees />} />

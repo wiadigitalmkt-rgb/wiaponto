@@ -4,7 +4,6 @@ import {
   Clock, CalendarDays, FileText, Receipt, Settings, LogOut, Home, Menu, X, ChevronRight, Briefcase, ShieldCheck
 } from 'lucide-react';
 import { useState } from 'react';
-import { base44 } from '@/api/base44Client';
 import { useUserAccess } from '@/hooks/useUserAccess';
 import { hasPageAccess } from '@/lib/accessControl';
 

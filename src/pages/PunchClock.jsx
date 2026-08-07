@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/lib/AuthContext';
-import { base44 } from '@/api/base44Client';
 import { getNextPunchType, timeToMinutes, PUNCH_LABELS } from '@/lib/clockUtils';
 import PunchButtons from '@/components/PunchButtons';
 import GeolocationCapture from '@/components/GeolocationCapture';

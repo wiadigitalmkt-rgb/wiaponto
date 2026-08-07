@@ -7,9 +7,7 @@ import {
   ChevronDown,
   Calendar,
   ExternalLink,
-  MessageSquare,
-  Edit2,
-  Plus
+  MessageSquare
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -27,7 +25,7 @@ export default function AdminPonto() {
     setExpandedRow(expandedRow === id ? null : id);
   };
 
-  // Dados mockados estruturados com os batimentos diários
+  // Dados mockados
   const registros = [
     { 
       id: 1, 
@@ -57,16 +55,16 @@ export default function AdminPonto() {
       <Navbar selectedCompany="Sua Empresa" />
 
       <div className="flex flex-1">
-        {/* Sidebar Esquerda */}
-        <aside className="w-64 bg-slate-50 border-r border-slate-200 p-6 flex flex-col space-y-6">
+        {/* Sidebar Esquerda ajustada (sem borda r, mesmo bg transparente/integrado) */}
+        <aside className="w-64 p-6 flex flex-col space-y-6 bg-transparent">
           <div>
             <h1 className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-4">
               PONTO ELETRÔNICO
             </h1>
             
-            <div className="flex items-center justify-between p-2 rounded-lg hover:bg-slate-100 cursor-pointer text-slate-600 mb-4">
+            <div className="flex items-center justify-between p-2 rounded-lg hover:bg-slate-200/50 cursor-pointer text-slate-600 mb-4 transition-colors">
               <div className="flex items-center space-x-2">
-                <div className="w-7 h-7 rounded-full bg-slate-200 flex items-center justify-center text-xs font-bold">
+                <div className="w-7 h-7 rounded-full bg-slate-200/80 flex items-center justify-center text-xs font-bold text-slate-700">
                   JD
                 </div>
                 <span className="text-sm font-medium">Joqueb...</span>
@@ -75,12 +73,12 @@ export default function AdminPonto() {
             </div>
 
             <nav className="space-y-1">
-              <button className="w-full flex items-center space-x-3 px-3 py-2 rounded-md text-sm font-medium bg-emerald-50 text-emerald-700 border-l-4 border-emerald-500">
+              <button className="w-full flex items-center space-x-3 px-3 py-2 rounded-md text-sm font-medium bg-emerald-50/80 text-emerald-700 border-l-4 border-emerald-500 shadow-sm">
                 <Clock className="w-4 h-4" />
                 <span>Pontos registrados</span>
               </button>
               
-              <button className="w-full flex items-center space-x-3 px-3 py-2 rounded-md text-sm font-medium text-slate-500 hover:bg-slate-100">
+              <button className="w-full flex items-center space-x-3 px-3 py-2 rounded-md text-sm font-medium text-slate-500 hover:bg-slate-200/50 transition-colors">
                 <FileText className="w-4 h-4" />
                 <span>Resumo de...</span>
               </button>
@@ -89,7 +87,7 @@ export default function AdminPonto() {
         </aside>
 
         {/* Conteúdo Central */}
-        <main className="flex-1 p-8">
+        <main className="flex-1 p-8 pl-2">
           {/* Breadcrumb e Filtro Topo */}
           <div className="flex justify-between items-center mb-4 text-xs text-slate-500">
             <div>
@@ -98,14 +96,14 @@ export default function AdminPonto() {
             
             <div className="flex items-center space-x-2">
               <span>Departamento</span>
-              <select className="border border-slate-300 rounded px-2 py-1 bg-white text-xs font-medium focus:outline-none">
+              <select className="border border-slate-300 rounded px-2 py-1 bg-white text-xs font-medium focus:outline-none shadow-sm">
                 <option>Todos</option>
               </select>
             </div>
           </div>
 
           {/* Card Principal */}
-          <div className="bg-white rounded-lg shadow-sm border border-slate-200">
+          <div className="bg-white rounded-lg shadow-sm border border-slate-200/80">
             {/* Header de Filtros Internos */}
             <div className="p-4 border-b border-slate-100 flex flex-wrap items-center justify-between gap-4">
               <div className="flex items-center space-x-4 text-xs font-semibold text-slate-600">

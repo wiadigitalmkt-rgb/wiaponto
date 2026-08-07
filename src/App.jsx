@@ -71,7 +71,7 @@ const AuthenticatedApp = () => {
 
         {/* Novas Rotas do Admin (SEM Menu Lateral / Tela Cheia) */}
         <Route path="/admin" element={<AdminDashboard />} />
-        <Route path="/admin/ponto" element={<PontoEletronico />} /> {/* Nova Rota */}
+        <Route path="/admin/ponto" element={<AdminDashboard />} /> {/* Nova Rota */}
         <Route path="/admin/colaboradores" element={<Employees />} />
         <Route path="/admin/empresa" element={<CompanySettings />} />
 

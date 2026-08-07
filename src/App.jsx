@@ -21,6 +21,11 @@ import Settings from './pages/Settings';
 import ProLabore from './pages/ProLabore';
 import Admin from './pages/Admin';
 
+// Imports do Novo Painel Admin
+import AdminDashboard from './pages/admin/Dashboard';
+import Employees from './pages/admin/Employees';
+import CompanySettings from './pages/admin/CompanySettings';
+
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
 
@@ -53,6 +58,7 @@ const AuthenticatedApp = () => {
       <Route path="/reset-password" element={<ResetPassword />} />
       <Route element={<ProtectedRoute unauthenticatedElement={<Navigate to="/login" replace />} />}>
         <Route element={<Layout />}>
+          {/* Rotas do Colaborador */}
           <Route path="/" element={<Home />} />
           <Route path="/ponto" element={<PunchClock />} />
           <Route path="/espelho" element={<TimeClockMirror />} />
@@ -60,7 +66,12 @@ const AuthenticatedApp = () => {
           <Route path="/contracheque" element={<Payslip />} />
           <Route path="/configuracoes" element={<Settings />} />
           <Route path="/prolabore" element={<ProLabore />} />
-          <Route path="/admin" element={<Admin />} />
+          <Route path="/admin-old" element={<Admin />} />
+
+          {/* Novas Rotas do Admin */}
+          <Route path="/admin" element={<AdminDashboard />} />
+          <Route path="/admin/colaboradores" element={<Employees />} />
+          <Route path="/admin/empresa" element={<CompanySettings />} />
         </Route>
       </Route>
       <Route path="*" element={<PageNotFound />} />
@@ -83,4 +94,4 @@ function App() {
   )
 }
 
-export default App
+export default App;

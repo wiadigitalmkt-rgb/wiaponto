@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/lib/AuthContext';
-import { base44 } from '@/api/base44Client';
 import { getGreeting } from '@/lib/clockUtils';
 import EmployeeOfMonth from '@/components/EmployeeOfMonth';
 import PointSummaryWidget from '@/components/PointSummaryWidget';

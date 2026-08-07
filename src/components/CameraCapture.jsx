@@ -1,7 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { Camera, RefreshCw, Check, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { base44 } from '@/api/base44Client';
 
 export default function CameraCapture({ address, onCapture, capturedUrl }) {
   const videoRef = useRef(null);

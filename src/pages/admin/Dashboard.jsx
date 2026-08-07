@@ -11,9 +11,6 @@ import {
   Briefcase, 
   ShieldCheck, 
   Calendar, 
-  ChevronDown,
-  ArrowRight,
-  BookOpen,
   Award
 } from 'lucide-react';
 
@@ -36,11 +33,13 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-screen bg-slate-100/70 text-slate-800 pb-12">
+      {/* Navbar Padronizada */}
+      <Navbar selectedCompany={selectedCompany} />
 
       {/* Conteúdo Principal */}
       <main className="max-w-7xl mx-auto px-6 py-8 space-y-8">
         
-        {/* Banner de Setup / Progresso (Ajustado idêntico ao modelo) */}
+        {/* Banner de Setup / Progresso */}
         <div className="bg-white rounded-lg p-6 shadow-sm border border-slate-200/80">
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-sm font-bold text-slate-700">Setup Inicial</h2>
@@ -170,7 +169,6 @@ export default function Dashboard() {
                 <h4 className="font-bold text-[#1a2c6a] text-base mb-6">Admissão</h4>
                 
                 <div className="flex flex-col items-center justify-center text-center py-4">
-                  {/* Ícone Carteira de Trabalho Estilo Coalize */}
                   <div className="w-20 h-28 bg-[#1a2c6a] rounded-md shadow-md border-2 border-slate-300 flex flex-col items-center justify-between p-2 mb-4 text-white">
                     <div className="w-6 h-6 rounded-full border border-amber-300 flex items-center justify-center text-[8px] font-bold text-amber-300">
                       ★

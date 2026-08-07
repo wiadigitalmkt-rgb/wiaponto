@@ -1,6 +1,5 @@
 import React, { useState } from "react";
-import { Link } from "react-router-dom";
-import { base44 } from "@/api/base44Client";
+import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -9,6 +8,7 @@ import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp
 import AuthLayout from "@/components/AuthLayout";
 import GoogleIcon from "@/components/GoogleIcon";
 import { toast } from "@/components/ui/use-toast";
+import { useAuth } from "@/lib/AuthContext";
 
 export default function Register() {
   const [email, setEmail] = useState("");
@@ -19,16 +19,23 @@ export default function Register() {
   const [showOtp, setShowOtp] = useState(false);
   const [otpCode, setOtpCode] = useState("");
 
+  const navigate = useNavigate();
+  const { signUp, verifyOtp, resendOtp, signInWithOAuth } = useAuth();
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
+
     if (password !== confirmPassword) {
       setError("Passwords do not match");
       return;
     }
+
     setLoading(true);
     try {
-      await base44.auth.register({ email, password });
+      if (signUp) {
+        await signUp({ email, password });
+      }
       setShowOtp(true);
     } catch (err) {
       setError(err.message || "Registration failed");
@@ -41,11 +48,10 @@ export default function Register() {
     setError("");
     setLoading(true);
     try {
-      const result = await base44.auth.verifyOtp({ email, otpCode });
-      if (result?.access_token) {
-        base44.auth.setToken(result.access_token);
+      if (verifyOtp) {
+        await verifyOtp({ email, token: otpCode, type: 'signup' });
       }
-      window.location.href = "/";
+      navigate("/");
     } catch (err) {
       setError(err.message || "Invalid verification code");
     } finally {
@@ -56,7 +62,9 @@ export default function Register() {
   const handleResend = async () => {
     setError("");
     try {
-      await base44.auth.resendOtp(email);
+      if (resendOtp) {
+        await resendOtp({ email, type: 'signup' });
+      }
       toast({
         title: "Code sent",
         description: "Check your email for the new code.",
@@ -66,8 +74,14 @@ export default function Register() {
     }
   };
 
-  const handleGoogle = () => {
-    base44.auth.loginWithProvider("google", "/");
+  const handleGoogle = async () => {
+    try {
+      if (signInWithOAuth) {
+        await signInWithOAuth({ provider: 'google' });
+      }
+    } catch (err) {
+      setError(err.message || "Failed to sign in with Google");
+    }
   };
 
   if (showOtp) {

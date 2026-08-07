@@ -1,5 +1,6 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import { appParams } from '@/lib/app-params';
+import { supabase } from '@/lib/supabase'; // Ou a rota do seu arquivo cliente Supabase
 
 const AuthContext = createContext();
 

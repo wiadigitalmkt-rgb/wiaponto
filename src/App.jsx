@@ -24,7 +24,7 @@ import Admin from './pages/Admin';
 import AdminDashboard from './pages/admin/Dashboard';
 import Employees from './pages/admin/Employees';
 import CompanySettings from './pages/admin/CompanySettings';
-import PontoEletronico from './pages/admin/Ponto'; // Import da tela de Ponto
+import PontoEletronico from './pages/admin/Ponto';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -69,11 +69,16 @@ const AuthenticatedApp = () => {
           <Route path="/admin-old" element={<Admin />} />
         </Route>
 
-        {/* Novas Rotas do Admin (SEM Menu Lateral / Tela Cheia) */}
-        <Route path="/admin" element={<AdminDashboard />} />
-        <Route path="/admin/ponto" element={<PontoEletronico />} />
-        <Route path="/admin/colaboradores" element={<Employees />} />
-        <Route path="/admin/empresa" element={<CompanySettings />} />
+        {/* Novas Rotas do Admin (Com Wildcard para permitir sub-rotas) */}
+        <Route path="/admin/*" element={
+          <Routes>
+            <Route path="" element={<AdminDashboard />} />
+            <Route path="ponto" element={<PontoEletronico />} />
+            <Route path="colaboradores" element={<Employees />} />
+            <Route path="empresa" element={<CompanySettings />} />
+            <Route path="*" element={<PageNotFound />} />
+          </Routes>
+        } />
 
       </Route>
 

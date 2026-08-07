@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '@/lib/AuthContext';
 import { useUserAccess } from '@/hooks/useUserAccess';
 import { hasPageAccess } from '@/lib/accessControl';
-import { base44 } from '@/api/base44Client';
 import { Loader2 } from 'lucide-react';
 import AdminView from '@/components/prolabore/AdminView';
 import SocioView from '@/components/prolabore/SocioView';

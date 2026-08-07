@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/lib/AuthContext';
-import { base44 } from '@/api/base44Client';
 import { PAGES, DEFAULT_PAGES } from '@/lib/accessControl';
 import { Loader2, ShieldCheck } from 'lucide-react';
 import { toast } from 'sonner';

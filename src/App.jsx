@@ -24,7 +24,7 @@ import Admin from './pages/Admin';
 import AdminDashboard from './pages/admin/Dashboard';
 import Employees from './pages/admin/Employees';
 import CompanySettings from './pages/admin/CompanySettings';
-import PontoEletronico from './pages/admin/PontoEletronico'; // Novo Import
+import PontoEletronico from './pages/admin/Ponto'; // Novo Import
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();

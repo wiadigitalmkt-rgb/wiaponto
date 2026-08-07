@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
+import Navbar from '@/components/Navbar';
 import { 
   Users, 
   Clock, 
@@ -35,36 +36,6 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-screen bg-slate-100/70 text-slate-800 pb-12">
-      {/* Topbar Padronizada sem variação de layout */}
-      <header className="bg-[#1a2c6a] text-white h-16 shadow-md w-full shrink-0 flex items-center justify-between px-6">
-        {/* Lado Esquerdo */}
-        <div className="flex items-center gap-8">
-          <div className="flex items-center gap-2 font-bold text-xl tracking-tight select-none">
-            <div className="w-8 h-8 rounded-lg bg-[#ff8b00] flex items-center justify-center text-white shrink-0">
-              <Clock size={20} />
-            </div>
-            <span className="text-white text-lg font-bold">PontoMax</span>
-          </div>
-
-          <nav className="hidden md:flex items-center gap-6 text-sm font-medium text-slate-200">
-            <button className="hover:text-white flex items-center gap-1 transition">Atalhos <ChevronDown size={14} /></button>
-            <button className="hover:text-white flex items-center gap-1 transition">Relatórios <ChevronDown size={14} /></button>
-            <button className="hover:text-white flex items-center gap-1 transition">Configurações <ChevronDown size={14} /></button>
-            <button className="hover:text-white transition">Solicitações</button>
-          </nav>
-        </div>
-
-        {/* Lado Direito */}
-        <div className="flex items-center gap-4 shrink-0">
-          <div className="bg-[#121f4c] px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-2 border border-slate-700/60">
-            <span className="text-slate-300">Empresa:</span>
-            <span className="text-[#ff8b00] font-bold">{selectedCompany}</span>
-          </div>
-          <div className="w-9 h-9 rounded-full bg-[#ff8b00] flex items-center justify-center font-bold text-sm text-white border-2 border-white/20 shrink-0">
-            AD
-          </div>
-        </div>
-      </header>
 
       {/* Conteúdo Principal */}
       <main className="max-w-7xl mx-auto px-6 py-8 space-y-8">

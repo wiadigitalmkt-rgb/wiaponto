@@ -11,7 +11,8 @@ import {
   Calendar, 
   ChevronDown,
   ArrowRight,
-  BookOpen
+  BookOpen,
+  Award
 } from 'lucide-react';
 
 export default function Dashboard() {
@@ -65,27 +66,34 @@ export default function Dashboard() {
       {/* Conteúdo Principal */}
       <main className="max-w-7xl mx-auto px-6 py-8 space-y-8">
         
-        {/* Banner de Setup / Progresso */}
+        {/* Banner de Setup / Progresso (Ajustado idêntico ao modelo) */}
         <div className="bg-white rounded-lg p-6 shadow-sm border border-slate-200/80">
           <div className="flex items-center justify-between mb-3">
-            <h2 className="text-base font-bold text-[#1a2c6a]">Setup Inicial da Empresa</h2>
-            <span className="text-xs font-bold text-[#ff8b00] bg-orange-50 px-2.5 py-1 rounded-md border border-orange-200">
-              86% Concluído
+            <h2 className="text-sm font-bold text-slate-700">Setup Inicial</h2>
+            <span className="text-xs font-semibold text-[#ff8b00]">
+              Seu teste acaba em 14 dias
             </span>
           </div>
-          <div className="w-full bg-slate-100 rounded-full h-2 mb-5 overflow-hidden">
-            <div className="bg-[#ff8b00] h-2 rounded-full transition-all duration-500" style={{ width: '86%' }}></div>
-          </div>
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 rounded-md bg-slate-50 border border-slate-200/60">
-            <div className="flex items-center gap-3">
-              <ShieldCheck className="text-[#1a2c6a]" size={22} />
-              <p className="text-sm text-slate-700 font-medium">
-                Próxima etapa: <strong className="text-slate-900">Cadastrar colaboradores e definir horários de trabalho</strong>
-              </p>
+
+          <div className="flex items-center gap-3 mb-5">
+            <div className="flex-1 bg-slate-100 rounded-full h-2 overflow-hidden">
+              <div className="bg-[#ff8b00] h-2 rounded-full transition-all duration-500" style={{ width: '86%' }}></div>
             </div>
-            <button className="bg-[#1a2c6a] hover:bg-[#121f4c] text-white px-5 py-2 rounded-md text-sm font-semibold transition flex items-center gap-2 shadow-sm">
-              Continuar <ArrowRight size={16} />
-            </button>
+            <span className="text-xs font-bold text-slate-600">86%</span>
+          </div>
+
+          <div className="border border-slate-200 rounded-md flex flex-col sm:flex-row items-stretch overflow-hidden bg-white">
+            <div className="flex-1 p-3.5 flex items-center gap-3 text-xs text-slate-600">
+              <Award className="text-[#ff8b00] shrink-0" size={18} />
+              <span>
+                <strong className="text-slate-800 font-bold">Próxima etapa:</strong> Cadastrar colaboradores e definir horários de trabalho
+              </span>
+            </div>
+            <div className="border-t sm:border-t-0 sm:border-l border-slate-200 p-2 flex items-center justify-center bg-white">
+              <button className="bg-[#ff8b00] hover:bg-[#e67a00] text-white px-6 py-2 rounded-md text-xs font-bold transition w-full sm:w-auto">
+                Continuar
+              </button>
+            </div>
           </div>
         </div>
 

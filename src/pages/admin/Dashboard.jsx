@@ -10,7 +10,8 @@ import {
   ShieldCheck, 
   Calendar, 
   ChevronDown,
-  ArrowRight
+  ArrowRight,
+  BookOpen
 } from 'lucide-react';
 
 export default function Dashboard() {
@@ -31,7 +32,7 @@ export default function Dashboard() {
   ];
 
   return (
-    <div className="min-h-screen bg-slate-100/70 text-slate-800">
+    <div className="min-h-screen bg-slate-100/70 text-slate-800 pb-12">
       {/* Topbar Superior */}
       <header className="bg-[#1a2c6a] text-white px-6 py-3 flex items-center justify-between shadow-md">
         <div className="flex items-center gap-8">
@@ -64,7 +65,7 @@ export default function Dashboard() {
       {/* Conteúdo Principal */}
       <main className="max-w-7xl mx-auto px-6 py-8 space-y-8">
         
-        {/* Banner de Setup / Progresso (Com borda arredondada suave igual o modelo) */}
+        {/* Banner de Setup / Progresso */}
         <div className="bg-white rounded-lg p-6 shadow-sm border border-slate-200/80">
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-base font-bold text-[#1a2c6a]">Setup Inicial da Empresa</h2>
@@ -88,7 +89,7 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Grid de Cards de Módulos (Com borda suave arredondada rounded-lg) */}
+        {/* Grid de Cards de Módulos */}
         <div>
           <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-4">Módulos de Gestão</h3>
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
@@ -114,22 +115,23 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Resumo do Painel Inferior (Também com rounded-lg) */}
-        <div>
-          <div className="flex items-center gap-2 mb-4">
+        {/* PAINEL GERAL (4 CARDS) */}
+        <div className="space-y-6">
+          <div className="flex items-center gap-2">
             <div className="w-2 h-2 rounded-full bg-[#ff8b00]"></div>
             <h3 className="text-xs font-bold text-slate-700 uppercase tracking-wider">Painel Geral</h3>
           </div>
 
+          {/* Linha 1: Ponto Eletrônico + Hora Extra */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             
             {/* Card Ponto Eletrônico */}
-            <div className="bg-white rounded-lg p-6 border border-slate-200/80 shadow-sm flex flex-col justify-between">
-              <div>
+            <div className="bg-white rounded-lg border border-slate-200/80 shadow-sm flex flex-col justify-between overflow-hidden">
+              <div className="p-6 pb-0">
                 <div className="flex items-center justify-between mb-4">
                   <h4 className="font-bold text-[#1a2c6a] text-base">Ponto Eletrônico Hoje</h4>
-                  <button className="text-xs font-bold text-[#ff8b00] hover:underline">
-                    Ver todos os pontos
+                  <button className="bg-[#1a2c6a] hover:bg-[#121f4c] text-white text-xs font-bold px-3 py-1.5 rounded-md transition">
+                    Bater Ponto
                   </button>
                 </div>
                 <div className="space-y-3">
@@ -143,25 +145,108 @@ export default function Dashboard() {
                   </div>
                 </div>
               </div>
+              <div className="p-4 border-t border-slate-100 mt-6 bg-slate-50/50">
+                <button className="text-xs font-bold text-[#ff8b00] hover:underline">
+                  Ver todos os pontos
+                </button>
+              </div>
             </div>
 
-            {/* Card Horas Extras */}
-            <div className="bg-white rounded-lg p-6 border border-slate-200/80 shadow-sm flex flex-col justify-between">
-              <div>
-                <div className="flex items-center justify-between mb-4">
-                  <h4 className="font-bold text-[#1a2c6a] text-base">Banco de Horas & Extras</h4>
-                  <button className="text-xs font-bold text-[#ff8b00] hover:underline">
-                    Ver relatórios
-                  </button>
+            {/* Card Hora Extra */}
+            <div className="bg-white rounded-lg border border-slate-200/80 shadow-sm flex flex-col justify-between overflow-hidden">
+              <div className="p-6 pb-0">
+                <h4 className="font-bold text-[#1a2c6a] text-base mb-4">Hora Extra</h4>
+                <p className="text-xs font-bold text-slate-600 mb-4">1 usuário com horas extras</p>
+                
+                <div className="flex items-center justify-between p-3 rounded-md bg-slate-50 text-xs font-medium">
+                  <div className="flex items-center gap-2">
+                    <div className="w-7 h-7 rounded-full bg-slate-200 text-slate-700 flex items-center justify-center font-bold text-[10px]">
+                      JO
+                    </div>
+                    <span className="font-bold text-slate-700">Joquebede de Oliveira</span>
+                  </div>
+                  <span className="font-mono font-bold text-slate-800">02h00min</span>
                 </div>
-                <div className="text-center py-6 text-slate-400 text-xs">
-                  <Clock size={32} className="mx-auto mb-2 text-slate-300" />
-                  Nenhum colaborador acumulando hora extra hoje.
-                </div>
+              </div>
+
+              <div className="p-4 border-t border-slate-100 mt-6 bg-slate-50/50">
+                <button className="text-xs font-bold text-[#ff8b00] hover:underline">
+                  Ver todos
+                </button>
               </div>
             </div>
 
           </div>
+
+          {/* Linha 2: Admissão + Saldo de Férias */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            
+            {/* Card Admissão */}
+            <div className="bg-white rounded-lg border border-slate-200/80 shadow-sm flex flex-col justify-between overflow-hidden">
+              <div className="p-6">
+                <h4 className="font-bold text-[#1a2c6a] text-base mb-6">Admissão</h4>
+                
+                <div className="flex flex-col items-center justify-center text-center py-4">
+                  {/* Ícone Carteira de Trabalho Estilo Coalize */}
+                  <div className="w-20 h-28 bg-[#1a2c6a] rounded-md shadow-md border-2 border-slate-300 flex flex-col items-center justify-between p-2 mb-4 text-white">
+                    <div className="w-6 h-6 rounded-full border border-amber-300 flex items-center justify-center text-[8px] font-bold text-amber-300">
+                      ★
+                    </div>
+                    <div className="text-[7px] tracking-wider uppercase text-center font-bold">
+                      Carteira de<br/>Trabalho
+                    </div>
+                    <div className="w-full h-1 bg-amber-300/40 rounded"></div>
+                  </div>
+                  <p className="text-xs font-semibold text-slate-500">Nenhuma admissão em andamento.</p>
+                </div>
+              </div>
+
+              <div className="p-4 border-t border-slate-100 bg-slate-50/50">
+                <button className="text-xs font-bold text-[#ff8b00] hover:underline">
+                  Ver admissões
+                </button>
+              </div>
+            </div>
+
+            {/* Card Saldo de Férias */}
+            <div className="bg-white rounded-lg border border-slate-200/80 shadow-sm flex flex-col justify-between overflow-hidden">
+              <div className="p-6 pb-0">
+                <h4 className="font-bold text-[#1a2c6a] text-base mb-4">Saldo de Férias</h4>
+                
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs">
+                    <thead>
+                      <tr className="border-b border-slate-200 text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                        <th className="py-2 px-1">Usuário</th>
+                        <th className="py-2 px-1">Vencimento</th>
+                        <th className="py-2 px-1 text-right">Saldo</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
+                      <tr>
+                        <td className="py-3 px-1 font-bold text-[#1a2c6a]">WIA DIGITAL</td>
+                        <td className="py-3 px-1">31/07/2027</td>
+                        <td className="py-3 px-1 text-right font-bold">0</td>
+                      </tr>
+                      <tr>
+                        <td className="py-3 px-1 font-bold text-[#1a2c6a]">Joquebede de Oliveira</td>
+                        <td className="py-3 px-1">05/08/2027</td>
+                        <td className="py-3 px-1 text-right font-bold">0</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              <div className="p-4 border-t border-slate-100 mt-6 bg-slate-50/50">
+                <button className="text-xs font-bold text-[#ff8b00] hover:underline">
+                  Ver todos os saldos
+                </button>
+              </div>
+            </div>
+
+          </div>
+
         </div>
 
       </main>

@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Loader2, Clock, Mail, Lock, Eye, EyeOff } from 'lucide-react';

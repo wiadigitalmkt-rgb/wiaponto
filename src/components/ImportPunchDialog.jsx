@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { base44 } from '@/api/base44Client';
 import { Loader2, Upload, CheckCircle2 } from 'lucide-react';
 import { toast } from 'sonner';
 

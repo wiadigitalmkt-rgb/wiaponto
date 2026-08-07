@@ -36,33 +36,34 @@ export default function Dashboard() {
   return (
     <div className="min-h-screen bg-slate-100/70 text-slate-800 pb-12">
       {/* Topbar Superior */}
-      <header className="bg-[#1a2c6a] text-white px-6 py-3 flex items-center justify-between shadow-md">
-        <div className="flex items-center gap-8">
-          <div className="flex items-center gap-2 font-bold text-xl tracking-tight">
-            <div className="w-8 h-8 rounded-lg bg-[#ff8b00] flex items-center justify-center text-white">
-              <Clock size={20} />
-            </div>
-            <span>PontoMax</span>
-          </div>
+      {/* Topbar Superior Padronizada (h-16) */}
+<header className="bg-[#1a2c6a] text-white px-6 h-16 flex items-center justify-between shadow-md shrink-0">
+  <div className="flex items-center gap-8">
+    <div className="flex items-center gap-2 font-bold text-xl tracking-tight">
+      <div className="w-8 h-8 rounded-lg bg-[#ff8b00] flex items-center justify-center text-white shrink-0">
+        <Clock size={20} />
+      </div>
+      <span>PontoMax</span>
+    </div>
 
-          <nav className="hidden md:flex items-center gap-6 text-sm font-medium text-slate-200">
-            <button className="hover:text-white flex items-center gap-1 transition">Atalhos <ChevronDown size={14} /></button>
-            <button className="hover:text-white flex items-center gap-1 transition">Relatórios <ChevronDown size={14} /></button>
-            <button className="hover:text-white flex items-center gap-1 transition">Configurações <ChevronDown size={14} /></button>
-            <button className="hover:text-white transition">Solicitações</button>
-          </nav>
-        </div>
+    <nav className="hidden md:flex items-center gap-6 text-sm font-medium text-slate-200">
+      <button className="hover:text-white flex items-center gap-1 transition">Atalhos <ChevronDown size={14} /></button>
+      <button className="hover:text-white flex items-center gap-1 transition">Relatórios <ChevronDown size={14} /></button>
+      <button className="hover:text-white flex items-center gap-1 transition">Configurações <ChevronDown size={14} /></button>
+      <button className="hover:text-white transition">Solicitações</button>
+    </nav>
+  </div>
 
-        <div className="flex items-center gap-4">
-          <div className="bg-[#121f4c] px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-2 border border-slate-700">
-            <span>Empresa:</span>
-            <span className="text-[#ff8b00] font-bold">{selectedCompany}</span>
-          </div>
-          <div className="w-9 h-9 rounded-full bg-[#ff8b00] flex items-center justify-center font-bold text-sm text-white border-2 border-white/20">
-            AD
-          </div>
-        </div>
-      </header>
+  <div className="flex items-center gap-4">
+    <div className="bg-[#121f4c] px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-2 border border-slate-700/60">
+      <span className="text-slate-300">Empresa:</span>
+      <span className="text-[#ff8b00] font-bold">{selectedCompany}</span>
+    </div>
+    <div className="w-9 h-9 rounded-full bg-[#ff8b00] flex items-center justify-center font-bold text-sm text-white border-2 border-white/20 shrink-0">
+      AD
+    </div>
+  </div>
+</header>
 
       {/* Conteúdo Principal */}
       <main className="max-w-7xl mx-auto px-6 py-8 space-y-8">

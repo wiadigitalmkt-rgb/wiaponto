@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/lib/AuthContext';
-import { base44 } from '@/api/base44Client';
 import { calculateDayMetrics, minutesToHHMM, PUNCH_LABELS } from '@/lib/clockUtils';
 import { exportMirrorPDF } from '@/components/ExportPDF';
 import SelfieDialog from '@/components/SelfieDialog';

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import Navbar from '@/components/Navbar';
 import { supabase } from '@/lib/supabase'; // Conexão com o Supabase
+import { Link } from 'react-router-dom';
 import { 
   Search, 
   ChevronDown, 

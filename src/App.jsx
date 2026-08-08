@@ -19,6 +19,7 @@ import Payslip from './pages/Payslip';
 import Settings from './pages/Settings';
 import ProLabore from './pages/ProLabore';
 import Admin from './pages/Admin';
+import Usuario from './pages/admin/usuario'; // ajuste o caminho se necessário
 
 // Imports do Novo Painel Admin
 import AdminDashboard from './pages/admin/Dashboard';

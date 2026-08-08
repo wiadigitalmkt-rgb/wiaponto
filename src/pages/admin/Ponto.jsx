@@ -258,7 +258,7 @@ export default function AdminPonto() {
                 onClick={() => setActiveTab('pontos')}
                 className={`w-full flex items-center space-x-3 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
                   activeTab === 'pontos'
-                    ? 'bg-emerald-50/80 text-emerald-700 border-l-4 border-emerald-500 shadow-sm'
+                    ? 'bg-[#ff8b00]/10 text-[#ff8b00] border-l-4 border-[#ff8b00] shadow-sm font-semibold'
                     : 'text-slate-500 hover:bg-slate-200/50'
                 }`}
               >
@@ -270,7 +270,7 @@ export default function AdminPonto() {
                 onClick={() => setActiveTab('resumo')}
                 className={`w-full flex items-center space-x-3 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
                   activeTab === 'resumo'
-                    ? 'bg-emerald-50/80 text-emerald-700 border-l-4 border-emerald-500 shadow-sm'
+                    ? 'bg-[#ff8b00]/10 text-[#ff8b00] border-l-4 border-[#ff8b00] shadow-sm font-semibold'
                     : 'text-slate-500 hover:bg-slate-200/50'
                 }`}
               >
@@ -286,8 +286,15 @@ export default function AdminPonto() {
           {/* Breadcrumb e Filtro Topo */}
           <div className="flex justify-between items-center mb-4 text-xs text-slate-500">
             <div>
-              <span>Painel</span> <ChevronRight className="w-3 h-3 inline mx-1" />{' '}
-              <span className="text-emerald-600 font-medium">
+              {/* Botão Painel redirecionando para a página /admin */}
+              <a 
+                href="https://wiaponto.vercel.app/admin" 
+                className="hover:text-[#ff8b00] hover:underline transition-colors font-medium cursor-pointer"
+              >
+                Painel
+              </a> 
+              <ChevronRight className="w-3 h-3 inline mx-1" />{' '}
+              <span className="text-[#ff8b00] font-medium">
                 {activeTab === 'pontos' ? 'Pontos registrados' : 'Resumo das horas'}
               </span>
             </div>
@@ -332,7 +339,7 @@ export default function AdminPonto() {
                 {/* Botão de Ver jornada atual */}
                 <button 
                   onClick={() => setShowJornadaModal(true)}
-                  className="flex items-center text-xs text-emerald-600 font-medium hover:underline cursor-pointer"
+                  className="flex items-center text-xs text-[#ff8b00] font-medium hover:underline cursor-pointer"
                 >
                   Ver jornada atual <Calendar className="w-3.5 h-3.5 ml-1" />
                 </button>
@@ -389,7 +396,7 @@ export default function AdminPonto() {
                             {/* Botão Ver histórico */}
                             <button 
                               onClick={() => setShowHistoryModal(true)}
-                              className="flex items-center space-x-1 text-emerald-600 hover:text-emerald-700 font-medium cursor-pointer"
+                              className="flex items-center space-x-1 text-[#ff8b00] hover:underline font-medium cursor-pointer"
                             >
                               <History className="w-3.5 h-3.5" />
                               <span>Ver histórico</span>
@@ -425,7 +432,7 @@ export default function AdminPonto() {
                                           type="checkbox"
                                           checked={editFormData.isNight}
                                           onChange={(e) => setEditFormData({ ...editFormData, isNight: e.target.checked })}
-                                          className="rounded border-slate-300 text-emerald-600 focus:ring-0"
+                                          className="rounded border-slate-300 text-[#ff8b00] focus:ring-0"
                                         />
                                         <Moon className="w-3.5 h-3.5 text-slate-600" />
                                       </label>
@@ -435,7 +442,7 @@ export default function AdminPonto() {
                                         placeholder="Max 15 caractere"
                                         value={editFormData.obs}
                                         onChange={(e) => setEditFormData({ ...editFormData, obs: e.target.value })}
-                                        className="border border-slate-300 rounded px-2 py-1 text-xs w-32 focus:outline-none focus:border-emerald-500"
+                                        className="border border-slate-300 rounded px-2 py-1 text-xs w-32 focus:outline-none focus:border-[#ff8b00]"
                                       />
                                     </div>
 
@@ -474,7 +481,7 @@ export default function AdminPonto() {
 
                                       <button 
                                         onClick={() => handleSaveEdit(item.id, idx)}
-                                        className="bg-emerald-600 text-white font-medium px-4 py-1 rounded text-xs hover:bg-emerald-700 transition-colors"
+                                        className="bg-[#ff8b00] text-white font-medium px-4 py-1 rounded text-xs hover:bg-[#e07a00] transition-colors"
                                       >
                                         Salvar
                                       </button>
@@ -508,7 +515,7 @@ export default function AdminPonto() {
                                     <span className="font-mono text-slate-600">{b.saldo}</span>
                                     <button 
                                       onClick={() => handleStartEdit(item.id, idx, b)}
-                                      className="text-emerald-600 hover:underline text-xs font-medium"
+                                      className="text-[#ff8b00] hover:underline text-xs font-medium"
                                     >
                                       Editar
                                     </button>
@@ -574,7 +581,7 @@ export default function AdminPonto() {
 
                 <button 
                   onClick={handleDownloadPDF}
-                  className="border border-emerald-600 text-emerald-600 hover:bg-emerald-50 px-4 py-2 rounded-md font-semibold text-xs transition-colors flex items-center space-x-2 cursor-pointer"
+                  className="border border-[#ff8b00] text-[#ff8b00] hover:bg-[#ff8b00]/10 px-4 py-2 rounded-md font-semibold text-xs transition-colors flex items-center space-x-2 cursor-pointer"
                 >
                   <Download className="w-3.5 h-3.5" />
                   <span>Baixar em PDF</span>
@@ -684,7 +691,7 @@ export default function AdminPonto() {
       {/* Popup / Toast de feedback */}
       {toastMessage && (
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-[#1e293b] text-white px-5 py-3 rounded-lg shadow-xl flex items-center space-x-3 z-50">
-          <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+          <CheckCircle2 className="w-4 h-4 text-[#ff8b00]" />
           <span className="text-xs font-medium">{toastMessage}</span>
           <button onClick={() => setToastMessage(null)} className="text-slate-400 hover:text-white ml-2">
             <X className="w-3.5 h-3.5" />
@@ -723,7 +730,7 @@ export default function AdminPonto() {
                 </div>
 
                 <div className="relative">
-                  <div className="absolute -left-[31px] top-0 w-3 h-3 rounded-full border-2 border-emerald-500 bg-white"></div>
+                  <div className="absolute -left-[31px] top-0 w-3 h-3 rounded-full border-2 border-[#ff8b00] bg-white"></div>
                   <div className="flex justify-between items-start">
                     <div>
                       <p className="text-slate-400 text-[11px]">06/08/2026 23:08</p>
@@ -741,7 +748,7 @@ export default function AdminPonto() {
             <div className="p-4 border-t border-slate-100 flex justify-end">
               <button 
                 onClick={() => setShowHistoryModal(false)}
-                className="bg-emerald-600 text-white font-medium px-6 py-2 rounded text-xs hover:bg-emerald-700 transition-colors"
+                className="bg-[#ff8b00] text-white font-medium px-6 py-2 rounded text-xs hover:bg-[#e07a00] transition-colors"
               >
                 Fechar
               </button>
@@ -811,12 +818,12 @@ export default function AdminPonto() {
             </div>
 
             <div className="p-4 border-t border-slate-100 flex justify-between items-center bg-slate-50/50">
-              <button className="text-emerald-600 font-semibold text-xs hover:underline">
+              <button className="text-[#ff8b00] font-semibold text-xs hover:underline">
                 Configurar jornada
               </button>
               <button 
                 onClick={() => setShowJornadaModal(false)}
-                className="bg-emerald-600 text-white font-medium px-6 py-2 rounded text-xs hover:bg-emerald-700 transition-colors"
+                className="bg-[#ff8b00] text-white font-medium px-6 py-2 rounded text-xs hover:bg-[#e07a00] transition-colors"
               >
                 Fechar
               </button>
@@ -827,7 +834,7 @@ export default function AdminPonto() {
 
       {/* Widget Flutuante de Suporte */}
       <div className="fixed bottom-6 right-6">
-        <button className="w-10 h-10 bg-[#00a884] text-white rounded-md flex items-center justify-center shadow-lg hover:bg-[#008f70] transition-colors">
+        <button className="w-10 h-10 bg-[#ff8b00] text-white rounded-md flex items-center justify-center shadow-lg hover:bg-[#e07a00] transition-colors">
           <MessageSquare className="w-5 h-5" />
         </button>
       </div>

@@ -48,7 +48,8 @@ export default function Navbar({ selectedCompany = 'PontoMax' }) {
         </Link>
 
         <nav className="hidden md:flex items-center gap-6 text-sm font-medium text-slate-200">
-          <DropdownMenu>
+          {/* Adicionado modal={false} para evitar alteração do layout/padding na body */}
+          <DropdownMenu modal={false}>
             <DropdownMenuTrigger className="hover:text-white flex items-center gap-1 transition focus:outline-none">
               Atalhos <ChevronDown size={14} className="opacity-80" />
             </DropdownMenuTrigger>
@@ -62,7 +63,7 @@ export default function Navbar({ selectedCompany = 'PontoMax' }) {
             </DropdownMenuContent>
           </DropdownMenu>
 
-          <DropdownMenu>
+          <DropdownMenu modal={false}>
             <DropdownMenuTrigger className="hover:text-white flex items-center gap-1 transition focus:outline-none">
               Relatórios <ChevronDown size={14} className="opacity-80" />
             </DropdownMenuTrigger>
@@ -72,7 +73,7 @@ export default function Navbar({ selectedCompany = 'PontoMax' }) {
             </DropdownMenuContent>
           </DropdownMenu>
 
-          <DropdownMenu>
+          <DropdownMenu modal={false}>
             <DropdownMenuTrigger className="hover:text-white flex items-center gap-1 transition focus:outline-none">
               Configurações <ChevronDown size={14} className="opacity-80" />
             </DropdownMenuTrigger>
@@ -91,7 +92,7 @@ export default function Navbar({ selectedCompany = 'PontoMax' }) {
       {/* Lado Direito */}
       <div className="flex items-center gap-4 shrink-0">
         {/* Botão de Empresa no estilo Coalize com Busca */}
-        <DropdownMenu>
+        <DropdownMenu modal={false}>
           <DropdownMenuTrigger className="hidden sm:flex items-center justify-between gap-6 border border-white/40 bg-transparent px-4 py-1.5 rounded-md text-xs font-semibold text-white hover:border-white/70 transition focus:outline-none cursor-pointer">
             <span className="truncate">{selectedCompany}</span>
             <ChevronDown size={13} className="text-white/80 shrink-0" />
@@ -136,7 +137,7 @@ export default function Navbar({ selectedCompany = 'PontoMax' }) {
           </DropdownMenuContent>
         </DropdownMenu>
 
-        <DropdownMenu>
+        <DropdownMenu modal={false}>
           <DropdownMenuTrigger className="focus:outline-none">
             <div className="w-9 h-9 rounded-full bg-[#ff8b00] flex items-center justify-center font-bold text-xs text-white border-2 border-white/20 shrink-0 shadow hover:opacity-90 transition">
               {getUserInitials()}

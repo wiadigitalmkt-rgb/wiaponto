@@ -19,13 +19,13 @@ import Payslip from './pages/Payslip';
 import Settings from './pages/Settings';
 import ProLabore from './pages/ProLabore';
 import Admin from './pages/Admin';
-import Usuario from './pages/admin/usuario'; // ajuste o caminho se necessário
 
 // Imports do Novo Painel Admin
 import AdminDashboard from './pages/admin/Dashboard';
 import Employees from './pages/admin/Employees';
 import CompanySettings from './pages/admin/CompanySettings';
 import PontoEletronico from './pages/admin/Ponto';
+import Usuario from './pages/admin/usuario';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();

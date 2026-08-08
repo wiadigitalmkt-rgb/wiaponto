@@ -85,16 +85,16 @@ export default function Usuario() {
   return (
     <div className="min-h-screen bg-slate-100 p-6 text-slate-700 font-sans">
       {/* Título e Nav Header */}
-      <div className="max-w-6xl mx-auto mb-4">
-        <h1 className="text-xl font-bold uppercase text-slate-800 tracking-wide mb-2">Usuários</h1>
-        <div className="text-sm text-slate-500 flex items-center gap-2">
-          <span>Painel</span>
-          <span>&gt;</span>
-          <span>Usuários</span>
-          <span>&gt;</span>
-          <span className="text-teal-600 font-medium">{getBreadcrumbLabel()}</span>
-        </div>
-      </div>
+<div className="max-w-6xl mx-auto mb-4">
+  <h1 className="text-xl font-bold uppercase text-slate-800 tracking-wide mb-2">Usuários</h1>
+  <div className="text-sm text-slate-500 flex items-center gap-2">
+    <Link to="/admin" className="hover:text-teal-600 transition-colors">Painel</Link>
+    <span>&gt;</span>
+    <Link to="/admin/colaboradores" className="hover:text-teal-600 transition-colors">Usuários</Link>
+    <span>&gt;</span>
+    <span className="text-teal-600 font-medium">{getBreadcrumbLabel()}</span>
+  </div>
+</div>
 
       <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-4 gap-6">
         

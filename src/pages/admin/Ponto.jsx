@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Navbar from '@/components/Navbar';
 import { 
   Clock, 
@@ -126,7 +126,26 @@ export default function AdminPonto() {
     },
   ].map((rec) => processDayRecord(rec));
 
-  const [registros, setRegistros] = useState(initialRegistros);
+  // Inicializa o estado buscando primeiramente no localStorage
+  const [registros, setRegistros] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('@ponto_registros');
+      if (saved) {
+        try {
+          const parsed = JSON.parse(saved);
+          return parsed.map((rec) => processDayRecord(rec));
+        } catch (e) {
+          console.error("Erro ao carregar dados salvos:", e);
+        }
+      }
+    }
+    return initialRegistros;
+  });
+
+  // Salva no localStorage toda vez que 'registros' for alterado
+  useEffect(() => {
+    localStorage.setItem('@ponto_registros', JSON.stringify(registros));
+  }, [registros]);
 
   // Exibe notificação temporária
   const showToast = (msg) => {

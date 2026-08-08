@@ -26,7 +26,6 @@ import {
 // FUNÇÕES UTILITÁRIAS DE CÁLCULO DE HORAS (EXATIDÃO MATEMÁTICA)
 // ============================================================================
 
-// Converte texto "HH:MM" para minutos totais
 const timeToMinutes = (timeStr) => {
   if (!timeStr || timeStr === '-' || timeStr.trim() === '') return null;
   const parts = timeStr.trim().split(':');
@@ -37,7 +36,6 @@ const timeToMinutes = (timeStr) => {
   return h * 60 + m;
 };
 
-// Converte minutos totais para formato "HH:MM"
 const minutesToHHMM = (mins) => {
   if (mins === null || isNaN(mins) || mins < 0) return '-';
   const h = Math.floor(mins / 60);
@@ -45,7 +43,6 @@ const minutesToHHMM = (mins) => {
   return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
 };
 
-// Converte minutos para formato legível ex: "7h", "7h 30min" ou "0h"
 const minutesToDisplayHours = (mins) => {
   if (!mins || mins <= 0) return '0h';
   const h = Math.floor(mins / 60);
@@ -54,7 +51,6 @@ const minutesToDisplayHours = (mins) => {
   return `${h}h ${m}min`;
 };
 
-// Converte minutos para formato detalhado "XXh YYmin" (usado no resumo)
 const minutesToFullDisplay = (mins) => {
   if (mins === null || isNaN(mins) || mins < 0) return '00h 00min';
   const h = Math.floor(mins / 60);
@@ -62,8 +58,7 @@ const minutesToFullDisplay = (mins) => {
   return `${String(h).padStart(2, '0')}h ${String(m).padStart(2, '0')}min`;
 };
 
-// Recalcula dinamicamente os saldos, horas trabalhadas e horas extras de um dia
-const processDayRecord = (record, targetDailyMinutes = 480) => { // 8h = 480 minutos
+const processDayRecord = (record, targetDailyMinutes = 480) => {
   let totalDayMinutes = 0;
   let nightMinutes = 0;
 
@@ -106,15 +101,15 @@ export default function AdminPonto() {
   const [activeTab, setActiveTab] = useState('pontos'); // 'pontos' | 'resumo'
   const [selectedMonth, setSelectedMonth] = useState('Agosto/2026');
   const [selectedUser, setSelectedUser] = useState('Joquebede de...');
-  const [expandedRow, setExpandedRow] = useState(1);
+  
+  // CORREÇÃO 1: Inicia com null para que todas as abas iniciem FECHADAS
+  const [expandedRow, setExpandedRow] = useState(null);
 
-  // Modais e Popups
   const [toastMessage, setToastMessage] = useState(null);
   const [showHistoryModal, setShowHistoryModal] = useState(false);
   const [showJornadaModal, setShowJornadaModal] = useState(false);
 
-  // Estado de Edição de Batida
-  const [editingRowKey, setEditingRowKey] = useState(null); // 'itemId-idx'
+  const [editingRowKey, setEditingRowKey] = useState(null);
   const [editFormData, setEditFormData] = useState({
     isNight: false,
     obs: '',
@@ -122,14 +117,13 @@ export default function AdminPonto() {
     saida: ''
   });
 
-  // Dados iniciais processados com cálculos exatos
   const initialRegistros = [
     { 
       id: 1, 
       data: '06/08/2026 - Quinta-feira', 
       batidas: [
-        { entrada: '14:00', saida: '21:00', isNight: false, obs: '' },
-        { entrada: '23:12', saida: '-', isNight: false, obs: '' }
+        { entrada: '08:00', saida: '12:00', isNight: false, obs: '' },
+        { entrada: '14:00', saida: '19:00', isNight: false, obs: '' }
       ]
     },
     { 
@@ -137,12 +131,11 @@ export default function AdminPonto() {
       data: '07/08/2026 - Sexta-feira', 
       batidas: [
         { entrada: '08:00', saida: '12:00', isNight: false, obs: '' },
-        { entrada: '14:00', saida: '22:00', isNight: false, obs: '' }
+        { entrada: '14:00', saida: '19:00', isNight: false, obs: '' }
       ]
     },
   ].map((rec) => processDayRecord(rec));
 
-  // Inicializa o estado buscando primeiramente no localStorage
   const [registros, setRegistros] = useState(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('@ponto_registros');
@@ -158,12 +151,10 @@ export default function AdminPonto() {
     return initialRegistros;
   });
 
-  // Salva no localStorage toda vez que 'registros' for alterado
   useEffect(() => {
     localStorage.setItem('@ponto_registros', JSON.stringify(registros));
   }, [registros]);
 
-  // Exibe notificação temporária
   const showToast = (msg) => {
     setToastMessage(msg);
     setTimeout(() => {
@@ -175,7 +166,6 @@ export default function AdminPonto() {
     setExpandedRow(expandedRow === id ? null : id);
   };
 
-  // 1. Ação de Excluir / Remover ponto com recálculo automático
   const handleRemoveBatida = (itemId, batidaIdx) => {
     const updated = registros.map((item) => {
       if (item.id === itemId) {
@@ -188,7 +178,6 @@ export default function AdminPonto() {
     showToast('Ponto removido com sucesso!');
   };
 
-  // 2. Iniciar modo de edição
   const handleStartEdit = (itemId, idx, batida) => {
     setEditingRowKey(`${itemId}-${idx}`);
     setEditFormData({
@@ -199,7 +188,6 @@ export default function AdminPonto() {
     });
   };
 
-  // 3. Salvar Edição com Recálculo Dinâmico
   const handleSaveEdit = (itemId, batidaIdx) => {
     const updated = registros.map((item) => {
       if (item.id === itemId) {
@@ -220,13 +208,11 @@ export default function AdminPonto() {
     showToast('Ponto atualizado com sucesso!');
   };
 
-  // Soma dos totais gerais do mês (Para Rodapé e para Tela de Resumo)
   const totalGeralTrabalhadoMinutos = registros.reduce((acc, curr) => acc + (curr.totalDayMinutes || 0), 0);
   const totalGeralExtraMinutos = registros.reduce((acc, curr) => acc + (curr.extraMinutes || 0), 0);
   const totalGeralNoturnoMinutos = registros.reduce((acc, curr) => acc + (curr.nightMinutes || 0), 0);
   const totalGeralDiurnoMinutos = Math.max(0, totalGeralTrabalhadoMinutos - totalGeralNoturnoMinutos - totalGeralExtraMinutos);
 
-  // Ação de download PDF
   const handleDownloadPDF = () => {
     window.print();
   };
@@ -237,7 +223,7 @@ export default function AdminPonto() {
 
       <div className="flex flex-1">
         {/* Sidebar Esquerda */}
-        <aside className="w-64 p-6 flex flex-col space-y-6 bg-transparent">
+        <aside className="w-60 p-5 flex flex-col space-y-6 bg-transparent shrink-0">
           <div>
             <h1 className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-4">
               PONTO ELETRÔNICO
@@ -282,13 +268,11 @@ export default function AdminPonto() {
         </aside>
 
         {/* Conteúdo Central */}
-        <main className="flex-1 p-8 pl-2">
-          {/* Breadcrumb e Filtro Topo */}
-          <div className="flex justify-between items-center mb-4 text-xs text-slate-500">
+        <main className="flex-1 p-6 pl-0">
+          <div className="flex justify-between items-center mb-3 text-xs text-slate-500">
             <div>
-              {/* Botão Painel redirecionando para a página /admin */}
               <a 
-                href="https://wiaponto.vercel.app/admin" 
+                href="/admin" 
                 className="hover:text-[#ff8b00] hover:underline transition-colors font-medium cursor-pointer"
               >
                 Painel
@@ -310,15 +294,14 @@ export default function AdminPonto() {
           {/* CONTEÚDO DA ABA: PONTOS REGISTRADOS */}
           {activeTab === 'pontos' && (
             <div className="bg-white rounded-lg shadow-sm border border-slate-200/80">
-              {/* Header de Filtros Internos */}
-              <div className="p-4 border-b border-slate-200 flex flex-wrap items-center justify-between gap-4">
+              <div className="p-3.5 border-b border-slate-200 flex flex-wrap items-center justify-between gap-4">
                 <div className="flex items-center space-x-4 text-xs font-semibold text-slate-600">
                   <div className="flex items-center space-x-2">
                     <span>Mês</span>
                     <select 
                       value={selectedMonth}
                       onChange={(e) => setSelectedMonth(e.target.value)}
-                      className="border border-slate-300 rounded px-3 py-1.5 bg-white text-xs font-normal focus:outline-none"
+                      className="border border-slate-300 rounded px-3 py-1 bg-white text-xs font-normal focus:outline-none"
                     >
                       <option>Agosto/2026</option>
                     </select>
@@ -329,14 +312,13 @@ export default function AdminPonto() {
                     <select 
                       value={selectedUser}
                       onChange={(e) => setSelectedUser(e.target.value)}
-                      className="border border-slate-300 rounded px-3 py-1.5 bg-white text-xs font-normal focus:outline-none"
+                      className="border border-slate-300 rounded px-3 py-1 bg-white text-xs font-normal focus:outline-none"
                     >
                       <option>Joquebede de...</option>
                     </select>
                   </div>
                 </div>
 
-                {/* Botão de Ver jornada atual */}
                 <button 
                   onClick={() => setShowJornadaModal(true)}
                   className="flex items-center text-xs text-[#ff8b00] font-medium hover:underline cursor-pointer"
@@ -345,23 +327,20 @@ export default function AdminPonto() {
                 </button>
               </div>
 
-              {/* Cabeçalho da Tabela */}
-              <div className="grid grid-cols-12 px-6 py-3 bg-slate-50/50 text-slate-500 font-bold text-[11px] uppercase tracking-wider border-b border-slate-200">
+              <div className="grid grid-cols-12 px-6 py-2.5 bg-slate-50/50 text-slate-500 font-bold text-[11px] uppercase tracking-wider border-b border-slate-200">
                 <div className="col-span-8"></div>
                 <div className="col-span-2 text-right">HORA EXTRA</div>
                 <div className="col-span-2 text-right">TRABALHADO</div>
               </div>
 
-              {/* Linhas da Tabela com Bordas Mais Aparentes */}
               <div className="divide-y divide-slate-200">
                 {registros.map((item) => {
                   const isExpanded = expandedRow === item.id;
                   return (
                     <div key={item.id} className="transition-colors border-b border-slate-200">
-                      {/* Linha Resumida */}
                       <div 
                         onClick={() => toggleRow(item.id)}
-                        className="grid grid-cols-12 px-6 py-4 items-center text-sm hover:bg-slate-50 cursor-pointer"
+                        className="grid grid-cols-12 px-6 py-3.5 items-center text-xs hover:bg-slate-50 cursor-pointer"
                       >
                         <div className="col-span-8 flex items-center space-x-3">
                           {isExpanded ? (
@@ -369,19 +348,17 @@ export default function AdminPonto() {
                           ) : (
                             <ChevronRight className="w-4 h-4 text-slate-400" />
                           )}
-                          <span className="font-medium text-slate-700">{item.data}</span>
+                          <span className="font-semibold text-slate-700 text-xs">{item.data}</span>
                         </div>
                         <div className="col-span-2 text-right font-medium text-slate-600">{item.horaExtra}</div>
                         <div className="col-span-2 text-right font-semibold text-slate-800">{item.trabalhado}</div>
                       </div>
 
-                      {/* Conteúdo Expandido */}
                       {isExpanded && (
                         <div className="px-8 py-4 bg-slate-50/40 border-t border-b border-slate-200 text-xs">
-                          {/* Ações superiores */}
                           <div className="flex items-center justify-between mb-4">
-                            <DropdownMenu>
-                              <DropdownMenuTrigger className="flex items-center space-x-1 border border-slate-300 bg-white px-3 py-1.5 rounded-md font-medium text-slate-700 hover:bg-slate-50 focus:outline-none">
+                            <DropdownMenu modal={false}>
+                              <DropdownMenuTrigger className="flex items-center space-x-1 border border-slate-300 bg-white px-3 py-1 rounded font-medium text-slate-700 hover:bg-slate-50 focus:outline-none">
                                 <span>Adicionar</span>
                                 <ChevronDown className="w-3.5 h-3.5" />
                               </DropdownMenuTrigger>
@@ -393,7 +370,6 @@ export default function AdminPonto() {
                               </DropdownMenuContent>
                             </DropdownMenu>
 
-                            {/* Botão Ver histórico */}
                             <button 
                               onClick={() => setShowHistoryModal(true)}
                               className="flex items-center space-x-1 text-[#ff8b00] hover:underline font-medium cursor-pointer"
@@ -403,7 +379,6 @@ export default function AdminPonto() {
                             </button>
                           </div>
 
-                          {/* Cabeçalho da sub-tabela */}
                           <div className="grid grid-cols-12 text-slate-500 font-bold uppercase text-[10px] mb-2 px-2">
                             <div className="col-span-6"></div>
                             <div className="col-span-2 text-center">ENTRADA</div>
@@ -411,7 +386,6 @@ export default function AdminPonto() {
                             <div className="col-span-2 text-center">SALDO</div>
                           </div>
 
-                          {/* Lista de Batimentos */}
                           <div className="space-y-2">
                             {item.batidas.map((b, idx) => {
                               const isEditing = editingRowKey === `${item.id}-${idx}`;
@@ -427,7 +401,7 @@ export default function AdminPonto() {
                                     </button>
 
                                     <div className="flex items-center space-x-2">
-                                      <label className="flex items-center space-x-1 cursor-pointer bg-slate-50 p-1.5 rounded border border-slate-200" title="Ponto da madrugada do dia seguinte">
+                                      <label className="flex items-center space-x-1 cursor-pointer bg-slate-50 p-1 rounded border border-slate-200">
                                         <input 
                                           type="checkbox"
                                           checked={editFormData.isNight}
@@ -491,28 +465,28 @@ export default function AdminPonto() {
                               }
 
                               return (
-                                <div key={idx} className="group grid grid-cols-12 items-center bg-white border border-slate-200/80 rounded-md py-2 px-3 shadow-sm hover:border-slate-300 transition-all">
+                                <div key={idx} className="group grid grid-cols-12 items-center bg-white border border-slate-200/80 rounded-md py-1.5 px-3 shadow-sm hover:border-slate-300 transition-all">
                                   <div className="col-span-6 flex items-center">
                                     <button 
                                       onClick={() => handleRemoveBatida(item.id, idx)}
-                                      className="opacity-0 group-hover:opacity-100 bg-red-500 hover:bg-red-600 text-white font-semibold px-3 py-1 rounded text-xs transition-opacity shadow-sm"
+                                      className="opacity-0 group-hover:opacity-100 bg-red-500 hover:bg-red-600 text-white font-semibold px-2.5 py-0.5 rounded text-[11px] transition-opacity shadow-sm"
                                     >
                                       Remover
                                     </button>
                                   </div>
 
-                                  <div className="col-span-2 flex items-center justify-center space-x-1 text-slate-700 font-mono">
+                                  <div className="col-span-2 flex items-center justify-center space-x-1 text-slate-700 font-mono text-xs">
                                     <span>{b.entrada}</span>
                                     {b.entrada !== '-' && <Monitor className="w-3.5 h-3.5 text-slate-400" />}
                                   </div>
 
-                                  <div className="col-span-2 flex items-center justify-center space-x-1 text-slate-700 font-mono">
+                                  <div className="col-span-2 flex items-center justify-center space-x-1 text-slate-700 font-mono text-xs">
                                     <span>{b.saida}</span>
                                     {b.saida !== '-' && <Monitor className="w-3.5 h-3.5 text-slate-400" />}
                                   </div>
 
                                   <div className="col-span-2 flex items-center justify-between pl-4">
-                                    <span className="font-mono text-slate-600">{b.saldo}</span>
+                                    <span className="font-mono text-slate-600 text-xs">{b.saldo}</span>
                                     <button 
                                       onClick={() => handleStartEdit(item.id, idx, b)}
                                       className="text-[#ff8b00] hover:underline text-xs font-medium"
@@ -525,8 +499,7 @@ export default function AdminPonto() {
                             })}
                           </div>
 
-                          {/* Rodapé do dia */}
-                          <div className="flex justify-end space-x-6 items-center mt-4 pt-3 border-t border-slate-200 text-slate-600 font-medium text-xs">
+                          <div className="flex justify-end space-x-6 items-center mt-3 pt-2 border-t border-slate-200 text-slate-600 font-medium text-xs">
                             <span>Horas extras: <strong>{item.horaExtra}</strong></span>
                             <span>Trabalhado: <strong>{item.trabalhado}</strong></span>
                           </div>
@@ -536,8 +509,7 @@ export default function AdminPonto() {
                   );
                 })}
 
-                {/* Linha de Totais Gerais */}
-                <div className="grid grid-cols-12 px-6 py-4 items-center text-sm font-bold bg-slate-50/30">
+                <div className="grid grid-cols-12 px-6 py-3 items-center text-xs font-bold bg-slate-50/30">
                   <div className="col-span-8"></div>
                   <div className="col-span-2 text-right text-slate-800">
                     {minutesToDisplayHours(totalGeralExtraMinutos)}
@@ -550,18 +522,18 @@ export default function AdminPonto() {
             </div>
           )}
 
-          {/* CONTEÚDO DA ABA: RESUMO DAS HORAS */}
+          {/* CORREÇÃO 2: RESUMO DAS HORAS COMPACTO E CLEAN ESTILO COALIZE (SEM SCROLL) */}
           {activeTab === 'resumo' && (
-            <div className="bg-white rounded-lg shadow-sm border border-slate-200/80 p-6 space-y-6">
-              {/* Header de Filtros Internos + Botão Baixar PDF */}
-              <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-200 pb-6">
+            <div className="bg-white rounded-lg shadow-sm border border-slate-200/80 p-5 space-y-3">
+              {/* Filtros + Botão Baixar PDF */}
+              <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-200 pb-3">
                 <div className="flex items-center space-x-4 text-xs font-semibold text-slate-600">
                   <div className="flex items-center space-x-2">
                     <span>Mês</span>
                     <select 
                       value={selectedMonth}
                       onChange={(e) => setSelectedMonth(e.target.value)}
-                      className="border border-slate-300 rounded px-3 py-1.5 bg-white text-xs font-normal focus:outline-none"
+                      className="border border-slate-300 rounded px-2 py-1 bg-white text-xs font-normal focus:outline-none"
                     >
                       <option>Agosto/2026</option>
                     </select>
@@ -572,7 +544,7 @@ export default function AdminPonto() {
                     <select 
                       value={selectedUser}
                       onChange={(e) => setSelectedUser(e.target.value)}
-                      className="border border-slate-300 rounded px-3 py-1.5 bg-white text-xs font-normal focus:outline-none"
+                      className="border border-slate-300 rounded px-2 py-1 bg-white text-xs font-normal focus:outline-none"
                     >
                       <option>Joquebede de...</option>
                     </select>
@@ -581,106 +553,108 @@ export default function AdminPonto() {
 
                 <button 
                   onClick={handleDownloadPDF}
-                  className="border border-[#ff8b00] text-[#ff8b00] hover:bg-[#ff8b00]/10 px-4 py-2 rounded-md font-semibold text-xs transition-colors flex items-center space-x-2 cursor-pointer"
+                  className="border border-slate-300 text-slate-700 hover:bg-slate-50 px-3 py-1 rounded text-xs font-semibold transition-colors flex items-center space-x-1.5 cursor-pointer shadow-2xs"
                 >
-                  <Download className="w-3.5 h-3.5" />
                   <span>Baixar em PDF</span>
                 </button>
               </div>
 
-              {/* Bloco 1: TRABALHADO */}
-              <div className="border-b border-slate-200 pb-6 text-xs space-y-2">
-                <div className="grid grid-cols-12 font-semibold py-1">
-                  <span className="col-span-4 text-slate-800 font-bold">1. TRABALHADO</span>
-                  <span className="col-span-5 text-slate-600">Horas diurnas</span>
-                  <span className="col-span-3 text-right text-slate-700">{minutesToFullDisplay(totalGeralDiurnoMinutos)}</span>
+              {/* Tabela Clean Compacta */}
+              <div className="text-[12px] divide-y divide-slate-100">
+                {/* 1. TRABALHADO */}
+                <div className="py-2 space-y-1">
+                  <div className="grid grid-cols-12 items-center">
+                    <span className="col-span-3 text-slate-800 font-bold uppercase text-[11px]">1. TRABALHADO</span>
+                    <span className="col-span-5 text-slate-600">Horas diurnas</span>
+                    <span className="col-span-4 text-right font-medium text-slate-700">{minutesToFullDisplay(totalGeralDiurnoMinutos)}</span>
+                  </div>
+                  <div className="grid grid-cols-12 items-center">
+                    <span className="col-span-3"></span>
+                    <span className="col-span-5 text-slate-600">Adicional noturno</span>
+                    <span className="col-span-4 text-right font-medium text-slate-700">{minutesToFullDisplay(totalGeralNoturnoMinutos)}</span>
+                  </div>
+                  <div className="grid grid-cols-12 items-center">
+                    <span className="col-span-3"></span>
+                    <span className="col-span-5 text-slate-600">Hora extra</span>
+                    <span className="col-span-4 text-right font-medium text-slate-700">{minutesToFullDisplay(totalGeralExtraMinutos)}</span>
+                  </div>
+                  <div className="grid grid-cols-12 items-center pt-1 font-bold text-slate-900">
+                    <span className="col-span-3"></span>
+                    <span className="col-span-5">Total Trabalhado</span>
+                    <span className="col-span-4 text-right">{minutesToFullDisplay(totalGeralTrabalhadoMinutos)}</span>
+                  </div>
                 </div>
-                <div className="grid grid-cols-12 font-semibold py-1">
-                  <span className="col-span-4"></span>
-                  <span className="col-span-5 text-slate-600">Adicional noturno</span>
-                  <span className="col-span-3 text-right text-slate-700">{minutesToFullDisplay(totalGeralNoturnoMinutos)}</span>
-                </div>
-                <div className="grid grid-cols-12 font-semibold py-1">
-                  <span className="col-span-4"></span>
-                  <span className="col-span-5 text-slate-600">Hora extra</span>
-                  <span className="col-span-3 text-right text-slate-700">{minutesToFullDisplay(totalGeralExtraMinutos)}</span>
-                </div>
-                <div className="grid grid-cols-12 font-bold py-2 border-t border-slate-100 text-slate-800">
-                  <span className="col-span-4"></span>
-                  <span className="col-span-5">Total Trabalhado</span>
-                  <span className="col-span-3 text-right">{minutesToFullDisplay(totalGeralTrabalhadoMinutos)}</span>
-                </div>
-              </div>
 
-              {/* Bloco 2: FALTAS */}
-              <div className="border-b border-slate-200 pb-6 text-xs space-y-2">
-                <div className="grid grid-cols-12 font-semibold py-1">
-                  <span className="col-span-4 text-slate-800 font-bold">2. FALTAS</span>
-                  <span className="col-span-5 text-slate-600">Dias de falta</span>
-                  <span className="col-span-3 text-right text-slate-700">0 dias</span>
+                {/* 2. FALTAS */}
+                <div className="py-2 space-y-1">
+                  <div className="grid grid-cols-12 items-center">
+                    <span className="col-span-3 text-slate-800 font-bold uppercase text-[11px]">2. FALTAS</span>
+                    <span className="col-span-5 text-slate-600">Dias de falta</span>
+                    <span className="col-span-4 text-right font-medium text-slate-700">0 dias</span>
+                  </div>
+                  <div className="grid grid-cols-12 items-center pt-1 font-bold text-slate-900">
+                    <span className="col-span-3"></span>
+                    <span className="col-span-5">Horas de atraso + falta s/ justificativa</span>
+                    <span className="col-span-4 text-right">00h 00min</span>
+                  </div>
                 </div>
-                <div className="grid grid-cols-12 font-bold py-2 border-t border-slate-100 text-slate-800">
-                  <span className="col-span-4"></span>
-                  <span className="col-span-5">Horas de atraso + falta s/ justificativa</span>
-                  <span className="col-span-3 text-right">00h 00min</span>
-                </div>
-              </div>
 
-              {/* Bloco 3: HORA EXTRA (geral) */}
-              <div className="border-b border-slate-200 pb-6 text-xs space-y-2">
-                <div className="grid grid-cols-12 font-semibold py-1">
-                  <span className="col-span-4 text-slate-800 font-bold">3. HORA EXTRA (geral)</span>
-                  <span className="col-span-5 text-slate-600">Adicionada ao banco de horas</span>
-                  <span className="col-span-3 text-right text-slate-700">00h 00min</span>
+                {/* 3. HORA EXTRA (geral) */}
+                <div className="py-2 space-y-1">
+                  <div className="grid grid-cols-12 items-center">
+                    <span className="col-span-3 text-slate-800 font-bold uppercase text-[11px]">3. HORA EXTRA (geral)</span>
+                    <span className="col-span-5 text-slate-600">Adicionada ao banco de horas</span>
+                    <span className="col-span-4 text-right font-medium text-slate-700">00h 00min</span>
+                  </div>
+                  <div className="grid grid-cols-12 items-center">
+                    <span className="col-span-3"></span>
+                    <span className="col-span-5 text-slate-600">Hora extra a pagar</span>
+                    <span className="col-span-4 text-right font-medium text-slate-700">{minutesToFullDisplay(totalGeralExtraMinutos)}</span>
+                  </div>
+                  <div className="grid grid-cols-12 items-center pt-1 font-bold text-slate-900">
+                    <span className="col-span-3"></span>
+                    <span className="col-span-5">Total Horas Extras</span>
+                    <span className="col-span-4 text-right">{minutesToFullDisplay(totalGeralExtraMinutos)}</span>
+                  </div>
                 </div>
-                <div className="grid grid-cols-12 font-semibold py-1">
-                  <span className="col-span-4"></span>
-                  <span className="col-span-5 text-slate-600">Hora extra a pagar</span>
-                  <span className="col-span-3 text-right text-slate-700">{minutesToFullDisplay(totalGeralExtraMinutos)}</span>
-                </div>
-                <div className="grid grid-cols-12 font-bold py-2 border-t border-slate-100 text-slate-800">
-                  <span className="col-span-4"></span>
-                  <span className="col-span-5">Total Horas Extras</span>
-                  <span className="col-span-3 text-right">{minutesToFullDisplay(totalGeralExtraMinutos)}</span>
-                </div>
-              </div>
 
-              {/* Bloco 4: HORA EXTRA (a pagar) */}
-              <div className="text-xs space-y-2">
-                <div className="grid grid-cols-12 font-semibold py-1">
-                  <span className="col-span-4 text-slate-800 font-bold">4. HORA EXTRA (a pagar)</span>
-                  <span className="col-span-5 text-slate-600">Dia útil (diurno)</span>
-                  <span className="col-span-3 text-right text-slate-700">{minutesToFullDisplay(totalGeralExtraMinutos)}</span>
-                </div>
-                <div className="grid grid-cols-12 font-semibold py-1">
-                  <span className="col-span-4"></span>
-                  <span className="col-span-5 text-slate-600">Dia útil (noturno)</span>
-                  <span className="col-span-3 text-right text-slate-700">00h 00min</span>
-                </div>
-                <div className="grid grid-cols-12 font-semibold py-1">
-                  <span className="col-span-4"></span>
-                  <span className="col-span-5 text-slate-600">DSR ou Folga (diurno)</span>
-                  <span className="col-span-3 text-right text-slate-700">00h 00min</span>
-                </div>
-                <div className="grid grid-cols-12 font-semibold py-1">
-                  <span className="col-span-4"></span>
-                  <span className="col-span-5 text-slate-600">DSR ou Folga (noturno)</span>
-                  <span className="col-span-3 text-right text-slate-700">00h 00min</span>
-                </div>
-                <div className="grid grid-cols-12 font-semibold py-1">
-                  <span className="col-span-4"></span>
-                  <span className="col-span-5 text-slate-600">Feriado (diurno)</span>
-                  <span className="col-span-3 text-right text-slate-700">00h 00min</span>
-                </div>
-                <div className="grid grid-cols-12 font-semibold py-1">
-                  <span className="col-span-4"></span>
-                  <span className="col-span-5 text-slate-600">Feriado (noturno)</span>
-                  <span className="col-span-3 text-right text-slate-700">00h 00min</span>
-                </div>
-                <div className="grid grid-cols-12 font-bold py-2 border-t border-slate-100 text-slate-800">
-                  <span className="col-span-4"></span>
-                  <span className="col-span-5">Total Horas Extras</span>
-                  <span className="col-span-3 text-right">{minutesToFullDisplay(totalGeralExtraMinutos)}</span>
+                {/* 4. HORA EXTRA (a pagar) */}
+                <div className="py-2 space-y-1">
+                  <div className="grid grid-cols-12 items-center">
+                    <span className="col-span-3 text-slate-800 font-bold uppercase text-[11px]">4. HORA EXTRA (a pagar)</span>
+                    <span className="col-span-5 text-slate-600">Dia útil (diurno)</span>
+                    <span className="col-span-4 text-right font-medium text-slate-700">{minutesToFullDisplay(totalGeralExtraMinutos)}</span>
+                  </div>
+                  <div className="grid grid-cols-12 items-center">
+                    <span className="col-span-3"></span>
+                    <span className="col-span-5 text-slate-600">Dia útil (noturno)</span>
+                    <span className="col-span-4 text-right font-medium text-slate-700">00h 00min</span>
+                  </div>
+                  <div className="grid grid-cols-12 items-center">
+                    <span className="col-span-3"></span>
+                    <span className="col-span-5 text-slate-600">DSR ou Folga (diurno)</span>
+                    <span className="col-span-4 text-right font-medium text-slate-700">00h 00min</span>
+                  </div>
+                  <div className="grid grid-cols-12 items-center">
+                    <span className="col-span-3"></span>
+                    <span className="col-span-5 text-slate-600">DSR ou Folga (noturno)</span>
+                    <span className="col-span-4 text-right font-medium text-slate-700">00h 00min</span>
+                  </div>
+                  <div className="grid grid-cols-12 items-center">
+                    <span className="col-span-3"></span>
+                    <span className="col-span-5 text-slate-600">Feriado (diurno)</span>
+                    <span className="col-span-4 text-right font-medium text-slate-700">00h 00min</span>
+                  </div>
+                  <div className="grid grid-cols-12 items-center">
+                    <span className="col-span-3"></span>
+                    <span className="col-span-5 text-slate-600">Feriado (noturno)</span>
+                    <span className="col-span-4 text-right font-medium text-slate-700">00h 00min</span>
+                  </div>
+                  <div className="grid grid-cols-12 items-center pt-1 font-bold text-slate-900">
+                    <span className="col-span-3"></span>
+                    <span className="col-span-5">Total Horas Extras</span>
+                    <span className="col-span-4 text-right">{minutesToFullDisplay(totalGeralExtraMinutos)}</span>
+                  </div>
                 </div>
               </div>
             </div>
@@ -840,7 +814,7 @@ export default function AdminPonto() {
       </div>
 
       {/* Rodapé */}
-      <footer className="text-center py-4 text-xs text-slate-400 border-t border-slate-200 bg-white">
+      <footer className="text-center py-3 text-xs text-slate-400 border-t border-slate-200 bg-white">
         © 2026 PontoMax - Todos os direitos reservados.
       </footer>
     </div>

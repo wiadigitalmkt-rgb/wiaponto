@@ -9,7 +9,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 
-export default function Navbar({ selectedCompany = 'Sua Empresa' }) {
+export default function Navbar({ selectedCompany = 'Empresa Teste 11738' }) {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
 
@@ -81,10 +81,18 @@ export default function Navbar({ selectedCompany = 'Sua Empresa' }) {
 
       {/* Lado Direito */}
       <div className="flex items-center gap-4 shrink-0">
-        <div className="hidden sm:flex bg-[#121f4c] px-3 py-1.5 rounded-lg text-xs font-semibold items-center gap-2 border border-slate-700/60">
-          <span className="text-slate-300">Empresa:</span>
-          <span className="text-[#ff8b00] font-bold">{selectedCompany}</span>
-        </div>
+        {/* Botão de Empresa no estilo Coalize */}
+        <DropdownMenu>
+          <DropdownMenuTrigger className="hidden sm:flex items-center justify-between gap-6 border border-white/40 bg-transparent px-4 py-1.5 rounded-md text-xs font-semibold text-white hover:border-white/70 transition focus:outline-none cursor-pointer">
+            <span className="truncate">{selectedCompany}</span>
+            <ChevronDown size={13} className="text-white/80 shrink-0" />
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="bg-white text-slate-800 min-w-[180px]">
+            <DropdownMenuItem className="cursor-pointer text-xs font-medium">
+              {selectedCompany}
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
 
         <DropdownMenu>
           <DropdownMenuTrigger className="focus:outline-none">

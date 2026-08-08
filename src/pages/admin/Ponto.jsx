@@ -21,6 +21,72 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 
+// ============================================================================
+// FUNÇÕES UTILITÁRIAS DE CÁLCULO DE HORAS (EXATIDÃO MATEMÁTICA)
+// ============================================================================
+
+// Converte texto "HH:MM" para minutos totais
+const timeToMinutes = (timeStr) => {
+  if (!timeStr || timeStr === '-' || timeStr.trim() === '') return null;
+  const parts = timeStr.trim().split(':');
+  if (parts.length < 2) return null;
+  const h = parseInt(parts[0], 10);
+  const m = parseInt(parts[1], 10);
+  if (isNaN(h) || isNaN(m)) return null;
+  return h * 60 + m;
+};
+
+// Converte minutos totais para formato "HH:MM"
+const minutesToHHMM = (mins) => {
+  if (mins === null || isNaN(mins) || mins < 0) return '-';
+  const h = Math.floor(mins / 60);
+  const m = mins % 60;
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+};
+
+// Converte minutos para formato legível ex: "7h", "7h 30min" ou "0h"
+const minutesToDisplayHours = (mins) => {
+  if (!mins || mins <= 0) return '0h';
+  const h = Math.floor(mins / 60);
+  const m = mins % 60;
+  if (m === 0) return `${h}h`;
+  return `${h}h ${m}min`;
+};
+
+// Recalcula dinamicamente os saldos, horas trabalhadas e horas extras de um dia
+const processDayRecord = (record, targetDailyMinutes = 480) => { // 8h = 480 minutos
+  let totalDayMinutes = 0;
+
+  const newBatidas = record.batidas.map((b) => {
+    const mEnt = timeToMinutes(b.entrada);
+    let mSai = timeToMinutes(b.saida);
+
+    if (mEnt !== null && mSai !== null) {
+      // Trata virada de noite ou flag de extra noturno (adiciona 24h = 1440 min se saída for menor que entrada)
+      if (mSai < mEnt || b.isNight) {
+        mSai += 1440;
+      }
+      const diff = Math.max(0, mSai - mEnt);
+      totalDayMinutes += diff;
+      return { ...b, saldo: minutesToHHMM(diff) };
+    }
+    return { ...b, saldo: '-' };
+  });
+
+  const trabalhadoStr = minutesToDisplayHours(totalDayMinutes);
+  const extraMinutes = Math.max(0, totalDayMinutes - targetDailyMinutes);
+  const horaExtraStr = minutesToDisplayHours(extraMinutes);
+
+  return {
+    ...record,
+    batidas: newBatidas,
+    trabalhado: trabalhadoStr,
+    horaExtra: horaExtraStr,
+    totalDayMinutes,
+    extraMinutes
+  };
+};
+
 export default function AdminPonto() {
   const [selectedMonth, setSelectedMonth] = useState('Agosto/2026');
   const [selectedUser, setSelectedUser] = useState('Joquebede de...');
@@ -40,30 +106,29 @@ export default function AdminPonto() {
     saida: ''
   });
 
-  // Dados com estado para permitir alterações (exclusão/edição)
-  const [registros, setRegistros] = useState([
+  // Dados iniciais processados com cálculos exatos
+  const initialRegistros = [
     { 
       id: 1, 
       data: '06/08/2026 - Quinta-feira', 
-      horaExtra: '0h', 
-      trabalhado: '6h',
       batidas: [
-        { entrada: '14:00', saida: '20:00', saldo: '06:00', isNight: false, obs: '' },
-        { entrada: '23:12', saida: '-', saldo: '-', isNight: false, obs: '' }
+        { entrada: '14:00', saida: '21:00', isNight: false, obs: '' },
+        { entrada: '23:12', saida: '-', isNight: false, obs: '' }
       ]
     },
     { 
       id: 2, 
       data: '07/08/2026 - Sexta-feira', 
-      horaExtra: '1h', 
-      trabalhado: '9h',
       batidas: [
-        { entrada: '08:00', saida: '12:00', saldo: '04:00', isNight: false, obs: '' },
-        { entrada: '14:00', saida: '19:00', saldo: '05:00', isNight: false, obs: '' }
+        { entrada: '08:00', saida: '12:00', isNight: false, obs: '' },
+        { entrada: '14:00', saida: '22:00', isNight: false, obs: '' }
       ]
     },
-  ]);
+  ].map((rec) => processDayRecord(rec));
 
+  const [registros, setRegistros] = useState(initialRegistros);
+
+  // Exibe notificação temporária
   const showToast = (msg) => {
     setToastMessage(msg);
     setTimeout(() => {
@@ -75,12 +140,12 @@ export default function AdminPonto() {
     setExpandedRow(expandedRow === id ? null : id);
   };
 
-  // 1. Ação de Excluir / Remover ponto
+  // 1. Ação de Excluir / Remover ponto com recálculo automático
   const handleRemoveBatida = (itemId, batidaIdx) => {
     const updated = registros.map((item) => {
       if (item.id === itemId) {
         const newBatidas = item.batidas.filter((_, idx) => idx !== batidaIdx);
-        return { ...item, batidas: newBatidas };
+        return processDayRecord({ ...item, batidas: newBatidas });
       }
       return item;
     });
@@ -99,19 +164,19 @@ export default function AdminPonto() {
     });
   };
 
-  // Salvar Edição
+  // 3. Salvar Edição com Recálculo Dinâmico
   const handleSaveEdit = (itemId, batidaIdx) => {
     const updated = registros.map((item) => {
       if (item.id === itemId) {
         const newBatidas = [...item.batidas];
         newBatidas[batidaIdx] = {
           ...newBatidas[batidaIdx],
-          entrada: editFormData.entrada || '-',
-          saida: editFormData.saida || '-',
+          entrada: editFormData.entrada.trim() || '-',
+          saida: editFormData.saida.trim() || '-',
           isNight: editFormData.isNight,
           obs: editFormData.obs
         };
-        return { ...item, batidas: newBatidas };
+        return processDayRecord({ ...item, batidas: newBatidas });
       }
       return item;
     });
@@ -119,6 +184,10 @@ export default function AdminPonto() {
     setEditingRowKey(null);
     showToast('Ponto atualizado com sucesso!');
   };
+
+  // Soma dos totais gerais do mês (Rodapé)
+  const totalGeralTrabalhadoMinutos = registros.reduce((acc, curr) => acc + (curr.totalDayMinutes || 0), 0);
+  const totalGeralExtraMinutos = registros.reduce((acc, curr) => acc + (curr.extraMinutes || 0), 0);
 
   return (
     <div className="min-h-screen bg-[#edf2f7] flex flex-col font-sans text-slate-700 relative">
@@ -200,7 +269,7 @@ export default function AdminPonto() {
                 </div>
               </div>
 
-              {/* REQUISITO 5: Botão de Ver jornada atual */}
+              {/* Botão de Ver jornada atual */}
               <button 
                 onClick={() => setShowJornadaModal(true)}
                 className="flex items-center text-xs text-emerald-600 font-medium hover:underline cursor-pointer"
@@ -257,7 +326,7 @@ export default function AdminPonto() {
                             </DropdownMenuContent>
                           </DropdownMenu>
 
-                          {/* REQUISITO 4: Botão Ver histórico idêntico ao modelo */}
+                          {/* Botão Ver histórico */}
                           <button 
                             onClick={() => setShowHistoryModal(true)}
                             className="flex items-center space-x-1 text-emerald-600 hover:text-emerald-700 font-medium cursor-pointer"
@@ -281,7 +350,7 @@ export default function AdminPonto() {
                             const isEditing = editingRowKey === `${item.id}-${idx}`;
 
                             if (isEditing) {
-                              // REQUISITO 2: Painel de Edição do ponto com opção Noturno (Lua)
+                              // Painel de Edição com Extra Noturno (Lua)
                               return (
                                 <div key={idx} className="flex items-center justify-between bg-white border border-slate-200 rounded-md p-2 shadow-sm gap-2">
                                   <button 
@@ -355,7 +424,7 @@ export default function AdminPonto() {
                               );
                             }
 
-                            // REQUISITO 1: Botão "Remover" que aparece no hover (group-hover)
+                            // Exibição normal com Hover Remover
                             return (
                               <div key={idx} className="group grid grid-cols-12 items-center bg-white border border-slate-200/80 rounded-md py-2 px-3 shadow-sm hover:border-slate-300 transition-all">
                                 <div className="col-span-6 flex items-center">
@@ -391,7 +460,7 @@ export default function AdminPonto() {
                           })}
                         </div>
 
-                        {/* Rodapé do dia */}
+                        {/* Rodapé do dia (calculado automaticamente) */}
                         <div className="flex justify-end space-x-6 items-center mt-4 pt-3 border-t border-slate-200/60 text-slate-600 font-medium text-xs">
                           <span>Horas extras: <strong>{item.horaExtra}</strong></span>
                           <span>Trabalhado: <strong>{item.trabalhado}</strong></span>
@@ -402,20 +471,24 @@ export default function AdminPonto() {
                 );
               })}
 
-              {/* Linha de Totais */}
+              {/* Linha de Totais Gerais (Soma Automática de todos os dias) */}
               <div className="grid grid-cols-12 px-6 py-4 items-center text-sm font-bold bg-slate-50/30">
                 <div className="col-span-8"></div>
-                <div className="col-span-2 text-right text-slate-800">1h</div>
-                <div className="col-span-2 text-right text-slate-800">15h</div>
+                <div className="col-span-2 text-right text-slate-800">
+                  {minutesToDisplayHours(totalGeralExtraMinutos)}
+                </div>
+                <div className="col-span-2 text-right text-slate-800">
+                  {minutesToDisplayHours(totalGeralTrabalhadoMinutos)}
+                </div>
               </div>
             </div>
           </div>
         </main>
       </div>
 
-      {/* REQUISITO 3: Popup / Toast de feedback de ação */}
+      {/* Popup / Toast de feedback */}
       {toastMessage && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-[#1e293b] text-white px-5 py-3 rounded-lg shadow-xl flex items-center space-x-3 z-50 animate-bounce-short">
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-[#1e293b] text-white px-5 py-3 rounded-lg shadow-xl flex items-center space-x-3 z-50">
           <CheckCircle2 className="w-4 h-4 text-emerald-400" />
           <span className="text-xs font-medium">{toastMessage}</span>
           <button onClick={() => setToastMessage(null)} className="text-slate-400 hover:text-white ml-2">
@@ -424,7 +497,7 @@ export default function AdminPonto() {
         </div>
       )}
 
-      {/* REQUISITO 4: Modal Histórico de Alteração (Igual da Imagem 4) */}
+      {/* Modal Histórico de Alteração */}
       {showHistoryModal && (
         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg shadow-2xl max-w-lg w-full overflow-hidden border border-slate-200">
@@ -439,7 +512,6 @@ export default function AdminPonto() {
               <p className="text-slate-500 font-medium">Dia 06/08/2026</p>
 
               <div className="relative pl-6 space-y-6 border-l-2 border-slate-200 ml-2">
-                {/* Item 1 */}
                 <div className="relative">
                   <div className="absolute -left-[31px] top-0 w-3 h-3 rounded-full border-2 border-red-500 bg-white"></div>
                   <div className="flex justify-between items-start">
@@ -455,23 +527,6 @@ export default function AdminPonto() {
                   </div>
                 </div>
 
-                {/* Item 2 */}
-                <div className="relative">
-                  <div className="absolute -left-[31px] top-0 w-3 h-3 rounded-full border-2 border-red-500 bg-white"></div>
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <p className="text-slate-400 text-[11px]">07/08/2026 20:33</p>
-                      <p className="font-bold text-slate-700">WIA DIGITAL</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="font-semibold text-slate-700">06/08 12:00 <span className="text-red-500 ml-1">→ Removido</span></p>
-                      <p className="text-slate-400 flex items-center justify-end gap-1 mt-0.5"><Monitor className="w-3 h-3"/> Ponto manual</p>
-                      <p className="italic text-slate-400 text-[11px] mt-1">"Ponto removido via interface web"</p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Item 3 */}
                 <div className="relative">
                   <div className="absolute -left-[31px] top-0 w-3 h-3 rounded-full border-2 border-emerald-500 bg-white"></div>
                   <div className="flex justify-between items-start">
@@ -480,22 +535,7 @@ export default function AdminPonto() {
                       <p className="font-bold text-slate-700">WIA DIGITAL</p>
                     </div>
                     <div className="text-right">
-                      <p className="font-semibold text-slate-700">06/08 18:00 → 06/08 20:00</p>
-                      <p className="text-slate-400 flex items-center justify-end gap-1 mt-0.5"><Monitor className="w-3 h-3"/> Ponto manual</p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Item 4 */}
-                <div className="relative">
-                  <div className="absolute -left-[31px] top-0 w-3 h-3 rounded-full border-2 border-emerald-500 bg-white"></div>
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <p className="text-slate-400 text-[11px]">07/08/2026 20:37</p>
-                      <p className="font-bold text-slate-700">WIA DIGITAL</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="font-semibold text-slate-700">06/08 20:00 → 06/08 21:00</p>
+                      <p className="font-semibold text-slate-700">06/08 14:00 → 06/08 21:00</p>
                       <p className="text-slate-400 flex items-center justify-end gap-1 mt-0.5"><Monitor className="w-3 h-3"/> Ponto manual</p>
                     </div>
                   </div>
@@ -515,7 +555,7 @@ export default function AdminPonto() {
         </div>
       )}
 
-      {/* REQUISITO 5: Modal Jornada Atual (Igual da Imagem 6) */}
+      {/* Modal Jornada Atual */}
       {showJornadaModal && (
         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg shadow-2xl max-w-xl w-full overflow-hidden border border-slate-200">

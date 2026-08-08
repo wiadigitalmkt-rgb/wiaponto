@@ -76,6 +76,7 @@ const AuthenticatedApp = () => {
         <Route path="/admin/ponto" element={<PontoEletronico />} />
         <Route path="/admin/colaboradores" element={<Employees />} />
         <Route path="/admin/empresa" element={<CompanySettings />} />
+        <Route path="/admin/usuario" element={<Usuario />} />
 
       </Route>
 

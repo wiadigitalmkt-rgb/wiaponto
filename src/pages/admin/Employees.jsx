@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Navbar from '@/components/Navbar';
 import { 
   Search, 
@@ -18,6 +18,26 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 
+// Dados Padrão Iniciais
+const initialDefaultUsers = [
+  {
+    id: 1,
+    initials: 'JD',
+    name: 'Joquebede de Oliveira',
+    cargo: 'Atendente',
+    departamento: '-',
+    tipoAcesso: 'Colaborador',
+  },
+  {
+    id: 2,
+    initials: 'WD',
+    name: 'WIA DIGITAL',
+    cargo: '(Preencher)',
+    departamento: '-',
+    tipoAcesso: 'Dono da Conta',
+  },
+];
+
 export default function Employees() {
   // Controle de Tela: 'list' (Tabela de Usuários) | 'create' (Formulário de Cadastro)
   const [currentView, setCurrentView] = useState('list');
@@ -31,25 +51,24 @@ export default function Employees() {
   const [showAccessModal, setShowAccessModal] = useState(false);
   const [isOptionalExpanded, setIsOptionalExpanded] = useState(true);
 
-  // Lista de Usuários Inicial
-  const [usersData, setUsersData] = useState([
-    {
-      id: 1,
-      initials: 'JD',
-      name: 'Joquebede de Oliveira',
-      cargo: 'Atendente',
-      departamento: '-',
-      tipoAcesso: 'Colaborador',
-    },
-    {
-      id: 2,
-      initials: 'WD',
-      name: 'WIA DIGITAL',
-      cargo: '(Preencher)',
-      departamento: '-',
-      tipoAcesso: 'Dono da Conta',
-    },
-  ]);
+  // Carrega os dados do localStorage ao iniciar a aplicação
+  const [usersData, setUsersData] = useState(() => {
+    try {
+      const savedUsers = localStorage.getItem('wiaponto_users');
+      return savedUsers ? JSON.parse(savedUsers) : initialDefaultUsers;
+    } catch (e) {
+      return initialDefaultUsers;
+    }
+  });
+
+  // Salva no LocalStorage sempre que a lista de usuários for alterada
+  useEffect(() => {
+    try {
+      localStorage.setItem('wiaponto_users', JSON.stringify(usersData));
+    } catch (e) {
+      console.error('Erro ao salvar no localStorage', e);
+    }
+  }, [usersData]);
 
   // Form State para Novo Colaborador
   const [formData, setFormData] = useState({
@@ -95,7 +114,7 @@ export default function Employees() {
       tipoAcesso: formData.tipoAcesso || 'Colaborador',
     };
 
-    // Adiciona o novo usuário na lista
+    // Adiciona o novo usuário na lista (atualiza o localStorage via useEffect)
     setUsersData([newUser, ...usersData]);
 
     // Reseta o Formulário e Modais
@@ -274,7 +293,7 @@ export default function Employees() {
                 Painel
               </a> 
               <ChevronRight className="w-3 h-3 inline mx-1 text-slate-400" />
-              <button onClick={() => setCurrentView('list')} className="hover:text-[#00897b] hover:underline transition-colors font-medium">
+              <button onClick={() => setCurrentView('list')} className="hover:text-[#00897b] hover:underline transition-colors font-medium cursor-pointer">
                 Usuários
               </button>
               <ChevronRight className="w-3 h-3 inline mx-1 text-slate-400" />
@@ -515,12 +534,14 @@ export default function Employees() {
             {/* Rodapé Modal */}
             <div className="p-4 border-t border-slate-100 flex justify-end space-x-2 bg-slate-50/50">
               <button
+                type="button"
                 onClick={() => setShowAccessModal(false)}
                 className="border border-red-500 text-red-500 hover:bg-red-50 font-medium px-4 py-1.5 rounded text-xs transition-colors cursor-pointer"
               >
                 Cancelar
               </button>
               <button
+                type="button"
                 onClick={handleConfirmCreate}
                 className="bg-[#00897b] hover:bg-[#00796b] text-white font-medium px-5 py-1.5 rounded text-xs transition-colors cursor-pointer shadow-sm"
               >

@@ -12,7 +12,8 @@ import {
   Monitor,
   CheckCircle2,
   X,
-  History
+  History,
+  Search
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -100,8 +101,19 @@ export default function AdminPonto() {
   const [activeTab, setActiveTab] = useState('pontos'); // 'pontos' | 'resumo'
   const [selectedMonth, setSelectedMonth] = useState('Agosto/2026');
   
-  // CORREÇÃO 2: Nome completo do usuário para exibição completa
-  const [selectedUser, setSelectedUser] = useState('Joquebede de Oliveira Souza');
+  // CORREÇÃO: Usuário selecionado e busca de usuário
+  const [selectedUser, setSelectedUser] = useState('Joquebede de Oliveira');
+  const [userSearchTerm, setUserSearchTerm] = useState('');
+
+  // Lista de usuários para o dropdown com busca flutuante
+  const userList = [
+    'Joquebede de Oliveira',
+    'WIA DIGITAL'
+  ];
+
+  const filteredUsers = userList.filter(u => 
+    u.toLowerCase().includes(userSearchTerm.toLowerCase())
+  );
   
   const [expandedRow, setExpandedRow] = useState(null);
   const [toastMessage, setToastMessage] = useState(null);
@@ -216,12 +228,65 @@ export default function AdminPonto() {
     window.print();
   };
 
+  // Componente Reutilizável do Seletor Flutuante de Usuário (Estilo Coalize)
+  const UserDropdownSelector = () => (
+    <div className="flex items-center space-x-2">
+      <span className="text-xs font-semibold text-slate-600">Usuário</span>
+      <DropdownMenu modal={false}>
+        <DropdownMenuTrigger className="flex items-center justify-between border border-slate-300 rounded px-3 py-1 bg-white text-xs text-slate-700 min-w-[170px] focus:outline-none shadow-xs hover:border-slate-400">
+          <span className="truncate pr-2">{selectedUser}...</span>
+          <ChevronDown className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="start" className="w-56 p-1.5 bg-white rounded-md shadow-xl border border-slate-200 z-50">
+          {/* Campo de Busca */}
+          <div className="relative mb-1">
+            <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
+            <input 
+              type="text"
+              placeholder="Buscar usuário..."
+              value={userSearchTerm}
+              onChange={(e) => setUserSearchTerm(e.target.value)}
+              className="w-full pl-8 pr-2 py-1 text-xs border border-slate-200 rounded text-slate-700 focus:outline-none focus:border-teal-600"
+              onClick={(e) => e.stopPropagation()}
+            />
+          </div>
+
+          {/* Lista de Usuários */}
+          <div className="max-h-48 overflow-y-auto space-y-0.5">
+            {filteredUsers.length > 0 ? (
+              filteredUsers.map((user) => (
+                <DropdownMenuItem 
+                  key={user}
+                  onClick={() => {
+                    setSelectedUser(user);
+                    setUserSearchTerm('');
+                  }}
+                  className={`cursor-pointer text-xs px-2.5 py-2 rounded transition-colors ${
+                    selectedUser === user 
+                      ? 'bg-[#00897b] text-white font-medium hover:bg-[#00796b]' 
+                      : 'text-slate-700 hover:bg-slate-100'
+                  }`}
+                >
+                  {user}
+                </DropdownMenuItem>
+              ))
+            ) : (
+              <div className="px-2 py-3 text-xs text-center text-slate-400">
+                Nenhum usuário encontrado
+              </div>
+            )}
+          </div>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </div>
+  );
+
   return (
     <div className="min-h-screen bg-[#edf2f7] flex flex-col font-sans text-slate-700 relative">
       <Navbar selectedCompany="Sua Empresa" />
 
       <div className="flex flex-1">
-        {/* CORREÇÃO 1: Sidebar auto-ajustável para não cortar textos em telas normais */}
+        {/* Sidebar */}
         <aside className="w-64 min-w-[240px] max-w-[280px] p-5 flex flex-col space-y-6 bg-transparent shrink-0">
           <div>
             <h1 className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-4">
@@ -233,7 +298,6 @@ export default function AdminPonto() {
                 <div className="w-7 h-7 rounded-full bg-slate-200/80 flex items-center justify-center text-xs font-bold text-slate-700 shrink-0">
                   JD
                 </div>
-                {/* Texto completo com corte apenas quando extremamente reduzido */}
                 <span className="text-sm font-medium max-md:truncate">Joquebede</span>
               </div>
               <ExternalLink className="w-3.5 h-3.5 text-slate-400 shrink-0 ml-1" />
@@ -261,7 +325,6 @@ export default function AdminPonto() {
                 }`}
               >
                 <FileText className="w-4 h-4 shrink-0" />
-                {/* CORREÇÃO 1: Exibe o nome completo "Resumo das horas" */}
                 <span className="whitespace-nowrap max-md:truncate">Resumo das horas</span>
               </button>
             </nav>
@@ -308,17 +371,8 @@ export default function AdminPonto() {
                     </select>
                   </div>
 
-                  {/* CORREÇÃO 2: Select expandido para exibir nome completo */}
-                  <div className="flex items-center space-x-2">
-                    <span>Usuário</span>
-                    <select 
-                      value={selectedUser}
-                      onChange={(e) => setSelectedUser(e.target.value)}
-                      className="border border-slate-300 rounded px-3 py-1 bg-white text-xs font-normal focus:outline-none max-w-[260px] md:max-w-none"
-                    >
-                      <option value="Joquebede de Oliveira Souza">Joquebede de Oliveira Souza</option>
-                    </select>
-                  </div>
+                  {/* Seletor de Usuário Flutuante com Busca */}
+                  <UserDropdownSelector />
                 </div>
 
                 <button 
@@ -540,17 +594,8 @@ export default function AdminPonto() {
                     </select>
                   </div>
 
-                  {/* CORREÇÃO 2: Nome completo no resumo também */}
-                  <div className="flex items-center space-x-2">
-                    <span>Usuário</span>
-                    <select 
-                      value={selectedUser}
-                      onChange={(e) => setSelectedUser(e.target.value)}
-                      className="border border-slate-300 rounded px-2 py-1 bg-white text-xs font-normal focus:outline-none max-w-[260px] md:max-w-none"
-                    >
-                      <option value="Joquebede de Oliveira Souza">Joquebede de Oliveira Souza</option>
-                    </select>
-                  </div>
+                  {/* Seletor de Usuário Flutuante com Busca também no Resumo */}
+                  <UserDropdownSelector />
                 </div>
 
                 <button 

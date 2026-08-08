@@ -12,8 +12,7 @@ import {
   Monitor,
   CheckCircle2,
   X,
-  History,
-  Download
+  History
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -23,7 +22,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 
 // ============================================================================
-// FUNÇÕES UTILITÁRIAS DE CÁLCULO DE HORAS (EXATIDÃO MATEMÁTICA)
+// FUNÇÕES UTILITÁRIAS DE CÁLCULO DE HORAS
 // ============================================================================
 
 const timeToMinutes = (timeStr) => {
@@ -100,11 +99,11 @@ const processDayRecord = (record, targetDailyMinutes = 480) => {
 export default function AdminPonto() {
   const [activeTab, setActiveTab] = useState('pontos'); // 'pontos' | 'resumo'
   const [selectedMonth, setSelectedMonth] = useState('Agosto/2026');
-  const [selectedUser, setSelectedUser] = useState('Joquebede de...');
   
-  // CORREÇÃO 1: Inicia com null para que todas as abas iniciem FECHADAS
+  // CORREÇÃO 2: Nome completo do usuário para exibição completa
+  const [selectedUser, setSelectedUser] = useState('Joquebede de Oliveira Souza');
+  
   const [expandedRow, setExpandedRow] = useState(null);
-
   const [toastMessage, setToastMessage] = useState(null);
   const [showHistoryModal, setShowHistoryModal] = useState(false);
   const [showJornadaModal, setShowJornadaModal] = useState(false);
@@ -222,21 +221,22 @@ export default function AdminPonto() {
       <Navbar selectedCompany="Sua Empresa" />
 
       <div className="flex flex-1">
-        {/* Sidebar Esquerda */}
-        <aside className="w-60 p-5 flex flex-col space-y-6 bg-transparent shrink-0">
+        {/* CORREÇÃO 1: Sidebar auto-ajustável para não cortar textos em telas normais */}
+        <aside className="w-64 min-w-[240px] max-w-[280px] p-5 flex flex-col space-y-6 bg-transparent shrink-0">
           <div>
             <h1 className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-4">
               PONTO ELETRÔNICO
             </h1>
             
             <div className="flex items-center justify-between p-2 rounded-lg hover:bg-slate-200/50 cursor-pointer text-slate-600 mb-4 transition-colors">
-              <div className="flex items-center space-x-2">
-                <div className="w-7 h-7 rounded-full bg-slate-200/80 flex items-center justify-center text-xs font-bold text-slate-700">
+              <div className="flex items-center space-x-2.5 min-w-0">
+                <div className="w-7 h-7 rounded-full bg-slate-200/80 flex items-center justify-center text-xs font-bold text-slate-700 shrink-0">
                   JD
                 </div>
-                <span className="text-sm font-medium">Joqu...</span>
+                {/* Texto completo com corte apenas quando extremamente reduzido */}
+                <span className="text-sm font-medium max-md:truncate">Joquebede</span>
               </div>
-              <ExternalLink className="w-3.5 h-3.5 text-slate-400" />
+              <ExternalLink className="w-3.5 h-3.5 text-slate-400 shrink-0 ml-1" />
             </div>
 
             <nav className="space-y-1">
@@ -248,8 +248,8 @@ export default function AdminPonto() {
                     : 'text-slate-500 hover:bg-slate-200/50'
                 }`}
               >
-                <Clock className="w-4 h-4" />
-                <span>Pontos registrados</span>
+                <Clock className="w-4 h-4 shrink-0" />
+                <span className="whitespace-nowrap max-md:truncate">Pontos registrados</span>
               </button>
               
               <button 
@@ -260,8 +260,9 @@ export default function AdminPonto() {
                     : 'text-slate-500 hover:bg-slate-200/50'
                 }`}
               >
-                <FileText className="w-4 h-4" />
-                <span>Resumo das...</span>
+                <FileText className="w-4 h-4 shrink-0" />
+                {/* CORREÇÃO 1: Exibe o nome completo "Resumo das horas" */}
+                <span className="whitespace-nowrap max-md:truncate">Resumo das horas</span>
               </button>
             </nav>
           </div>
@@ -307,14 +308,15 @@ export default function AdminPonto() {
                     </select>
                   </div>
 
+                  {/* CORREÇÃO 2: Select expandido para exibir nome completo */}
                   <div className="flex items-center space-x-2">
                     <span>Usuário</span>
                     <select 
                       value={selectedUser}
                       onChange={(e) => setSelectedUser(e.target.value)}
-                      className="border border-slate-300 rounded px-3 py-1 bg-white text-xs font-normal focus:outline-none"
+                      className="border border-slate-300 rounded px-3 py-1 bg-white text-xs font-normal focus:outline-none max-w-[260px] md:max-w-none"
                     >
-                      <option>Joquebede de...</option>
+                      <option value="Joquebede de Oliveira Souza">Joquebede de Oliveira Souza</option>
                     </select>
                   </div>
                 </div>
@@ -522,10 +524,9 @@ export default function AdminPonto() {
             </div>
           )}
 
-          {/* CORREÇÃO 2: RESUMO DAS HORAS COMPACTO E CLEAN ESTILO COALIZE (SEM SCROLL) */}
+          {/* RESUMO DAS HORAS */}
           {activeTab === 'resumo' && (
             <div className="bg-white rounded-lg shadow-sm border border-slate-200/80 p-5 space-y-3">
-              {/* Filtros + Botão Baixar PDF */}
               <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-200 pb-3">
                 <div className="flex items-center space-x-4 text-xs font-semibold text-slate-600">
                   <div className="flex items-center space-x-2">
@@ -539,14 +540,15 @@ export default function AdminPonto() {
                     </select>
                   </div>
 
+                  {/* CORREÇÃO 2: Nome completo no resumo também */}
                   <div className="flex items-center space-x-2">
                     <span>Usuário</span>
                     <select 
                       value={selectedUser}
                       onChange={(e) => setSelectedUser(e.target.value)}
-                      className="border border-slate-300 rounded px-2 py-1 bg-white text-xs font-normal focus:outline-none"
+                      className="border border-slate-300 rounded px-2 py-1 bg-white text-xs font-normal focus:outline-none max-w-[260px] md:max-w-none"
                     >
-                      <option>Joquebede de...</option>
+                      <option value="Joquebede de Oliveira Souza">Joquebede de Oliveira Souza</option>
                     </select>
                   </div>
                 </div>
@@ -602,7 +604,7 @@ export default function AdminPonto() {
                 {/* 3. HORA EXTRA (geral) */}
                 <div className="py-2 space-y-1">
                   <div className="grid grid-cols-12 items-center">
-                    <span className="col-span-3 text-slate-800 font-bold uppercase text-[11px]">3. HORA EXTRA (geral)</span>
+                    <span className="col-span-3 text-slate-800 font-bold uppercase text-[11px]">3. HORA EXTRA (GERAL)</span>
                     <span className="col-span-5 text-slate-600">Adicionada ao banco de horas</span>
                     <span className="col-span-4 text-right font-medium text-slate-700">00h 00min</span>
                   </div>
@@ -621,7 +623,7 @@ export default function AdminPonto() {
                 {/* 4. HORA EXTRA (a pagar) */}
                 <div className="py-2 space-y-1">
                   <div className="grid grid-cols-12 items-center">
-                    <span className="col-span-3 text-slate-800 font-bold uppercase text-[11px]">4. HORA EXTRA (a pagar)</span>
+                    <span className="col-span-3 text-slate-800 font-bold uppercase text-[11px]">4. HORA EXTRA (A PAGAR)</span>
                     <span className="col-span-5 text-slate-600">Dia útil (diurno)</span>
                     <span className="col-span-4 text-right font-medium text-slate-700">{minutesToFullDisplay(totalGeralExtraMinutos)}</span>
                   </div>

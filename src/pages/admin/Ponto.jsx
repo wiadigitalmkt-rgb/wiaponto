@@ -12,7 +12,8 @@ import {
   Monitor,
   CheckCircle2,
   X,
-  History
+  History,
+  Download
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -53,21 +54,34 @@ const minutesToDisplayHours = (mins) => {
   return `${h}h ${m}min`;
 };
 
+// Converte minutos para formato detalhado "XXh YYmin" (usado no resumo)
+const minutesToFullDisplay = (mins) => {
+  if (mins === null || isNaN(mins) || mins < 0) return '00h 00min';
+  const h = Math.floor(mins / 60);
+  const m = mins % 60;
+  return `${String(h).padStart(2, '0')}h ${String(m).padStart(2, '0')}min`;
+};
+
 // Recalcula dinamicamente os saldos, horas trabalhadas e horas extras de um dia
 const processDayRecord = (record, targetDailyMinutes = 480) => { // 8h = 480 minutos
   let totalDayMinutes = 0;
+  let nightMinutes = 0;
 
   const newBatidas = record.batidas.map((b) => {
     const mEnt = timeToMinutes(b.entrada);
     let mSai = timeToMinutes(b.saida);
 
     if (mEnt !== null && mSai !== null) {
-      // Trata virada de noite ou flag de extra noturno (adiciona 24h = 1440 min se saída for menor que entrada)
       if (mSai < mEnt || b.isNight) {
         mSai += 1440;
       }
       const diff = Math.max(0, mSai - mEnt);
       totalDayMinutes += diff;
+
+      if (b.isNight) {
+        nightMinutes += diff;
+      }
+
       return { ...b, saldo: minutesToHHMM(diff) };
     }
     return { ...b, saldo: '-' };
@@ -83,11 +97,13 @@ const processDayRecord = (record, targetDailyMinutes = 480) => { // 8h = 480 min
     trabalhado: trabalhadoStr,
     horaExtra: horaExtraStr,
     totalDayMinutes,
-    extraMinutes
+    extraMinutes,
+    nightMinutes
   };
 };
 
 export default function AdminPonto() {
+  const [activeTab, setActiveTab] = useState('pontos'); // 'pontos' | 'resumo'
   const [selectedMonth, setSelectedMonth] = useState('Agosto/2026');
   const [selectedUser, setSelectedUser] = useState('Joquebede de...');
   const [expandedRow, setExpandedRow] = useState(1);
@@ -204,9 +220,16 @@ export default function AdminPonto() {
     showToast('Ponto atualizado com sucesso!');
   };
 
-  // Soma dos totais gerais do mês (Rodapé)
+  // Soma dos totais gerais do mês (Para Rodapé e para Tela de Resumo)
   const totalGeralTrabalhadoMinutos = registros.reduce((acc, curr) => acc + (curr.totalDayMinutes || 0), 0);
   const totalGeralExtraMinutos = registros.reduce((acc, curr) => acc + (curr.extraMinutes || 0), 0);
+  const totalGeralNoturnoMinutos = registros.reduce((acc, curr) => acc + (curr.nightMinutes || 0), 0);
+  const totalGeralDiurnoMinutos = Math.max(0, totalGeralTrabalhadoMinutos - totalGeralNoturnoMinutos - totalGeralExtraMinutos);
+
+  // Ação de download PDF
+  const handleDownloadPDF = () => {
+    window.print();
+  };
 
   return (
     <div className="min-h-screen bg-[#edf2f7] flex flex-col font-sans text-slate-700 relative">
@@ -231,14 +254,28 @@ export default function AdminPonto() {
             </div>
 
             <nav className="space-y-1">
-              <button className="w-full flex items-center space-x-3 px-3 py-2 rounded-md text-sm font-medium bg-emerald-50/80 text-emerald-700 border-l-4 border-emerald-500 shadow-sm">
+              <button 
+                onClick={() => setActiveTab('pontos')}
+                className={`w-full flex items-center space-x-3 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                  activeTab === 'pontos'
+                    ? 'bg-emerald-50/80 text-emerald-700 border-l-4 border-emerald-500 shadow-sm'
+                    : 'text-slate-500 hover:bg-slate-200/50'
+                }`}
+              >
                 <Clock className="w-4 h-4" />
                 <span>Pontos registrados</span>
               </button>
               
-              <button className="w-full flex items-center space-x-3 px-3 py-2 rounded-md text-sm font-medium text-slate-500 hover:bg-slate-200/50 transition-colors">
+              <button 
+                onClick={() => setActiveTab('resumo')}
+                className={`w-full flex items-center space-x-3 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                  activeTab === 'resumo'
+                    ? 'bg-emerald-50/80 text-emerald-700 border-l-4 border-emerald-500 shadow-sm'
+                    : 'text-slate-500 hover:bg-slate-200/50'
+                }`}
+              >
                 <FileText className="w-4 h-4" />
-                <span>Resumo de...</span>
+                <span>Resumo das...</span>
               </button>
             </nav>
           </div>
@@ -249,7 +286,10 @@ export default function AdminPonto() {
           {/* Breadcrumb e Filtro Topo */}
           <div className="flex justify-between items-center mb-4 text-xs text-slate-500">
             <div>
-              <span>Painel</span> <ChevronRight className="w-3 h-3 inline mx-1" /> <span className="text-emerald-600 font-medium">Pontos registrados</span>
+              <span>Painel</span> <ChevronRight className="w-3 h-3 inline mx-1" />{' '}
+              <span className="text-emerald-600 font-medium">
+                {activeTab === 'pontos' ? 'Pontos registrados' : 'Resumo das horas'}
+              </span>
             </div>
             
             <div className="flex items-center space-x-2">
@@ -260,248 +300,384 @@ export default function AdminPonto() {
             </div>
           </div>
 
-          {/* Card Principal */}
-          <div className="bg-white rounded-lg shadow-sm border border-slate-200/80">
-            {/* Header de Filtros Internos */}
-            <div className="p-4 border-b border-slate-100 flex flex-wrap items-center justify-between gap-4">
-              <div className="flex items-center space-x-4 text-xs font-semibold text-slate-600">
-                <div className="flex items-center space-x-2">
-                  <span>Mês</span>
-                  <select 
-                    value={selectedMonth}
-                    onChange={(e) => setSelectedMonth(e.target.value)}
-                    className="border border-slate-300 rounded px-3 py-1.5 bg-white text-xs font-normal focus:outline-none"
-                  >
-                    <option>Agosto/2026</option>
-                  </select>
+          {/* CONTEÚDO DA ABA: PONTOS REGISTRADOS */}
+          {activeTab === 'pontos' && (
+            <div className="bg-white rounded-lg shadow-sm border border-slate-200/80">
+              {/* Header de Filtros Internos */}
+              <div className="p-4 border-b border-slate-200 flex flex-wrap items-center justify-between gap-4">
+                <div className="flex items-center space-x-4 text-xs font-semibold text-slate-600">
+                  <div className="flex items-center space-x-2">
+                    <span>Mês</span>
+                    <select 
+                      value={selectedMonth}
+                      onChange={(e) => setSelectedMonth(e.target.value)}
+                      className="border border-slate-300 rounded px-3 py-1.5 bg-white text-xs font-normal focus:outline-none"
+                    >
+                      <option>Agosto/2026</option>
+                    </select>
+                  </div>
+
+                  <div className="flex items-center space-x-2">
+                    <span>Usuário</span>
+                    <select 
+                      value={selectedUser}
+                      onChange={(e) => setSelectedUser(e.target.value)}
+                      className="border border-slate-300 rounded px-3 py-1.5 bg-white text-xs font-normal focus:outline-none"
+                    >
+                      <option>Joquebede de...</option>
+                    </select>
+                  </div>
                 </div>
 
-                <div className="flex items-center space-x-2">
-                  <span>Usuário</span>
-                  <select 
-                    value={selectedUser}
-                    onChange={(e) => setSelectedUser(e.target.value)}
-                    className="border border-slate-300 rounded px-3 py-1.5 bg-white text-xs font-normal focus:outline-none"
-                  >
-                    <option>Joquebede de...</option>
-                  </select>
-                </div>
+                {/* Botão de Ver jornada atual */}
+                <button 
+                  onClick={() => setShowJornadaModal(true)}
+                  className="flex items-center text-xs text-emerald-600 font-medium hover:underline cursor-pointer"
+                >
+                  Ver jornada atual <Calendar className="w-3.5 h-3.5 ml-1" />
+                </button>
               </div>
 
-              {/* Botão de Ver jornada atual */}
-              <button 
-                onClick={() => setShowJornadaModal(true)}
-                className="flex items-center text-xs text-emerald-600 font-medium hover:underline cursor-pointer"
-              >
-                Ver jornada atual <Calendar className="w-3.5 h-3.5 ml-1" />
-              </button>
-            </div>
+              {/* Cabeçalho da Tabela */}
+              <div className="grid grid-cols-12 px-6 py-3 bg-slate-50/50 text-slate-500 font-bold text-[11px] uppercase tracking-wider border-b border-slate-200">
+                <div className="col-span-8"></div>
+                <div className="col-span-2 text-right">HORA EXTRA</div>
+                <div className="col-span-2 text-right">TRABALHADO</div>
+              </div>
 
-            {/* Cabeçalho da Tabela */}
-            <div className="grid grid-cols-12 px-6 py-3 bg-slate-50/50 text-slate-500 font-bold text-[11px] uppercase tracking-wider border-b border-slate-100">
-              <div className="col-span-8"></div>
-              <div className="col-span-2 text-right">HORA EXTRA</div>
-              <div className="col-span-2 text-right">TRABALHADO</div>
-            </div>
-
-            {/* Linhas da Tabela */}
-            <div className="divide-y divide-slate-100">
-              {registros.map((item) => {
-                const isExpanded = expandedRow === item.id;
-                return (
-                  <div key={item.id} className="transition-colors">
-                    {/* Linha Resumida */}
-                    <div 
-                      onClick={() => toggleRow(item.id)}
-                      className="grid grid-cols-12 px-6 py-4 items-center text-sm hover:bg-slate-50 cursor-pointer"
-                    >
-                      <div className="col-span-8 flex items-center space-x-3">
-                        {isExpanded ? (
-                          <ChevronDown className="w-4 h-4 text-slate-500" />
-                        ) : (
-                          <ChevronRight className="w-4 h-4 text-slate-400" />
-                        )}
-                        <span className="font-medium text-slate-700">{item.data}</span>
+              {/* Linhas da Tabela com Bordas Mais Aparentes */}
+              <div className="divide-y divide-slate-200">
+                {registros.map((item) => {
+                  const isExpanded = expandedRow === item.id;
+                  return (
+                    <div key={item.id} className="transition-colors border-b border-slate-200">
+                      {/* Linha Resumida */}
+                      <div 
+                        onClick={() => toggleRow(item.id)}
+                        className="grid grid-cols-12 px-6 py-4 items-center text-sm hover:bg-slate-50 cursor-pointer"
+                      >
+                        <div className="col-span-8 flex items-center space-x-3">
+                          {isExpanded ? (
+                            <ChevronDown className="w-4 h-4 text-slate-500" />
+                          ) : (
+                            <ChevronRight className="w-4 h-4 text-slate-400" />
+                          )}
+                          <span className="font-medium text-slate-700">{item.data}</span>
+                        </div>
+                        <div className="col-span-2 text-right font-medium text-slate-600">{item.horaExtra}</div>
+                        <div className="col-span-2 text-right font-semibold text-slate-800">{item.trabalhado}</div>
                       </div>
-                      <div className="col-span-2 text-right font-medium text-slate-600">{item.horaExtra}</div>
-                      <div className="col-span-2 text-right font-semibold text-slate-800">{item.trabalhado}</div>
-                    </div>
 
-                    {/* Conteúdo Expandido */}
-                    {isExpanded && (
-                      <div className="px-8 py-4 bg-slate-50/40 border-t border-b border-slate-100 text-xs">
-                        {/* Ações superiores */}
-                        <div className="flex items-center justify-between mb-4">
-                          <DropdownMenu>
-                            <DropdownMenuTrigger className="flex items-center space-x-1 border border-slate-300 bg-white px-3 py-1.5 rounded-md font-medium text-slate-700 hover:bg-slate-50 focus:outline-none">
-                              <span>Adicionar</span>
-                              <ChevronDown className="w-3.5 h-3.5" />
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="start" className="bg-white">
-                              <DropdownMenuItem className="cursor-pointer">Adicionar ponto</DropdownMenuItem>
-                              <DropdownMenuItem className="cursor-pointer">Falta justificada</DropdownMenuItem>
-                              <DropdownMenuItem className="cursor-pointer">Trocar jornada</DropdownMenuItem>
-                              <DropdownMenuItem className="cursor-pointer">Anotação</DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
+                      {/* Conteúdo Expandido */}
+                      {isExpanded && (
+                        <div className="px-8 py-4 bg-slate-50/40 border-t border-b border-slate-200 text-xs">
+                          {/* Ações superiores */}
+                          <div className="flex items-center justify-between mb-4">
+                            <DropdownMenu>
+                              <DropdownMenuTrigger className="flex items-center space-x-1 border border-slate-300 bg-white px-3 py-1.5 rounded-md font-medium text-slate-700 hover:bg-slate-50 focus:outline-none">
+                                <span>Adicionar</span>
+                                <ChevronDown className="w-3.5 h-3.5" />
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="start" className="bg-white">
+                                <DropdownMenuItem className="cursor-pointer">Adicionar ponto</DropdownMenuItem>
+                                <DropdownMenuItem className="cursor-pointer">Falta justificada</DropdownMenuItem>
+                                <DropdownMenuItem className="cursor-pointer">Trocar jornada</DropdownMenuItem>
+                                <DropdownMenuItem className="cursor-pointer">Anotação</DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
 
-                          {/* Botão Ver histórico */}
-                          <button 
-                            onClick={() => setShowHistoryModal(true)}
-                            className="flex items-center space-x-1 text-emerald-600 hover:text-emerald-700 font-medium cursor-pointer"
-                          >
-                            <History className="w-3.5 h-3.5" />
-                            <span>Ver histórico</span>
-                          </button>
-                        </div>
+                            {/* Botão Ver histórico */}
+                            <button 
+                              onClick={() => setShowHistoryModal(true)}
+                              className="flex items-center space-x-1 text-emerald-600 hover:text-emerald-700 font-medium cursor-pointer"
+                            >
+                              <History className="w-3.5 h-3.5" />
+                              <span>Ver histórico</span>
+                            </button>
+                          </div>
 
-                        {/* Cabeçalho da sub-tabela */}
-                        <div className="grid grid-cols-12 text-slate-500 font-bold uppercase text-[10px] mb-2 px-2">
-                          <div className="col-span-6"></div>
-                          <div className="col-span-2 text-center">ENTRADA</div>
-                          <div className="col-span-2 text-center">SAÍDA</div>
-                          <div className="col-span-2 text-center">SALDO</div>
-                        </div>
+                          {/* Cabeçalho da sub-tabela */}
+                          <div className="grid grid-cols-12 text-slate-500 font-bold uppercase text-[10px] mb-2 px-2">
+                            <div className="col-span-6"></div>
+                            <div className="col-span-2 text-center">ENTRADA</div>
+                            <div className="col-span-2 text-center">SAÍDA</div>
+                            <div className="col-span-2 text-center">SALDO</div>
+                          </div>
 
-                        {/* Lista de Batimentos */}
-                        <div className="space-y-2">
-                          {item.batidas.map((b, idx) => {
-                            const isEditing = editingRowKey === `${item.id}-${idx}`;
+                          {/* Lista de Batimentos */}
+                          <div className="space-y-2">
+                            {item.batidas.map((b, idx) => {
+                              const isEditing = editingRowKey === `${item.id}-${idx}`;
 
-                            if (isEditing) {
-                              // Painel de Edição com Extra Noturno (Lua)
-                              return (
-                                <div key={idx} className="flex items-center justify-between bg-white border border-slate-200 rounded-md p-2 shadow-sm gap-2">
-                                  <button 
-                                    onClick={() => setEditingRowKey(null)}
-                                    className="text-red-500 font-semibold hover:underline text-xs px-2"
-                                  >
-                                    Desfazer
-                                  </button>
+                              if (isEditing) {
+                                return (
+                                  <div key={idx} className="flex items-center justify-between bg-white border border-slate-200 rounded-md p-2 shadow-sm gap-2">
+                                    <button 
+                                      onClick={() => setEditingRowKey(null)}
+                                      className="text-red-500 font-semibold hover:underline text-xs px-2"
+                                    >
+                                      Desfazer
+                                    </button>
 
-                                  <div className="flex items-center space-x-2">
-                                    <label className="flex items-center space-x-1 cursor-pointer bg-slate-50 p-1.5 rounded border border-slate-200" title="Ponto da madrugada do dia seguinte">
+                                    <div className="flex items-center space-x-2">
+                                      <label className="flex items-center space-x-1 cursor-pointer bg-slate-50 p-1.5 rounded border border-slate-200" title="Ponto da madrugada do dia seguinte">
+                                        <input 
+                                          type="checkbox"
+                                          checked={editFormData.isNight}
+                                          onChange={(e) => setEditFormData({ ...editFormData, isNight: e.target.checked })}
+                                          className="rounded border-slate-300 text-emerald-600 focus:ring-0"
+                                        />
+                                        <Moon className="w-3.5 h-3.5 text-slate-600" />
+                                      </label>
+
                                       <input 
-                                        type="checkbox"
-                                        checked={editFormData.isNight}
-                                        onChange={(e) => setEditFormData({ ...editFormData, isNight: e.target.checked })}
-                                        className="rounded border-slate-300 text-emerald-600 focus:ring-0"
+                                        type="text"
+                                        placeholder="Max 15 caractere"
+                                        value={editFormData.obs}
+                                        onChange={(e) => setEditFormData({ ...editFormData, obs: e.target.value })}
+                                        className="border border-slate-300 rounded px-2 py-1 text-xs w-32 focus:outline-none focus:border-emerald-500"
                                       />
-                                      <Moon className="w-3.5 h-3.5 text-slate-600" />
-                                    </label>
+                                    </div>
 
-                                    <input 
-                                      type="text"
-                                      placeholder="Max 15 caractere"
-                                      value={editFormData.obs}
-                                      onChange={(e) => setEditFormData({ ...editFormData, obs: e.target.value })}
-                                      className="border border-slate-300 rounded px-2 py-1 text-xs w-32 focus:outline-none focus:border-emerald-500"
-                                    />
+                                    <div className="flex items-center space-x-2">
+                                      <div className="relative flex items-center">
+                                        <input 
+                                          type="text"
+                                          value={editFormData.entrada}
+                                          onChange={(e) => setEditFormData({ ...editFormData, entrada: e.target.value })}
+                                          className="border border-slate-300 rounded px-2 py-1 text-xs w-16 text-center font-mono focus:outline-none"
+                                        />
+                                        {editFormData.entrada && (
+                                          <X 
+                                            onClick={() => setEditFormData({ ...editFormData, entrada: '' })}
+                                            className="w-3 h-3 text-red-400 absolute right-1 cursor-pointer" 
+                                          />
+                                        )}
+                                      </div>
+
+                                      <div className="relative flex items-center">
+                                        <input 
+                                          type="text"
+                                          value={editFormData.saida}
+                                          onChange={(e) => setEditFormData({ ...editFormData, saida: e.target.value })}
+                                          className="border border-slate-300 rounded px-2 py-1 text-xs w-16 text-center font-mono focus:outline-none"
+                                        />
+                                        {editFormData.saida && (
+                                          <X 
+                                            onClick={() => setEditFormData({ ...editFormData, saida: '' })}
+                                            className="w-3 h-3 text-red-400 absolute right-1 cursor-pointer" 
+                                          />
+                                        )}
+                                      </div>
+
+                                      <span className="text-slate-400 text-xs px-2">-</span>
+
+                                      <button 
+                                        onClick={() => handleSaveEdit(item.id, idx)}
+                                        className="bg-emerald-600 text-white font-medium px-4 py-1 rounded text-xs hover:bg-emerald-700 transition-colors"
+                                      >
+                                        Salvar
+                                      </button>
+                                    </div>
+                                  </div>
+                                );
+                              }
+
+                              return (
+                                <div key={idx} className="group grid grid-cols-12 items-center bg-white border border-slate-200/80 rounded-md py-2 px-3 shadow-sm hover:border-slate-300 transition-all">
+                                  <div className="col-span-6 flex items-center">
+                                    <button 
+                                      onClick={() => handleRemoveBatida(item.id, idx)}
+                                      className="opacity-0 group-hover:opacity-100 bg-red-500 hover:bg-red-600 text-white font-semibold px-3 py-1 rounded text-xs transition-opacity shadow-sm"
+                                    >
+                                      Remover
+                                    </button>
                                   </div>
 
-                                  <div className="flex items-center space-x-2">
-                                    <div className="relative flex items-center">
-                                      <input 
-                                        type="text"
-                                        value={editFormData.entrada}
-                                        onChange={(e) => setEditFormData({ ...editFormData, entrada: e.target.value })}
-                                        className="border border-slate-300 rounded px-2 py-1 text-xs w-16 text-center font-mono focus:outline-none"
-                                      />
-                                      {editFormData.entrada && (
-                                        <X 
-                                          onClick={() => setEditFormData({ ...editFormData, entrada: '' })}
-                                          className="w-3 h-3 text-red-400 absolute right-1 cursor-pointer" 
-                                        />
-                                      )}
-                                    </div>
+                                  <div className="col-span-2 flex items-center justify-center space-x-1 text-slate-700 font-mono">
+                                    <span>{b.entrada}</span>
+                                    {b.entrada !== '-' && <Monitor className="w-3.5 h-3.5 text-slate-400" />}
+                                  </div>
 
-                                    <div className="relative flex items-center">
-                                      <input 
-                                        type="text"
-                                        value={editFormData.saida}
-                                        onChange={(e) => setEditFormData({ ...editFormData, saida: e.target.value })}
-                                        className="border border-slate-300 rounded px-2 py-1 text-xs w-16 text-center font-mono focus:outline-none"
-                                      />
-                                      {editFormData.saida && (
-                                        <X 
-                                          onClick={() => setEditFormData({ ...editFormData, saida: '' })}
-                                          className="w-3 h-3 text-red-400 absolute right-1 cursor-pointer" 
-                                        />
-                                      )}
-                                    </div>
+                                  <div className="col-span-2 flex items-center justify-center space-x-1 text-slate-700 font-mono">
+                                    <span>{b.saida}</span>
+                                    {b.saida !== '-' && <Monitor className="w-3.5 h-3.5 text-slate-400" />}
+                                  </div>
 
-                                    <span className="text-slate-400 text-xs px-2">-</span>
-
+                                  <div className="col-span-2 flex items-center justify-between pl-4">
+                                    <span className="font-mono text-slate-600">{b.saldo}</span>
                                     <button 
-                                      onClick={() => handleSaveEdit(item.id, idx)}
-                                      className="bg-emerald-600 text-white font-medium px-4 py-1 rounded text-xs hover:bg-emerald-700 transition-colors"
+                                      onClick={() => handleStartEdit(item.id, idx, b)}
+                                      className="text-emerald-600 hover:underline text-xs font-medium"
                                     >
-                                      Salvar
+                                      Editar
                                     </button>
                                   </div>
                                 </div>
                               );
-                            }
+                            })}
+                          </div>
 
-                            // Exibição normal com Hover Remover
-                            return (
-                              <div key={idx} className="group grid grid-cols-12 items-center bg-white border border-slate-200/80 rounded-md py-2 px-3 shadow-sm hover:border-slate-300 transition-all">
-                                <div className="col-span-6 flex items-center">
-                                  <button 
-                                    onClick={() => handleRemoveBatida(item.id, idx)}
-                                    className="opacity-0 group-hover:opacity-100 bg-red-500 hover:bg-red-600 text-white font-semibold px-3 py-1 rounded text-xs transition-opacity shadow-sm"
-                                  >
-                                    Remover
-                                  </button>
-                                </div>
-
-                                <div className="col-span-2 flex items-center justify-center space-x-1 text-slate-700 font-mono">
-                                  <span>{b.entrada}</span>
-                                  {b.entrada !== '-' && <Monitor className="w-3.5 h-3.5 text-slate-400" />}
-                                </div>
-
-                                <div className="col-span-2 flex items-center justify-center space-x-1 text-slate-700 font-mono">
-                                  <span>{b.saida}</span>
-                                  {b.saida !== '-' && <Monitor className="w-3.5 h-3.5 text-slate-400" />}
-                                </div>
-
-                                <div className="col-span-2 flex items-center justify-between pl-4">
-                                  <span className="font-mono text-slate-600">{b.saldo}</span>
-                                  <button 
-                                    onClick={() => handleStartEdit(item.id, idx, b)}
-                                    className="text-emerald-600 hover:underline text-xs font-medium"
-                                  >
-                                    Editar
-                                  </button>
-                                </div>
-                              </div>
-                            );
-                          })}
+                          {/* Rodapé do dia */}
+                          <div className="flex justify-end space-x-6 items-center mt-4 pt-3 border-t border-slate-200 text-slate-600 font-medium text-xs">
+                            <span>Horas extras: <strong>{item.horaExtra}</strong></span>
+                            <span>Trabalhado: <strong>{item.trabalhado}</strong></span>
+                          </div>
                         </div>
+                      )}
+                    </div>
+                  );
+                })}
 
-                        {/* Rodapé do dia (calculado automaticamente) */}
-                        <div className="flex justify-end space-x-6 items-center mt-4 pt-3 border-t border-slate-200/60 text-slate-600 font-medium text-xs">
-                          <span>Horas extras: <strong>{item.horaExtra}</strong></span>
-                          <span>Trabalhado: <strong>{item.trabalhado}</strong></span>
-                        </div>
-                      </div>
-                    )}
+                {/* Linha de Totais Gerais */}
+                <div className="grid grid-cols-12 px-6 py-4 items-center text-sm font-bold bg-slate-50/30">
+                  <div className="col-span-8"></div>
+                  <div className="col-span-2 text-right text-slate-800">
+                    {minutesToDisplayHours(totalGeralExtraMinutos)}
                   </div>
-                );
-              })}
-
-              {/* Linha de Totais Gerais (Soma Automática de todos os dias) */}
-              <div className="grid grid-cols-12 px-6 py-4 items-center text-sm font-bold bg-slate-50/30">
-                <div className="col-span-8"></div>
-                <div className="col-span-2 text-right text-slate-800">
-                  {minutesToDisplayHours(totalGeralExtraMinutos)}
-                </div>
-                <div className="col-span-2 text-right text-slate-800">
-                  {minutesToDisplayHours(totalGeralTrabalhadoMinutos)}
+                  <div className="col-span-2 text-right text-slate-800">
+                    {minutesToDisplayHours(totalGeralTrabalhadoMinutos)}
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
+          )}
+
+          {/* CONTEÚDO DA ABA: RESUMO DAS HORAS */}
+          {activeTab === 'resumo' && (
+            <div className="bg-white rounded-lg shadow-sm border border-slate-200/80 p-6 space-y-6">
+              {/* Header de Filtros Internos + Botão Baixar PDF */}
+              <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-200 pb-6">
+                <div className="flex items-center space-x-4 text-xs font-semibold text-slate-600">
+                  <div className="flex items-center space-x-2">
+                    <span>Mês</span>
+                    <select 
+                      value={selectedMonth}
+                      onChange={(e) => setSelectedMonth(e.target.value)}
+                      className="border border-slate-300 rounded px-3 py-1.5 bg-white text-xs font-normal focus:outline-none"
+                    >
+                      <option>Agosto/2026</option>
+                    </select>
+                  </div>
+
+                  <div className="flex items-center space-x-2">
+                    <span>Usuário</span>
+                    <select 
+                      value={selectedUser}
+                      onChange={(e) => setSelectedUser(e.target.value)}
+                      className="border border-slate-300 rounded px-3 py-1.5 bg-white text-xs font-normal focus:outline-none"
+                    >
+                      <option>Joquebede de...</option>
+                    </select>
+                  </div>
+                </div>
+
+                <button 
+                  onClick={handleDownloadPDF}
+                  className="border border-emerald-600 text-emerald-600 hover:bg-emerald-50 px-4 py-2 rounded-md font-semibold text-xs transition-colors flex items-center space-x-2 cursor-pointer"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  <span>Baixar em PDF</span>
+                </button>
+              </div>
+
+              {/* Bloco 1: TRABALHADO */}
+              <div className="border-b border-slate-200 pb-6 text-xs space-y-2">
+                <div className="grid grid-cols-12 font-semibold py-1">
+                  <span className="col-span-4 text-slate-800 font-bold">1. TRABALHADO</span>
+                  <span className="col-span-5 text-slate-600">Horas diurnas</span>
+                  <span className="col-span-3 text-right text-slate-700">{minutesToFullDisplay(totalGeralDiurnoMinutos)}</span>
+                </div>
+                <div className="grid grid-cols-12 font-semibold py-1">
+                  <span className="col-span-4"></span>
+                  <span className="col-span-5 text-slate-600">Adicional noturno</span>
+                  <span className="col-span-3 text-right text-slate-700">{minutesToFullDisplay(totalGeralNoturnoMinutos)}</span>
+                </div>
+                <div className="grid grid-cols-12 font-semibold py-1">
+                  <span className="col-span-4"></span>
+                  <span className="col-span-5 text-slate-600">Hora extra</span>
+                  <span className="col-span-3 text-right text-slate-700">{minutesToFullDisplay(totalGeralExtraMinutos)}</span>
+                </div>
+                <div className="grid grid-cols-12 font-bold py-2 border-t border-slate-100 text-slate-800">
+                  <span className="col-span-4"></span>
+                  <span className="col-span-5">Total Trabalhado</span>
+                  <span className="col-span-3 text-right">{minutesToFullDisplay(totalGeralTrabalhadoMinutos)}</span>
+                </div>
+              </div>
+
+              {/* Bloco 2: FALTAS */}
+              <div className="border-b border-slate-200 pb-6 text-xs space-y-2">
+                <div className="grid grid-cols-12 font-semibold py-1">
+                  <span className="col-span-4 text-slate-800 font-bold">2. FALTAS</span>
+                  <span className="col-span-5 text-slate-600">Dias de falta</span>
+                  <span className="col-span-3 text-right text-slate-700">0 dias</span>
+                </div>
+                <div className="grid grid-cols-12 font-bold py-2 border-t border-slate-100 text-slate-800">
+                  <span className="col-span-4"></span>
+                  <span className="col-span-5">Horas de atraso + falta s/ justificativa</span>
+                  <span className="col-span-3 text-right">00h 00min</span>
+                </div>
+              </div>
+
+              {/* Bloco 3: HORA EXTRA (geral) */}
+              <div className="border-b border-slate-200 pb-6 text-xs space-y-2">
+                <div className="grid grid-cols-12 font-semibold py-1">
+                  <span className="col-span-4 text-slate-800 font-bold">3. HORA EXTRA (geral)</span>
+                  <span className="col-span-5 text-slate-600">Adicionada ao banco de horas</span>
+                  <span className="col-span-3 text-right text-slate-700">00h 00min</span>
+                </div>
+                <div className="grid grid-cols-12 font-semibold py-1">
+                  <span className="col-span-4"></span>
+                  <span className="col-span-5 text-slate-600">Hora extra a pagar</span>
+                  <span className="col-span-3 text-right text-slate-700">{minutesToFullDisplay(totalGeralExtraMinutos)}</span>
+                </div>
+                <div className="grid grid-cols-12 font-bold py-2 border-t border-slate-100 text-slate-800">
+                  <span className="col-span-4"></span>
+                  <span className="col-span-5">Total Horas Extras</span>
+                  <span className="col-span-3 text-right">{minutesToFullDisplay(totalGeralExtraMinutos)}</span>
+                </div>
+              </div>
+
+              {/* Bloco 4: HORA EXTRA (a pagar) */}
+              <div className="text-xs space-y-2">
+                <div className="grid grid-cols-12 font-semibold py-1">
+                  <span className="col-span-4 text-slate-800 font-bold">4. HORA EXTRA (a pagar)</span>
+                  <span className="col-span-5 text-slate-600">Dia útil (diurno)</span>
+                  <span className="col-span-3 text-right text-slate-700">{minutesToFullDisplay(totalGeralExtraMinutos)}</span>
+                </div>
+                <div className="grid grid-cols-12 font-semibold py-1">
+                  <span className="col-span-4"></span>
+                  <span className="col-span-5 text-slate-600">Dia útil (noturno)</span>
+                  <span className="col-span-3 text-right text-slate-700">00h 00min</span>
+                </div>
+                <div className="grid grid-cols-12 font-semibold py-1">
+                  <span className="col-span-4"></span>
+                  <span className="col-span-5 text-slate-600">DSR ou Folga (diurno)</span>
+                  <span className="col-span-3 text-right text-slate-700">00h 00min</span>
+                </div>
+                <div className="grid grid-cols-12 font-semibold py-1">
+                  <span className="col-span-4"></span>
+                  <span className="col-span-5 text-slate-600">DSR ou Folga (noturno)</span>
+                  <span className="col-span-3 text-right text-slate-700">00h 00min</span>
+                </div>
+                <div className="grid grid-cols-12 font-semibold py-1">
+                  <span className="col-span-4"></span>
+                  <span className="col-span-5 text-slate-600">Feriado (diurno)</span>
+                  <span className="col-span-3 text-right text-slate-700">00h 00min</span>
+                </div>
+                <div className="grid grid-cols-12 font-semibold py-1">
+                  <span className="col-span-4"></span>
+                  <span className="col-span-5 text-slate-600">Feriado (noturno)</span>
+                  <span className="col-span-3 text-right text-slate-700">00h 00min</span>
+                </div>
+                <div className="grid grid-cols-12 font-bold py-2 border-t border-slate-100 text-slate-800">
+                  <span className="col-span-4"></span>
+                  <span className="col-span-5">Total Horas Extras</span>
+                  <span className="col-span-3 text-right">{minutesToFullDisplay(totalGeralExtraMinutos)}</span>
+                </div>
+              </div>
+            </div>
+          )}
         </main>
       </div>
 

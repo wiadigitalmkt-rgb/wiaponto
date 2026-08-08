@@ -1,296 +1,201 @@
-
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
+import Navbar from '@/components/Navbar';
 import { 
-  Users, 
-  UserPlus, 
   Search, 
-  Mail, 
-  Briefcase, 
-  Building2, 
-  Calendar, 
-  Loader2, 
-  X,
-  CheckCircle2
+  ChevronDown, 
+  MessageSquare, 
+  ChevronRight 
 } from 'lucide-react';
-import { toast } from 'sonner';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
 export default function Employees() {
-  const [employees, setEmployees] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [saving, setSaving] = useState(false);
+  const [statusFilter, setStatusFilter] = useState('Ativos');
+  const [itemsPerPage, setItemsPerPage] = useState('10');
 
-  // Form State
-  const [formData, setFormData] = useState({
-    full_name: '',
-    email: '',
-    department: 'Operacional',
-    position: 'Colaborador',
-    admission_date: new Date().toISOString().split('T')[0],
-    work_schedule: '08:00 - 18:00',
-    role: 'employee'
+  // Dados dos usuários conforme a imagem de exemplo
+  const usersData = [
+    {
+      id: 1,
+      initials: 'JD',
+      name: 'Joquebede de Oliveira',
+      cargo: 'Atendente',
+      departamento: '-',
+      tipoAcesso: 'Colaborador',
+    },
+    {
+      id: 2,
+      initials: 'WD',
+      name: 'WIA DIGITAL',
+      cargo: '(Preencher)',
+      departamento: '-',
+      tipoAcesso: 'Dono da Conta',
+    },
+  ];
+
+  // Filtro de busca por nome ou tipo de acesso
+  const filteredUsers = usersData.filter((user) => {
+    const term = searchTerm.toLowerCase();
+    return (
+      user.name.toLowerCase().includes(term) ||
+      user.tipoAcesso.toLowerCase().includes(term) ||
+      user.cargo.toLowerCase().includes(term)
+    );
   });
 
-  // Carregar colaboradores do Supabase
-  const loadEmployees = async () => {
-    try {
-      setLoading(true);
-      const data = await base44.entities.Employees.list();
-      setEmployees(data || []);
-    } catch (err) {
-      toast.error('Erro ao carregar colaboradores');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    loadEmployees();
-  }, []);
-
-  // Salvar novo colaborador
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!formData.full_name || !formData.email) {
-      toast.error('Preencha pelo menos o nome e o e-mail!');
-      return;
-    }
-
-    try {
-      setSaving(true);
-      await base44.entities.Employees.create(formData);
-      toast.success('Colaborador cadastrado com sucesso!');
-      setIsModalOpen(false);
-      setFormData({
-        full_name: '',
-        email: '',
-        department: 'Operacional',
-        position: 'Colaborador',
-        admission_date: new Date().toISOString().split('T')[0],
-        work_schedule: '08:00 - 18:00',
-        role: 'employee'
-      });
-      loadEmployees();
-    } catch (err) {
-      toast.error('Erro ao cadastrar colaborador: ' + (err.message || 'Verifique se o e-mail já existe'));
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  // Filtragem de busca
-  const filteredEmployees = employees.filter(emp => 
-    emp.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    emp.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    emp.department?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
   return (
-    <div className="min-h-screen bg-slate-100/70 p-6 space-y-6">
-      
-      {/* Cabeçalho */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 max-w-7xl mx-auto">
-        <div>
-          <h1 className="text-2xl font-bold text-[#1a2c6a]">Colaboradores</h1>
-          <p className="text-sm text-slate-500">Gerencie a equipe e acesse os cadastros individuais</p>
+    <div className="min-h-screen bg-[#edf2f7] flex flex-col font-sans text-slate-700 relative">
+      {/* Navbar Padrão */}
+      <Navbar selectedCompany="Sua Empresa" />
+
+      {/* Conteúdo Principal */}
+      <main className="flex-1 max-w-7xl w-full mx-auto p-6">
+        {/* Breadcrumb */}
+        <div className="text-xs text-slate-500 mb-4">
+          <a 
+            href="/admin" 
+            className="hover:text-[#00897b] hover:underline transition-colors font-medium"
+          >
+            Painel
+          </a> 
+          <ChevronRight className="w-3 h-3 inline mx-1 text-slate-400" />{' '}
+          <span className="text-[#00897b] font-medium">Usuários</span>
         </div>
 
-        <button 
-          onClick={() => setIsModalOpen(true)}
-          className="bg-[#ff8b00] hover:bg-[#e67a00] text-white px-5 py-2.5 rounded-xl font-bold text-sm shadow-md shadow-orange-500/20 flex items-center justify-center gap-2 transition"
-        >
-          <UserPlus size={18} /> Novo Colaborador
-        </button>
-      </div>
+        {/* Header da Página: Título e Botão Adicionar */}
+        <div className="flex justify-between items-center mb-5">
+          <h1 className="text-xl font-bold text-slate-800 tracking-tight">
+            Usuários
+          </h1>
 
-      {/* Card da Tabela + Busca */}
-      <div className="max-w-7xl mx-auto bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
-        
-        {/* Barra de Pesquisa */}
-        <div className="p-4 border-b border-slate-100 flex items-center gap-3">
-          <div className="relative flex-1">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-            <input 
-              type="text" 
-              placeholder="Buscar por nome, e-mail ou departamento..."
-              value={searchTerm}
-              onChange={e => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-[#ff8b00]"
-            />
-          </div>
+          <DropdownMenu modal={false}>
+            <DropdownMenuTrigger className="bg-[#00897b] hover:bg-[#00796b] text-white font-medium px-4 py-2 rounded-md text-xs flex items-center space-x-1.5 shadow-sm transition-colors focus:outline-none">
+              <span>Adicionar</span>
+              <ChevronDown className="w-3.5 h-3.5" />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-48 bg-white border border-slate-200 shadow-lg rounded-md p-1">
+              <DropdownMenuItem className="text-xs text-slate-700 cursor-pointer py-2 hover:bg-slate-100">
+                Novo Colaborador
+              </DropdownMenuItem>
+              <DropdownMenuItem className="text-xs text-slate-700 cursor-pointer py-2 hover:bg-slate-100">
+                Importar Usuários
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
 
-        {/* Listagem */}
-        {loading ? (
-          <div className="py-16 text-center text-slate-400 flex flex-col items-center gap-2">
-            <Loader2 className="animate-spin text-[#1a2c6a]" size={32} />
-            <span className="text-sm font-medium">Carregando colaboradores...</span>
+        {/* Card Principal de Conteúdo */}
+        <div className="bg-white rounded-lg shadow-sm border border-slate-200/80 overflow-hidden">
+          {/* Barra de Filtros Interna */}
+          <div className="p-4 border-b border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-3">
+            {/* Campo de Busca */}
+            <div className="relative flex-1 w-full">
+              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder="Digite o nome do usuário ou tipo de acesso (ex: Júlia, administrador)"
+                className="w-full pl-9 pr-3 py-1.5 border border-slate-200 rounded text-xs text-slate-700 focus:outline-none focus:border-[#00897b] transition-colors placeholder:text-slate-400"
+              />
+            </div>
+
+            {/* Select Status */}
+            <div className="w-full sm:w-auto flex justify-end">
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                className="border border-slate-200 rounded px-3 py-1.5 bg-white text-xs text-slate-700 font-medium focus:outline-none focus:border-[#00897b] cursor-pointer min-w-[110px]"
+              >
+                <option value="Ativos">Ativos</option>
+                <option value="Inativos">Inativos</option>
+                <option value="Todos">Todos</option>
+              </select>
+            </div>
           </div>
-        ) : filteredEmployees.length === 0 ? (
-          <div className="py-16 text-center text-slate-400">
-            <Users className="mx-auto mb-2 text-slate-300" size={40} />
-            <p className="font-semibold text-slate-600">Nenhum colaborador encontrado</p>
-            <p className="text-xs text-slate-400 mt-1">Cadastre seu primeiro funcionário clicando no botão acima.</p>
-          </div>
-        ) : (
+
+          {/* Tabela de Usuários */}
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
-                <tr className="bg-slate-50 border-b border-slate-100 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
-                  <th className="py-3 px-6">Colaborador</th>
-                  <th className="py-3 px-6">Departamento / Cargo</th>
-                  <th className="py-3 px-6">Jornada</th>
-                  <th className="py-3 px-6">Admissão</th>
-                  <th className="py-3 px-6 text-right">Status</th>
+                <tr className="border-b border-slate-100 text-[11px] font-bold text-slate-700 uppercase tracking-wider bg-slate-50/50">
+                  <th className="py-3 px-6">NOME</th>
+                  <th className="py-3 px-6">CARGO</th>
+                  <th className="py-3 px-6">DEPARTAMENTO</th>
+                  <th className="py-3 px-6">TIPO DE ACESSO</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100 text-sm">
-                {filteredEmployees.map(emp => (
-                  <tr key={emp.id} className="hover:bg-slate-50/80 transition">
-                    <td className="py-4 px-6 flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-[#1a2c6a] text-white flex items-center justify-center font-bold text-sm">
-                        {emp.full_name?.charAt(0).toUpperCase()}
-                      </div>
-                      <div>
-                        <p className="font-bold text-slate-800">{emp.full_name}</p>
-                        <p className="text-xs text-slate-400 flex items-center gap-1">
-                          <Mail size={12} /> {emp.email}
-                        </p>
-                      </div>
-                    </td>
-                    <td className="py-4 px-6">
-                      <p className="font-semibold text-slate-700">{emp.position || 'Colaborador'}</p>
-                      <p className="text-xs text-slate-400 flex items-center gap-1">
-                        <Building2 size={12} /> {emp.department || 'Geral'}
-                      </p>
-                    </td>
-                    <td className="py-4 px-6 font-mono text-xs text-slate-600">
-                      {emp.work_schedule || '08:00 - 18:00'}
-                    </td>
-                    <td className="py-4 px-6 text-xs text-slate-500">
-                      {emp.admission_date ? new Date(emp.admission_date).toLocaleDateString('pt-BR') : '-'}
-                    </td>
-                    <td className="py-4 px-6 text-right">
-                      <span className="inline-flex items-center gap-1 bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-bold px-2.5 py-1 rounded-full">
-                        <CheckCircle2 size={12} /> Ativo
-                      </span>
+              <tbody className="divide-y divide-slate-100 text-xs text-slate-700">
+                {filteredUsers.length > 0 ? (
+                  filteredUsers.map((user) => (
+                    <tr key={user.id} className="hover:bg-slate-50/80 transition-colors">
+                      <td className="py-3.5 px-6">
+                        <div className="flex items-center space-x-3">
+                          <div className="w-8 h-8 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center font-semibold text-slate-600 text-xs shrink-0">
+                            {user.initials}
+                          </div>
+                          <span className="font-semibold text-slate-800">
+                            {user.name}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="py-3.5 px-6 text-slate-600">{user.cargo}</td>
+                      <td className="py-3.5 px-6 text-slate-600">{user.departamento}</td>
+                      <td className="py-3.5 px-6 text-slate-600">{user.tipoAcesso}</td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan={4} className="py-8 text-center text-slate-400 text-xs">
+                      Nenhum usuário encontrado com os termos pesquisados.
                     </td>
                   </tr>
-                ))}
+                )}
               </tbody>
             </table>
           </div>
-        )}
-      </div>
 
-      {/* MODAL DE CADASTRO */}
-      {isModalOpen && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl relative animate-in fade-in zoom-in-95 duration-200">
-            <button 
-              onClick={() => setIsModalOpen(false)}
-              className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 transition"
-            >
-              <X size={20} />
-            </button>
+          {/* Paginador / Rodapé da Tabela */}
+          <div className="p-4 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between text-xs text-slate-500 gap-3 bg-white">
+            <div>
+              <span>{filteredUsers.length} Resultados</span>
+            </div>
 
-            <h2 className="text-lg font-bold text-[#1a2c6a] mb-1 flex items-center gap-2">
-              <UserPlus size={20} className="text-[#ff8b00]" /> Novo Colaborador
-            </h2>
-            <p className="text-xs text-slate-500 mb-6">Preencha os dados básicos para acesso ao sistema.</p>
-
-            <form onSubmit={handleSubmit} className="space-y-4 text-xs font-semibold">
-              <div>
-                <label className="text-slate-700 mb-1 block">Nome Completo</label>
-                <input 
-                  type="text" 
-                  required
-                  placeholder="Ex: Maria Silva"
-                  value={formData.full_name}
-                  onChange={e => setFormData({ ...formData, full_name: e.target.value })}
-                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-[#ff8b00]"
-                />
-              </div>
-
-              <div>
-                <label className="text-slate-700 mb-1 block">E-mail Corporativo</label>
-                <input 
-                  type="email" 
-                  required
-                  placeholder="maria@empresa.com"
-                  value={formData.email}
-                  onChange={e => setFormData({ ...formData, email: e.target.value })}
-                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-[#ff8b00]"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-slate-700 mb-1 block">Departamento</label>
-                  <input 
-                    type="text" 
-                    placeholder="Ex: Comercial"
-                    value={formData.department}
-                    onChange={e => setFormData({ ...formData, department: e.target.value })}
-                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-[#ff8b00]"
-                  />
-                </div>
-                <div>
-                  <label className="text-slate-700 mb-1 block">Cargo</label>
-                  <input 
-                    type="text" 
-                    placeholder="Ex: Analista"
-                    value={formData.position}
-                    onChange={e => setFormData({ ...formData, position: e.target.value })}
-                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-[#ff8b00]"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-slate-700 mb-1 block">Data de Admissão</label>
-                  <input 
-                    type="date" 
-                    value={formData.admission_date}
-                    onChange={e => setFormData({ ...formData, admission_date: e.target.value })}
-                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-[#ff8b00]"
-                  />
-                </div>
-                <div>
-                  <label className="text-slate-700 mb-1 block">Jornada Padrão</label>
-                  <input 
-                    type="text" 
-                    placeholder="08:00 - 18:00"
-                    value={formData.work_schedule}
-                    onChange={e => setFormData({ ...formData, work_schedule: e.target.value })}
-                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-[#ff8b00]"
-                  />
-                </div>
-              </div>
-
-              <div className="pt-3 flex gap-3">
-                <button
-                  type="button"
-                  onClick={() => setIsModalOpen(false)}
-                  className="w-1/2 py-2.5 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 font-bold transition"
-                >
-                  Cancelar
-                </button>
-                <button
-                  type="submit"
-                  disabled={saving}
-                  className="w-1/2 py-2.5 rounded-xl bg-[#1a2c6a] hover:bg-[#121f4c] text-white font-bold transition flex items-center justify-center gap-2"
-                >
-                  {saving ? <Loader2 size={16} className="animate-spin" /> : 'Salvar'}
-                </button>
-              </div>
-            </form>
+            <div className="flex items-center space-x-2">
+              <span>Itens por página</span>
+              <select
+                value={itemsPerPage}
+                onChange={(e) => setItemsPerPage(e.target.value)}
+                className="border border-slate-200 rounded px-2 py-1 bg-white text-xs text-slate-700 font-medium focus:outline-none focus:border-[#00897b] cursor-pointer"
+              >
+                <option value="10">10</option>
+                <option value="25">25</option>
+                <option value="50">50</option>
+              </select>
+            </div>
           </div>
         </div>
-      )}
+      </main>
 
+      {/* Botão de Suporte Flutuante estilo Coalize (Verde Teal) */}
+      <div className="fixed bottom-6 right-6">
+        <button 
+          className="w-10 h-10 bg-[#00897b] text-white rounded-md flex items-center justify-center shadow-lg hover:bg-[#00796b] transition-colors"
+          title="Central de Ajuda"
+        >
+          <MessageSquare className="w-5 h-5" />
+        </button>
+      </div>
+
+      {/* Rodapé do Sistema */}
+      <footer className="text-center py-4 text-xs text-slate-400 border-t border-slate-200 bg-white mt-auto">
+        © 2026 Coalize - Todos os direitos reservados.
+      </footer>
     </div>
   );
 }

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import Navbar from '@/components/Navbar';
+import { supabase } from '@/lib/supabase';
 import { 
   Clock, 
   FileText, 
@@ -101,20 +102,11 @@ export default function AdminPonto() {
   const [activeTab, setActiveTab] = useState('pontos'); // 'pontos' | 'resumo'
   const [selectedMonth, setSelectedMonth] = useState('Agosto/2026');
   
-  // CORREÇÃO: Usuário selecionado e busca de usuário
-  const [selectedUser, setSelectedUser] = useState('Joquebede de Oliveira');
+  // Lista dinâmica de colaboradores do Supabase
+  const [employees, setEmployees] = useState([]);
+  const [selectedUser, setSelectedUser] = useState(null); // Objeto do colaborador selecionado
   const [userSearchTerm, setUserSearchTerm] = useState('');
 
-  // Lista de usuários para o dropdown com busca flutuante
-  const userList = [
-    'Joquebede de Oliveira',
-    'WIA DIGITAL'
-  ];
-
-  const filteredUsers = userList.filter(u => 
-    u.toLowerCase().includes(userSearchTerm.toLowerCase())
-  );
-  
   const [expandedRow, setExpandedRow] = useState(null);
   const [toastMessage, setToastMessage] = useState(null);
   const [showHistoryModal, setShowHistoryModal] = useState(false);
@@ -128,43 +120,67 @@ export default function AdminPonto() {
     saida: ''
   });
 
-  const initialRegistros = [
-    { 
-      id: 1, 
-      data: '06/08/2026 - Quinta-feira', 
-      batidas: [
-        { entrada: '08:00', saida: '12:00', isNight: false, obs: '' },
-        { entrada: '14:00', saida: '19:00', isNight: false, obs: '' }
-      ]
-    },
-    { 
-      id: 2, 
-      data: '07/08/2026 - Sexta-feira', 
-      batidas: [
-        { entrada: '08:00', saida: '12:00', isNight: false, obs: '' },
-        { entrada: '14:00', saida: '19:00', isNight: false, obs: '' }
-      ]
-    },
-  ].map((rec) => processDayRecord(rec));
+  const [registros, setRegistros] = useState([]);
 
-  const [registros, setRegistros] = useState(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('@ponto_registros');
-      if (saved) {
-        try {
-          const parsed = JSON.parse(saved);
-          return parsed.map((rec) => processDayRecord(rec));
-        } catch (e) {
-          console.error("Erro ao carregar dados salvos:", e);
-        }
+  // 1. CARREGAR COLABORADORES DO SUPABASE
+  useEffect(() => {
+    async function loadEmployees() {
+      const { data, error } = await supabase
+        .from('Employees')
+        .select('*')
+        .order('full_name', { ascending: true });
+
+      if (!error && data && data.length > 0) {
+        setEmployees(data);
+        setSelectedUser(data[0]); // Seleciona o primeiro colaborador cadastrado
       }
     }
-    return initialRegistros;
-  });
+    loadEmployees();
+  }, []);
+
+  // 2. BUSCAR PONTOS DO COLABORADOR SELECCIONADO DO SUPABASE
+  const fetchRecordsFromSupabase = async () => {
+    if (!selectedUser) return;
+
+    const { data, error } = await supabase
+      .from('time_records')
+      .select('*')
+      .eq('employee_id', selectedUser.id)
+      .order('record_date', { ascending: false });
+
+    if (!error && data) {
+      // Agrupa os registros por data
+      const grouped = data.reduce((acc, curr) => {
+        const dateKey = curr.record_date;
+        if (!acc[dateKey]) {
+          acc[dateKey] = {
+            id: dateKey,
+            data: dateKey,
+            batidas: []
+          };
+        }
+        acc[dateKey].batidas.push({
+          db_id: curr.id,
+          entrada: curr.entrada || '-',
+          saida: curr.saida || '-',
+          isNight: curr.is_night || false,
+          obs: curr.obs || ''
+        });
+        return acc;
+      }, {});
+
+      const processed = Object.values(grouped).map((rec) => processDayRecord(rec));
+      setRegistros(processed);
+    }
+  };
 
   useEffect(() => {
-    localStorage.setItem('@ponto_registros', JSON.stringify(registros));
-  }, [registros]);
+    fetchRecordsFromSupabase();
+  }, [selectedUser]);
+
+  const filteredUsers = employees.filter(u => 
+    u.full_name.toLowerCase().includes(userSearchTerm.toLowerCase())
+  );
 
   const showToast = (msg) => {
     setToastMessage(msg);
@@ -177,15 +193,16 @@ export default function AdminPonto() {
     setExpandedRow(expandedRow === id ? null : id);
   };
 
-  const handleRemoveBatida = (itemId, batidaIdx) => {
-    const updated = registros.map((item) => {
-      if (item.id === itemId) {
-        const newBatidas = item.batidas.filter((_, idx) => idx !== batidaIdx);
-        return processDayRecord({ ...item, batidas: newBatidas });
+  // REMOVER PONTO DO SUPABASE
+  const handleRemoveBatida = async (itemId, batidaIdx, dbId) => {
+    if (dbId) {
+      const { error } = await supabase.from('time_records').delete().eq('id', dbId);
+      if (error) {
+        alert('Erro ao remover: ' + error.message);
+        return;
       }
-      return item;
-    });
-    setRegistros(updated);
+    }
+    fetchRecordsFromSupabase();
     showToast('Ponto removido com sucesso!');
   };
 
@@ -199,24 +216,49 @@ export default function AdminPonto() {
     });
   };
 
-  const handleSaveEdit = (itemId, batidaIdx) => {
-    const updated = registros.map((item) => {
-      if (item.id === itemId) {
-        const newBatidas = [...item.batidas];
-        newBatidas[batidaIdx] = {
-          ...newBatidas[batidaIdx],
+  // SALVAR / EDITAR PONTO NO SUPABASE
+  const handleSaveEdit = async (itemId, batidaIdx, dbId) => {
+    if (dbId) {
+      const { error } = await supabase
+        .from('time_records')
+        .update({
           entrada: editFormData.entrada.trim() || '-',
           saida: editFormData.saida.trim() || '-',
-          isNight: editFormData.isNight,
+          is_night: editFormData.isNight,
           obs: editFormData.obs
-        };
-        return processDayRecord({ ...item, batidas: newBatidas });
+        })
+        .eq('id', dbId);
+
+      if (error) {
+        alert('Erro ao salvar: ' + error.message);
+        return;
       }
-      return item;
-    });
-    setRegistros(updated);
+    }
     setEditingRowKey(null);
+    fetchRecordsFromSupabase();
     showToast('Ponto atualizado com sucesso!');
+  };
+
+  // ADICIONAR NOVO PONTO NO SUPABASE
+  const handleAddPointToDb = async (recordDate) => {
+    if (!selectedUser) return;
+    const { error } = await supabase.from('time_records').insert([
+      {
+        employee_id: selectedUser.id,
+        record_date: recordDate,
+        entrada: '08:00',
+        saida: '12:00',
+        is_night: false,
+        obs: ''
+      }
+    ]);
+
+    if (error) {
+      alert('Erro ao adicionar: ' + error.message);
+    } else {
+      fetchRecordsFromSupabase();
+      showToast('Ponto adicionado com sucesso!');
+    }
   };
 
   const totalGeralTrabalhadoMinutos = registros.reduce((acc, curr) => acc + (curr.totalDayMinutes || 0), 0);
@@ -234,7 +276,7 @@ export default function AdminPonto() {
       <span className="text-xs font-semibold text-slate-600">Usuário</span>
       <DropdownMenu modal={false}>
         <DropdownMenuTrigger className="flex items-center justify-between border border-slate-300 rounded px-3 py-1 bg-white text-xs text-slate-700 min-w-[170px] focus:outline-none shadow-xs hover:border-slate-400">
-          <span className="truncate pr-2">{selectedUser}...</span>
+          <span className="truncate pr-2">{selectedUser ? selectedUser.full_name : 'Carregando...'}...</span>
           <ChevronDown className="w-3.5 h-3.5 text-slate-400 shrink-0" />
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start" className="w-56 p-1.5 bg-white rounded-md shadow-xl border border-slate-200 z-50">
@@ -256,18 +298,18 @@ export default function AdminPonto() {
             {filteredUsers.length > 0 ? (
               filteredUsers.map((user) => (
                 <DropdownMenuItem 
-                  key={user}
+                  key={user.id}
                   onClick={() => {
                     setSelectedUser(user);
                     setUserSearchTerm('');
                   }}
                   className={`cursor-pointer text-xs px-2.5 py-2 rounded transition-colors ${
-                    selectedUser === user 
+                    selectedUser && selectedUser.id === user.id
                       ? 'bg-[#00897b] text-white font-medium hover:bg-[#00796b]' 
                       : 'text-slate-700 hover:bg-slate-100'
                   }`}
                 >
-                  {user}
+                  {user.full_name}
                 </DropdownMenuItem>
               ))
             ) : (
@@ -296,9 +338,11 @@ export default function AdminPonto() {
             <div className="flex items-center justify-between p-2 rounded-lg hover:bg-slate-200/50 cursor-pointer text-slate-600 mb-4 transition-colors">
               <div className="flex items-center space-x-2.5 min-w-0">
                 <div className="w-7 h-7 rounded-full bg-slate-200/80 flex items-center justify-center text-xs font-bold text-slate-700 shrink-0">
-                  JD
+                  {selectedUser ? selectedUser.full_name.substring(0, 2).toUpperCase() : '--'}
                 </div>
-                <span className="text-sm font-medium max-md:truncate">Joquebede</span>
+                <span className="text-sm font-medium max-md:truncate">
+                  {selectedUser ? selectedUser.full_name.split(' ')[0] : 'Usuário'}
+                </span>
               </div>
               <ExternalLink className="w-3.5 h-3.5 text-slate-400 shrink-0 ml-1" />
             </div>
@@ -390,180 +434,191 @@ export default function AdminPonto() {
               </div>
 
               <div className="divide-y divide-slate-200">
-                {registros.map((item) => {
-                  const isExpanded = expandedRow === item.id;
-                  return (
-                    <div key={item.id} className="transition-colors border-b border-slate-200">
-                      <div 
-                        onClick={() => toggleRow(item.id)}
-                        className="grid grid-cols-12 px-6 py-3.5 items-center text-xs hover:bg-slate-50 cursor-pointer"
-                      >
-                        <div className="col-span-8 flex items-center space-x-3">
-                          {isExpanded ? (
-                            <ChevronDown className="w-4 h-4 text-slate-500" />
-                          ) : (
-                            <ChevronRight className="w-4 h-4 text-slate-400" />
-                          )}
-                          <span className="font-semibold text-slate-700 text-xs">{item.data}</span>
+                {registros.length === 0 ? (
+                  <div className="p-8 text-center text-xs text-slate-400">
+                    Nenhum registro de ponto encontrado para este colaborador.
+                  </div>
+                ) : (
+                  registros.map((item) => {
+                    const isExpanded = expandedRow === item.id;
+                    return (
+                      <div key={item.id} className="transition-colors border-b border-slate-200">
+                        <div 
+                          onClick={() => toggleRow(item.id)}
+                          className="grid grid-cols-12 px-6 py-3.5 items-center text-xs hover:bg-slate-50 cursor-pointer"
+                        >
+                          <div className="col-span-8 flex items-center space-x-3">
+                            {isExpanded ? (
+                              <ChevronDown className="w-4 h-4 text-slate-500" />
+                            ) : (
+                              <ChevronRight className="w-4 h-4 text-slate-400" />
+                            )}
+                            <span className="font-semibold text-slate-700 text-xs">{item.data}</span>
+                          </div>
+                          <div className="col-span-2 text-right font-medium text-slate-600">{item.horaExtra}</div>
+                          <div className="col-span-2 text-right font-semibold text-slate-800">{item.trabalhado}</div>
                         </div>
-                        <div className="col-span-2 text-right font-medium text-slate-600">{item.horaExtra}</div>
-                        <div className="col-span-2 text-right font-semibold text-slate-800">{item.trabalhado}</div>
-                      </div>
 
-                      {isExpanded && (
-                        <div className="px-8 py-4 bg-slate-50/40 border-t border-b border-slate-200 text-xs">
-                          <div className="flex items-center justify-between mb-4">
-                            <DropdownMenu modal={false}>
-                              <DropdownMenuTrigger className="flex items-center space-x-1 border border-slate-300 bg-white px-3 py-1 rounded font-medium text-slate-700 hover:bg-slate-50 focus:outline-none">
-                                <span>Adicionar</span>
-                                <ChevronDown className="w-3.5 h-3.5" />
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="start" className="bg-white">
-                                <DropdownMenuItem className="cursor-pointer">Adicionar ponto</DropdownMenuItem>
-                                <DropdownMenuItem className="cursor-pointer">Falta justificada</DropdownMenuItem>
-                                <DropdownMenuItem className="cursor-pointer">Trocar jornada</DropdownMenuItem>
-                                <DropdownMenuItem className="cursor-pointer">Anotação</DropdownMenuItem>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
+                        {isExpanded && (
+                          <div className="px-8 py-4 bg-slate-50/40 border-t border-b border-slate-200 text-xs">
+                            <div className="flex items-center justify-between mb-4">
+                              <DropdownMenu modal={false}>
+                                <DropdownMenuTrigger className="flex items-center space-x-1 border border-slate-300 bg-white px-3 py-1 rounded font-medium text-slate-700 hover:bg-slate-50 focus:outline-none">
+                                  <span>Adicionar</span>
+                                  <ChevronDown className="w-3.5 h-3.5" />
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="start" className="bg-white">
+                                  <DropdownMenuItem 
+                                    onClick={() => handleAddPointToDb(item.id)}
+                                    className="cursor-pointer"
+                                  >
+                                    Adicionar ponto
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem className="cursor-pointer">Falta justificada</DropdownMenuItem>
+                                  <DropdownMenuItem className="cursor-pointer">Trocar jornada</DropdownMenuItem>
+                                  <DropdownMenuItem className="cursor-pointer">Anotação</DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
 
-                            <button 
-                              onClick={() => setShowHistoryModal(true)}
-                              className="flex items-center space-x-1 text-[#ff8b00] hover:underline font-medium cursor-pointer"
-                            >
-                              <History className="w-3.5 h-3.5" />
-                              <span>Ver histórico</span>
-                            </button>
-                          </div>
+                              <button 
+                                onClick={() => setShowHistoryModal(true)}
+                                className="flex items-center space-x-1 text-[#ff8b00] hover:underline font-medium cursor-pointer"
+                              >
+                                <History className="w-3.5 h-3.5" />
+                                <span>Ver histórico</span>
+                              </button>
+                            </div>
 
-                          <div className="grid grid-cols-12 text-slate-500 font-bold uppercase text-[10px] mb-2 px-2">
-                            <div className="col-span-6"></div>
-                            <div className="col-span-2 text-center">ENTRADA</div>
-                            <div className="col-span-2 text-center">SAÍDA</div>
-                            <div className="col-span-2 text-center">SALDO</div>
-                          </div>
+                            <div className="grid grid-cols-12 text-slate-500 font-bold uppercase text-[10px] mb-2 px-2">
+                              <div className="col-span-6"></div>
+                              <div className="col-span-2 text-center">ENTRADA</div>
+                              <div className="col-span-2 text-center">SAÍDA</div>
+                              <div className="col-span-2 text-center">SALDO</div>
+                            </div>
 
-                          <div className="space-y-2">
-                            {item.batidas.map((b, idx) => {
-                              const isEditing = editingRowKey === `${item.id}-${idx}`;
+                            <div className="space-y-2">
+                              {item.batidas.map((b, idx) => {
+                                const isEditing = editingRowKey === `${item.id}-${idx}`;
 
-                              if (isEditing) {
-                                return (
-                                  <div key={idx} className="flex items-center justify-between bg-white border border-slate-200 rounded-md p-2 shadow-sm gap-2">
-                                    <button 
-                                      onClick={() => setEditingRowKey(null)}
-                                      className="text-red-500 font-semibold hover:underline text-xs px-2"
-                                    >
-                                      Desfazer
-                                    </button>
+                                if (isEditing) {
+                                  return (
+                                    <div key={idx} className="flex items-center justify-between bg-white border border-slate-200 rounded-md p-2 shadow-sm gap-2">
+                                      <button 
+                                        onClick={() => setEditingRowKey(null)}
+                                        className="text-red-500 font-semibold hover:underline text-xs px-2"
+                                      >
+                                        Desfazer
+                                      </button>
 
-                                    <div className="flex items-center space-x-2">
-                                      <label className="flex items-center space-x-1 cursor-pointer bg-slate-50 p-1 rounded border border-slate-200">
+                                      <div className="flex items-center space-x-2">
+                                        <label className="flex items-center space-x-1 cursor-pointer bg-slate-50 p-1 rounded border border-slate-200">
+                                          <input 
+                                            type="checkbox"
+                                            checked={editFormData.isNight}
+                                            onChange={(e) => setEditFormData({ ...editFormData, isNight: e.target.checked })}
+                                            className="rounded border-slate-300 text-[#ff8b00] focus:ring-0"
+                                          />
+                                          <Moon className="w-3.5 h-3.5 text-slate-600" />
+                                        </label>
+
                                         <input 
-                                          type="checkbox"
-                                          checked={editFormData.isNight}
-                                          onChange={(e) => setEditFormData({ ...editFormData, isNight: e.target.checked })}
-                                          className="rounded border-slate-300 text-[#ff8b00] focus:ring-0"
+                                          type="text"
+                                          placeholder="Max 15 caractere"
+                                          value={editFormData.obs}
+                                          onChange={(e) => setEditFormData({ ...editFormData, obs: e.target.value })}
+                                          className="border border-slate-300 rounded px-2 py-1 text-xs w-32 focus:outline-none focus:border-[#ff8b00]"
                                         />
-                                        <Moon className="w-3.5 h-3.5 text-slate-600" />
-                                      </label>
+                                      </div>
 
-                                      <input 
-                                        type="text"
-                                        placeholder="Max 15 caractere"
-                                        value={editFormData.obs}
-                                        onChange={(e) => setEditFormData({ ...editFormData, obs: e.target.value })}
-                                        className="border border-slate-300 rounded px-2 py-1 text-xs w-32 focus:outline-none focus:border-[#ff8b00]"
-                                      />
+                                      <div className="flex items-center space-x-2">
+                                        <div className="relative flex items-center">
+                                          <input 
+                                            type="text"
+                                            value={editFormData.entrada}
+                                            onChange={(e) => setEditFormData({ ...editFormData, entrada: e.target.value })}
+                                            className="border border-slate-300 rounded px-2 py-1 text-xs w-16 text-center font-mono focus:outline-none"
+                                          />
+                                          {editFormData.entrada && (
+                                            <X 
+                                              onClick={() => setEditFormData({ ...editFormData, entrada: '' })}
+                                              className="w-3 h-3 text-red-400 absolute right-1 cursor-pointer" 
+                                            />
+                                          )}
+                                        </div>
+
+                                        <div className="relative flex items-center">
+                                          <input 
+                                            type="text"
+                                            value={editFormData.saida}
+                                            onChange={(e) => setEditFormData({ ...editFormData, saida: e.target.value })}
+                                            className="border border-slate-300 rounded px-2 py-1 text-xs w-16 text-center font-mono focus:outline-none"
+                                          />
+                                          {editFormData.saida && (
+                                            <X 
+                                              onClick={() => setEditFormData({ ...editFormData, saida: '' })}
+                                              className="w-3 h-3 text-red-400 absolute right-1 cursor-pointer" 
+                                            />
+                                          )}
+                                        </div>
+
+                                        <span className="text-slate-400 text-xs px-2">-</span>
+
+                                        <button 
+                                          onClick={() => handleSaveEdit(item.id, idx, b.db_id)}
+                                          className="bg-[#ff8b00] text-white font-medium px-4 py-1 rounded text-xs hover:bg-[#e07a00] transition-colors"
+                                        >
+                                          Salvar
+                                        </button>
+                                      </div>
+                                    </div>
+                                  );
+                                }
+
+                                return (
+                                  <div key={idx} className="group grid grid-cols-12 items-center bg-white border border-slate-200/80 rounded-md py-1.5 px-3 shadow-sm hover:border-slate-300 transition-all">
+                                    <div className="col-span-6 flex items-center">
+                                      <button 
+                                        onClick={() => handleRemoveBatida(item.id, idx, b.db_id)}
+                                        className="opacity-0 group-hover:opacity-100 bg-red-500 hover:bg-red-600 text-white font-semibold px-2.5 py-0.5 rounded text-[11px] transition-opacity shadow-sm"
+                                      >
+                                        Remover
+                                      </button>
                                     </div>
 
-                                    <div className="flex items-center space-x-2">
-                                      <div className="relative flex items-center">
-                                        <input 
-                                          type="text"
-                                          value={editFormData.entrada}
-                                          onChange={(e) => setEditFormData({ ...editFormData, entrada: e.target.value })}
-                                          className="border border-slate-300 rounded px-2 py-1 text-xs w-16 text-center font-mono focus:outline-none"
-                                        />
-                                        {editFormData.entrada && (
-                                          <X 
-                                            onClick={() => setEditFormData({ ...editFormData, entrada: '' })}
-                                            className="w-3 h-3 text-red-400 absolute right-1 cursor-pointer" 
-                                          />
-                                        )}
-                                      </div>
+                                    <div className="col-span-2 flex items-center justify-center space-x-1 text-slate-700 font-mono text-xs">
+                                      <span>{b.entrada}</span>
+                                      {b.entrada !== '-' && <Monitor className="w-3.5 h-3.5 text-slate-400" />}
+                                    </div>
 
-                                      <div className="relative flex items-center">
-                                        <input 
-                                          type="text"
-                                          value={editFormData.saida}
-                                          onChange={(e) => setEditFormData({ ...editFormData, saida: e.target.value })}
-                                          className="border border-slate-300 rounded px-2 py-1 text-xs w-16 text-center font-mono focus:outline-none"
-                                        />
-                                        {editFormData.saida && (
-                                          <X 
-                                            onClick={() => setEditFormData({ ...editFormData, saida: '' })}
-                                            className="w-3 h-3 text-red-400 absolute right-1 cursor-pointer" 
-                                          />
-                                        )}
-                                      </div>
+                                    <div className="col-span-2 flex items-center justify-center space-x-1 text-slate-700 font-mono text-xs">
+                                      <span>{b.saida}</span>
+                                      {b.saida !== '-' && <Monitor className="w-3.5 h-3.5 text-slate-400" />}
+                                    </div>
 
-                                      <span className="text-slate-400 text-xs px-2">-</span>
-
+                                    <div className="col-span-2 flex items-center justify-between pl-4">
+                                      <span className="font-mono text-slate-600 text-xs">{b.saldo}</span>
                                       <button 
-                                        onClick={() => handleSaveEdit(item.id, idx)}
-                                        className="bg-[#ff8b00] text-white font-medium px-4 py-1 rounded text-xs hover:bg-[#e07a00] transition-colors"
+                                        onClick={() => handleStartEdit(item.id, idx, b)}
+                                        className="text-[#ff8b00] hover:underline text-xs font-medium"
                                       >
-                                        Salvar
+                                        Editar
                                       </button>
                                     </div>
                                   </div>
                                 );
-                              }
+                              })}
+                            </div>
 
-                              return (
-                                <div key={idx} className="group grid grid-cols-12 items-center bg-white border border-slate-200/80 rounded-md py-1.5 px-3 shadow-sm hover:border-slate-300 transition-all">
-                                  <div className="col-span-6 flex items-center">
-                                    <button 
-                                      onClick={() => handleRemoveBatida(item.id, idx)}
-                                      className="opacity-0 group-hover:opacity-100 bg-red-500 hover:bg-red-600 text-white font-semibold px-2.5 py-0.5 rounded text-[11px] transition-opacity shadow-sm"
-                                    >
-                                      Remover
-                                    </button>
-                                  </div>
-
-                                  <div className="col-span-2 flex items-center justify-center space-x-1 text-slate-700 font-mono text-xs">
-                                    <span>{b.entrada}</span>
-                                    {b.entrada !== '-' && <Monitor className="w-3.5 h-3.5 text-slate-400" />}
-                                  </div>
-
-                                  <div className="col-span-2 flex items-center justify-center space-x-1 text-slate-700 font-mono text-xs">
-                                    <span>{b.saida}</span>
-                                    {b.saida !== '-' && <Monitor className="w-3.5 h-3.5 text-slate-400" />}
-                                  </div>
-
-                                  <div className="col-span-2 flex items-center justify-between pl-4">
-                                    <span className="font-mono text-slate-600 text-xs">{b.saldo}</span>
-                                    <button 
-                                      onClick={() => handleStartEdit(item.id, idx, b)}
-                                      className="text-[#ff8b00] hover:underline text-xs font-medium"
-                                    >
-                                      Editar
-                                    </button>
-                                  </div>
-                                </div>
-                              );
-                            })}
+                            <div className="flex justify-end space-x-6 items-center mt-3 pt-2 border-t border-slate-200 text-slate-600 font-medium text-xs">
+                              <span>Horas extras: <strong>{item.horaExtra}</strong></span>
+                              <span>Trabalhado: <strong>{item.trabalhado}</strong></span>
+                            </div>
                           </div>
-
-                          <div className="flex justify-end space-x-6 items-center mt-3 pt-2 border-t border-slate-200 text-slate-600 font-medium text-xs">
-                            <span>Horas extras: <strong>{item.horaExtra}</strong></span>
-                            <span>Trabalhado: <strong>{item.trabalhado}</strong></span>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
+                        )}
+                      </div>
+                    );
+                  })
+                )}
 
                 <div className="grid grid-cols-12 px-6 py-3 items-center text-xs font-bold bg-slate-50/30">
                   <div className="col-span-8"></div>

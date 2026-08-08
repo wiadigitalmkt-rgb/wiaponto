@@ -1,7 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 
-// Busca as variáveis de ambiente configuradas no Vercel / .env
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
+const supabaseUrl = 'https://ezmibiuwkdrbiyynkdrb.supabase.co';
+const supabaseAnonKey = 'sb_publishable_3VkkCI86G1VZ7B_iTQaYBQ_MIhEARVK'; // Cole aqui a chave sb_publishable_... que você copiou
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);

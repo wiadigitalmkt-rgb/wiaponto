@@ -9,15 +9,16 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 
-export default function Navbar({ selectedCompany = 'Empresa Teste 11738' }) {
+export default function Navbar({ selectedCompany = 'PontoMax' }) {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
 
-  // Exemplo de lista de empresas para busca
-  const companies = ['Empresa Teste 11738', 'Empresa Exemplo 2', 'Outra Empresa'];
+  // Puxa as empresas vinculadas ao e-mail do usuário autenticado. 
+  // Caso não existam empresas adicionais no objeto user, exibe apenas a empresa padrão do usuário.
+  const userCompanies = user?.companies || [user?.companyName || selectedCompany];
 
-  const filteredCompanies = companies.filter((company) =>
+  const filteredCompanies = userCompanies.filter((company) =>
     company.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
@@ -109,7 +110,7 @@ export default function Navbar({ selectedCompany = 'Empresa Teste 11738' }) {
               />
             </div>
 
-            {/* Lista de Empresas */}
+            {/* Lista de Empresas filtradas pelo e-mail do usuário */}
             <div className="max-h-48 overflow-y-auto">
               {filteredCompanies.map((company) => {
                 const isSelected = company === selectedCompany;

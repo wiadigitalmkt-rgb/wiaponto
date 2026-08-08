@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import Navbar from '@/components/Navbar';
 import { supabase } from '@/lib/supabase'; // Conexão com o Supabase
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { 
   Search, 
   ChevronDown, 
@@ -22,6 +22,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 
 export default function Employees() {
+  const navigate = useNavigate();
   const [currentView, setCurrentView] = useState('list');
   const [loading, setLoading] = useState(true);
   const [usersData, setUsersData] = useState([]);
@@ -163,9 +164,9 @@ export default function Employees() {
         {currentView === 'list' && (
           <>
             <div className="text-xs text-slate-500 mb-4">
-              <a href="/admin" className="hover:text-[#00897b] hover:underline transition-colors font-medium">
+              <Link to="/admin" className="hover:text-[#00897b] hover:underline transition-colors font-medium">
                 Painel
-              </a> 
+              </Link> 
               <ChevronRight className="w-3 h-3 inline mx-1 text-slate-400" />
               <span className="text-[#00897b] font-medium">Usuários</span>
             </div>
@@ -240,13 +241,17 @@ export default function Employees() {
                       </tr>
                     ) : filteredUsers.length > 0 ? (
                       filteredUsers.map((user) => (
-                        <tr key={user.id} className="hover:bg-slate-50/80 transition-colors">
+                        <tr 
+                          key={user.id} 
+                          onClick={() => navigate('/admin/usuario')}
+                          className="hover:bg-slate-50/80 transition-colors cursor-pointer"
+                        >
                           <td className="py-3.5 px-6">
                             <div className="flex items-center space-x-3">
                               <div className="w-8 h-8 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center font-semibold text-slate-600 text-xs shrink-0">
                                 {user.initials}
                               </div>
-                              <span className="font-semibold text-slate-800">
+                              <span className="font-semibold text-slate-800 hover:text-[#00897b] transition-colors">
                                 {user.name}
                               </span>
                             </div>
@@ -289,7 +294,7 @@ export default function Employees() {
         {currentView === 'create' && (
           <>
             <div className="text-xs text-slate-500 mb-4">
-              <a href="/admin" className="hover:text-[#00897b] hover:underline transition-colors font-medium">Painel</a> 
+              <Link to="/admin" className="hover:text-[#00897b] hover:underline transition-colors font-medium">Painel</Link> 
               <ChevronRight className="w-3 h-3 inline mx-1 text-slate-400" />
               <button onClick={() => setCurrentView('list')} className="hover:text-[#00897b] hover:underline transition-colors font-medium">Usuários</button>
               <ChevronRight className="w-3 h-3 inline mx-1 text-slate-400" />

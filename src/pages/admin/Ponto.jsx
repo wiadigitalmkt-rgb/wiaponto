@@ -233,17 +233,7 @@ export default function AdminPonto() {
 
   return (
     <div className="min-h-screen bg-[#edf2f7] flex flex-col font-sans text-slate-700 relative">
-      <Navbar selectedCompany={
-        <DropdownMenu>
-          <DropdownMenuTrigger className="flex items-center space-x-3 border border-slate-600 bg-[#1e293b]/40 text-white font-semibold text-xs px-3.5 py-1.5 rounded-md hover:bg-[#1e293b]/60 transition-colors focus:outline-none">
-            <span>Sua Empresa</span>
-            <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="start" className="bg-white">
-            <DropdownMenuItem className="cursor-pointer text-xs">Sua Empresa</DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      } />
+      <Navbar selectedCompany="Sua Empresa" />
 
       <div className="flex flex-1">
         {/* Sidebar Esquerda */}

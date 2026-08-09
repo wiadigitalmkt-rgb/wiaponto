@@ -60,7 +60,7 @@ export default function PunchClock() {
 
   return (
     <div className="min-h-screen bg-[#eef2f5] flex flex-col font-sans text-slate-700">
-      <Navbar selectedCompany="Empresa Teste 11738" userInitials="JD" userName="Joquebede" />
+      <Navbar selectedCompany="Empresa Wianet Telecom" userInitials="JD" userName="Joquebede" />
 
       <main className="flex-1 flex flex-col items-center justify-start pt-10 px-4 pb-12">
         {/* TÍTULO DE BOAS-VINDAS */}

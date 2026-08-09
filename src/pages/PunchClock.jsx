@@ -65,7 +65,7 @@ export default function PunchClock() {
       <main className="flex-1 flex flex-col items-center justify-start pt-10 px-4 pb-12">
         {/* TÍTULO DE BOAS-VINDAS */}
         <h1 className="text-xl md:text-2xl font-bold text-slate-800 mb-8 flex items-center justify-center gap-2">
-          <span>Coalize</span>
+          <span>WiaPonto</span>
           <span className="text-red-500">♥</span>
           <span>Joquebede</span>
         </h1>

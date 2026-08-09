@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import Navbar from '@/components/Navbar';
-import { supabase } from '@/lib/supabase'; // Certifique-se de que o caminho do seu supabase client esteja correto
+import { supabase } from '@/lib/supabase';
 import {
   User,
   Clock,
@@ -13,7 +13,10 @@ import {
   ExternalLink,
   Settings,
   Upload,
-  Search
+  Search,
+  Plus,
+  Trash2,
+  X
 } from 'lucide-react';
 
 export default function Usuario() {
@@ -26,7 +29,9 @@ export default function Usuario() {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
 
-  // Estado dos dados do Usuário/Colaborador
+  const fileInputRef = useRef(null);
+
+  // Estados dos Dados Principais
   const [usuarioData, setUsuarioData] = useState({
     primeiroNome: 'Joquebede',
     sobrenome: 'de Oliveira',
@@ -50,57 +55,99 @@ export default function Usuario() {
     complemento: 'casa',
     estado: 'Rio Grande do Sul',
     cidade: 'Viamão',
-    banco: '',
-    agencia: '',
-    conta: '',
-    observacoes: '',
     idPonto: '7412',
     login: '60017206065',
     tipoAcesso: 'Colaborador',
     statusUsuario: 'Ativo'
   });
 
-  // Carregar dados do Banco de Dados caso haja um ID na URL
+  // Estados dos Recursos Específicos
+  const [customFields, setCustomFields] = useState([]);
+  const [showConfigCampos, setShowConfigCampos] = useState(false);
+  const [newFieldName, setNewFieldName] = useState('');
+  const [newFieldType, setNewFieldType] = useState('Texto livre');
+
+  const [attachments, setAttachments] = useState([]);
+  const [schedules, setSchedules] = useState([]);
+  const [geofences, setGeofences] = useState([]);
+  const [vacations, setVacations] = useState([]);
+  const [dependents, setDependents] = useState([]);
+
+  // Modais
+  const [showVacationModal, setShowVacationModal] = useState(false);
+  const [newVacation, setNewVacation] = useState({ start_date: '', end_date: '' });
+
+  const [showDependentModal, setShowDependentModal] = useState(false);
+  const [newDependent, setNewDependent] = useState({
+    first_name: '',
+    last_name: '',
+    birth_date: '',
+    relationship: 'Filho(a)',
+    notes: ''
+  });
+
+  const [showGeofenceModal, setShowGeofenceModal] = useState(false);
+  const [newFence, setNewFence] = useState({ name: '', latitude: -30.0811, longitude: -51.0233, radius_meters: 100 });
+
+  // Carregar dados iniciais do Supabase
   useEffect(() => {
     if (userId && supabase) {
-      async function fetchUser() {
+      async function fetchData() {
         setLoading(true);
-        const { data, error } = await supabase
-          .from('Employees')
-          .select('*')
-          .eq('id', userId)
-          .single();
 
-        if (!error && data) {
+        // 1. Employee Info
+        const { data: emp } = await supabase.from('Employees').select('*').eq('id', userId).single();
+        if (emp) {
           setUsuarioData(prev => ({
             ...prev,
-            primeiroNome: data.first_name || data.full_name?.split(' ')[0] || prev.primeiroNome,
-            sobrenome: data.last_name || data.full_name?.split(' ').slice(1).join(' ') || prev.sobrenome,
-            genero: data.gender || prev.genero,
-            email: data.email || prev.email,
-            telefone: data.phone || prev.telefone,
-            estadoCivil: data.marital_status || prev.estadoCivil,
-            cpf: data.cpf || prev.cpf,
-            rg: data.rg || prev.rg,
-            pisPasep: data.pis_pasep || prev.pisPasep,
-            cargo: data.position || prev.cargo,
-            salario: data.salary || prev.salario,
-            dataAdmissao: data.admission_date || prev.dataAdmissao,
-            cep: data.cep || prev.cep,
-            rua: data.street || prev.rua,
-            numero: data.number || prev.numero,
-            bairro: data.neighborhood || prev.bairro,
-            complemento: data.complement || prev.complemento,
-            cidade: data.city || prev.cidade,
-            estado: data.state || prev.estado,
-            idPonto: data.point_id || prev.idPonto,
-            tipoAcesso: data.access_type || prev.tipoAcesso,
-            statusUsuario: data.status || prev.statusUsuario
+            primeiroNome: emp.first_name || emp.full_name?.split(' ')[0] || prev.primeiroNome,
+            sobrenome: emp.last_name || emp.full_name?.split(' ').slice(1).join(' ') || prev.sobrenome,
+            genero: emp.gender || prev.genero,
+            email: emp.email || prev.email,
+            telefone: emp.phone || prev.telefone,
+            estadoCivil: emp.marital_status || prev.estadoCivil,
+            cpf: emp.cpf || prev.cpf,
+            rg: emp.rg || prev.rg,
+            pisPasep: emp.pis_pasep || prev.pisPasep,
+            cargo: emp.position || prev.cargo,
+            salario: emp.salary || prev.salario,
+            dataAdmissao: emp.admission_date || prev.dataAdmissao,
+            cep: emp.cep || prev.cep,
+            rua: emp.street || prev.rua,
+            numero: emp.number || prev.numero,
+            bairro: emp.neighborhood || prev.bairro,
+            complemento: emp.complement || prev.complemento,
+            cidade: emp.city || prev.cidade,
+            estado: emp.state || prev.estado,
+            idPonto: emp.point_id || prev.idPonto,
+            login: emp.cpf ? emp.cpf.replace(/\D/g, '') : prev.login,
+            tipoAcesso: emp.access_type || prev.tipoAcesso,
+            statusUsuario: emp.status || prev.statusUsuario
           }));
         }
+
+        // 2. Sub-tabelas
+        const { data: fields } = await supabase.from('employee_custom_fields').select('*').eq('employee_id', userId);
+        if (fields) setCustomFields(fields);
+
+        const { data: files } = await supabase.from('employee_attachments').select('*').eq('employee_id', userId);
+        if (files) setAttachments(files);
+
+        const { data: scheds } = await supabase.from('employee_work_schedules').select('*').eq('employee_id', userId);
+        if (scheds) setSchedules(scheds);
+
+        const { data: fences } = await supabase.from('geofences').select('*').eq('employee_id', userId);
+        if (fences) setGeofences(fences);
+
+        const { data: vacs } = await supabase.from('employee_vacations').select('*').eq('employee_id', userId);
+        if (vacs) setVacations(vacs);
+
+        const { data: deps } = await supabase.from('employee_dependents').select('*').eq('employee_id', userId);
+        if (deps) setDependents(deps);
+
         setLoading(false);
       }
-      fetchUser();
+      fetchData();
     }
   }, [userId]);
 
@@ -109,9 +156,9 @@ export default function Usuario() {
     setUsuarioData(prev => ({ ...prev, [name]: value }));
   };
 
-  // Função para salvar as alterações no Banco de Dados Supabase
-  const handleSave = async () => {
-    if (!supabase) return;
+  // 1. Salvar Dados do Perfil
+  const handleSaveProfile = async () => {
+    if (!supabase || !userId) return;
     setSaving(true);
     try {
       const fullName = `${usuarioData.primeiroNome} ${usuarioData.sobrenome}`.trim();
@@ -141,17 +188,125 @@ export default function Usuario() {
         status: usuarioData.statusUsuario
       };
 
-      if (userId) {
-        await supabase.from('Employees').update(payload).eq('id', userId);
-      } else {
-        await supabase.from('Employees').insert([payload]);
-      }
-      alert('Alterações salvas com sucesso!');
+      await supabase.from('Employees').update(payload).eq('id', userId);
+      alert('Alterações salvas no banco com sucesso!');
     } catch (err) {
       console.error(err);
       alert('Erro ao salvar alterações.');
     } finally {
       setSaving(false);
+    }
+  };
+
+  // 2. Configurar / Adicionar Campos Adicionais
+  const handleAddCustomField = async () => {
+    if (!newFieldName.trim() || !userId) return;
+    const { data, error } = await supabase.from('employee_custom_fields').insert([{
+      employee_id: userId,
+      field_name: newFieldName,
+      field_type: newFieldType,
+      field_value: ''
+    }]).select();
+
+    if (!error && data) {
+      setCustomFields([...customFields, ...data]);
+      setNewFieldName('');
+    }
+  };
+
+  // 3. Upload Múltiplo de Arquivos/Anexos
+  const handleFileUpload = async (e) => {
+    const files = Array.from(e.target.files);
+    if (!files.length || !userId) return;
+
+    for (const file of files) {
+      const filePath = `${userId}/${Date.now()}_${file.name}`;
+      const { data: uploadData, error: uploadErr } = await supabase.storage
+        .from('employee-files')
+        .upload(filePath, file);
+
+      const fileUrl = uploadErr ? '' : supabase.storage.from('employee-files').getPublicUrl(filePath).data.publicUrl;
+
+      const { data: record } = await supabase.from('employee_attachments').insert([{
+        employee_id: userId,
+        file_name: file.name,
+        file_url: fileUrl,
+        file_size: file.size
+      }]).select();
+
+      if (record) {
+        setAttachments(prev => [...prev, ...record]);
+      }
+    }
+  };
+
+  // 4. Adicionar Nova Jornada
+  const handleAddSchedule = async () => {
+    if (!userId) return;
+    const newEntry = {
+      employee_id: userId,
+      start_date: new Date().toISOString().split('T')[0],
+      schedule_name: 'SEG A SEX 8H AS 12H DAS 14H AS 18H SAB 08H AS 12H'
+    };
+    const { data } = await supabase.from('employee_work_schedules').insert([newEntry]).select();
+    if (data) setSchedules([...schedules, ...data]);
+  };
+
+  // 5. Adicionar Cerca
+  const handleAddGeofence = async () => {
+    if (!userId || !newFence.name) return;
+    const { data } = await supabase.from('geofences').insert([{
+      employee_id: userId,
+      ...newFence
+    }]).select();
+
+    if (data) {
+      setGeofences([...geofences, ...data]);
+      setShowGeofenceModal(false);
+    }
+  };
+
+  // 6. Cadastrar Férias
+  const handleAddVacation = async () => {
+    if (!userId || !newVacation.start_date || !newVacation.end_date) return;
+    const { data } = await supabase.from('employee_vacations').insert([{
+      employee_id: userId,
+      ...newVacation,
+      status: 'Agendado'
+    }]).select();
+
+    if (data) {
+      setVacations([...vacations, ...data]);
+      setShowVacationModal(false);
+    }
+  };
+
+  // 7. Cadastrar Dependente
+  const handleAddDependent = async () => {
+    if (!userId || !newDependent.first_name) return;
+    const { data } = await supabase.from('employee_dependents').insert([{
+      employee_id: userId,
+      ...newDependent
+    }]).select();
+
+    if (data) {
+      setDependents([...dependents, ...data]);
+      setShowDependentModal(false);
+    }
+  };
+
+  // 8. Resetar Senha para o Padrao (CPF sem pontuação)
+  const handleResetPassword = async () => {
+    if (!userId) return;
+    const defaultPassword = usuarioData.cpf.replace(/\D/g, '');
+    const { error } = await supabase.from('Employees').update({
+      password_hash: defaultPassword
+    }).eq('id', userId);
+
+    if (!error) {
+      alert(`Senha resetada com sucesso para o padrão (CPF): ${defaultPassword}`);
+    } else {
+      alert('Erro ao resetar senha.');
     }
   };
 
@@ -164,25 +319,11 @@ export default function Usuario() {
     { id: 'acesso', label: 'Acesso ao sistema', icon: KeyRound },
   ];
 
-  const getBreadcrumbLabel = () => {
-    switch (activeTab) {
-      case 'informacoes': return 'Dados do perfil';
-      case 'jornada': return 'Jornada de trabalho';
-      case 'cercas': return 'Cercas';
-      case 'ferias': return 'Férias';
-      case 'dependentes': return 'Dependentes';
-      case 'acesso': return 'Acesso ao sistema';
-      default: return '';
-    }
-  };
-
   return (
     <div className="min-h-screen bg-slate-100 flex flex-col font-sans text-slate-700">
-      {/* Navbar Oficial */}
       <Navbar selectedCompany="Sua Empresa" />
 
       <main className="flex-1 p-6">
-        {/* Título e Nav Header */}
         <div className="max-w-6xl mx-auto mb-4">
           <h1 className="text-xl font-bold uppercase text-slate-800 tracking-wide mb-2">Usuários</h1>
           <div className="text-sm text-slate-500 flex items-center gap-2">
@@ -190,15 +331,14 @@ export default function Usuario() {
             <span>&gt;</span>
             <Link to="/admin/colaboradores" className="hover:text-teal-600 transition-colors">Usuários</Link>
             <span>&gt;</span>
-            <span className="text-teal-600 font-medium">{getBreadcrumbLabel()}</span>
+            <span className="text-teal-600 font-medium">Edição</span>
           </div>
         </div>
 
         <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-4 gap-6">
-          
           {/* SIDEBAR DA PÁGINA */}
           <div className="md:col-span-1 space-y-4">
-            <div className="flex items-center gap-3 p-2">
+            <div className="flex items-center gap-3 p-2 bg-white rounded-lg border border-slate-200">
               <div className="w-10 h-10 rounded-full bg-slate-300 flex items-center justify-center font-semibold text-slate-600 uppercase">
                 {usuarioData.primeiroNome?.[0]}{usuarioData.sobrenome?.[0]}
               </div>
@@ -232,15 +372,13 @@ export default function Usuario() {
           {/* PAINEL CONTEÚDO PRINCIPAL */}
           <div className="md:col-span-3">
             <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden">
-              
-              {/* Botão Voltar Topo */}
               <div className="p-4 border-b border-slate-100">
                 <Link to="/admin/colaboradores" className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-700 hover:text-slate-900">
                   <ArrowLeft className="w-4 h-4" /> Voltar
                 </Link>
               </div>
 
-              {/* CONTEÚDO: 1. INFORMAÇÕES (DADOS DO PERFIL) */}
+              {/* 1. DADOS DO PERFIL & INFORMAÇÕES */}
               {activeTab === 'informacoes' && (
                 <div>
                   <div className="flex border-b border-slate-200 px-4 pt-2 gap-6 text-sm overflow-x-auto">
@@ -265,10 +403,9 @@ export default function Usuario() {
                     ))}
                   </div>
 
-                  {/* SUB-ABA: DADOS DO PERFIL */}
+                  {/* SUB-ABA: DADOS DO PERFIL (Com Bairro, Complemento, Estado, Cidade) */}
                   {profileSubTab === 'dados' && (
                     <div className="p-6 space-y-8 text-xs">
-                      {/* Informações básicas */}
                       <section className="space-y-4">
                         <h3 className="font-semibold text-slate-800 text-sm">Informações básicas</h3>
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -319,28 +456,7 @@ export default function Usuario() {
 
                       <hr className="border-slate-100" />
 
-                      {/* Contratação */}
-                      <section className="space-y-4">
-                        <h3 className="font-semibold text-slate-800 text-sm">Contratação</h3>
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                          <div>
-                            <label className="block text-slate-600 mb-1">Cargo*</label>
-                            <input type="text" name="cargo" value={usuarioData.cargo} onChange={handleInputChange} className="w-full border rounded p-2 text-slate-800" />
-                          </div>
-                          <div>
-                            <label className="block text-slate-600 mb-1">Salário bruto</label>
-                            <input type="text" name="salario" value={usuarioData.salario.includes('R$') ? usuarioData.salario : `R$ ${usuarioData.salario}`} onChange={handleInputChange} className="w-full border rounded p-2 text-slate-800" />
-                          </div>
-                          <div>
-                            <label className="block text-slate-600 mb-1">Data de admissão</label>
-                            <input type="date" name="dataAdmissao" value={usuarioData.dataAdmissao} onChange={handleInputChange} className="w-full border rounded p-2 text-slate-800" />
-                          </div>
-                        </div>
-                      </section>
-
-                      <hr className="border-slate-100" />
-
-                      {/* Endereço */}
+                      {/* Endereço Completo */}
                       <section className="space-y-4">
                         <h3 className="font-semibold text-slate-800 text-sm">Endereço</h3>
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -356,11 +472,32 @@ export default function Usuario() {
                             <label className="block text-slate-600 mb-1">Número</label>
                             <input type="text" name="numero" value={usuarioData.numero} onChange={handleInputChange} className="w-full border rounded p-2 text-slate-800" />
                           </div>
+                          <div>
+                            <label className="block text-slate-600 mb-1">Bairro</label>
+                            <input type="text" name="bairro" value={usuarioData.bairro} onChange={handleInputChange} className="w-full border rounded p-2 text-slate-800" />
+                          </div>
+                          <div>
+                            <label className="block text-slate-600 mb-1">Complemento</label>
+                            <input type="text" name="complemento" value={usuarioData.complemento} onChange={handleInputChange} className="w-full border rounded p-2 text-slate-800" />
+                          </div>
+                          <div>
+                            <label className="block text-slate-600 mb-1">Estado</label>
+                            <select name="estado" value={usuarioData.estado} onChange={handleInputChange} className="w-full border rounded p-2 text-slate-800">
+                              <option value="Rio Grande do Sul">Rio Grande do Sul</option>
+                              <option value="Santa Catarina">Santa Catarina</option>
+                              <option value="Paraná">Paraná</option>
+                              <option value="São Paulo">São Paulo</option>
+                            </select>
+                          </div>
+                          <div>
+                            <label className="block text-slate-600 mb-1">Cidade</label>
+                            <input type="text" name="cidade" value={usuarioData.cidade} onChange={handleInputChange} className="w-full border rounded p-2 text-slate-800" />
+                          </div>
                         </div>
                       </section>
 
                       <div className="flex justify-end pt-4">
-                        <button onClick={handleSave} disabled={saving} className="bg-teal-600 hover:bg-teal-700 text-white font-medium px-6 py-2 rounded text-xs transition-colors disabled:opacity-50">
+                        <button onClick={handleSaveProfile} disabled={saving} className="bg-teal-600 hover:bg-teal-700 text-white font-medium px-6 py-2 rounded text-xs transition-colors">
                           {saving ? 'Salvando...' : 'Salvar alterações'}
                         </button>
                       </div>
@@ -369,54 +506,79 @@ export default function Usuario() {
 
                   {/* SUB-ABA: CAMPOS ADICIONAIS */}
                   {profileSubTab === 'campos_adicionais' && (
-                    <div className="p-6 space-y-8 text-xs min-h-[300px] flex flex-col justify-between">
-                      <div className="space-y-6">
-                        <button className="flex items-center gap-1.5 border border-teal-600 text-teal-600 px-3 py-1.5 rounded font-medium hover:bg-teal-50">
+                    <div className="p-6 space-y-6 text-xs">
+                      <div className="flex justify-between items-center">
+                        <button onClick={() => setShowConfigCampos(!showConfigCampos)} className="flex items-center gap-1.5 border border-teal-600 text-teal-600 px-3 py-1.5 rounded font-medium hover:bg-teal-50">
                           <Settings className="w-3.5 h-3.5" /> Configurar campos
                         </button>
-
-                        <div className="text-slate-600 pt-4">
-                          Nenhum campo criado.
-                        </div>
                       </div>
 
+                      {showConfigCampos && (
+                        <div className="p-4 bg-slate-50 border rounded-lg space-y-4">
+                          <h4 className="font-semibold text-slate-700">Campos adicionais no cadastro</h4>
+                          <div className="flex gap-4 items-center">
+                            <input
+                              type="text"
+                              placeholder="Digite o nome do campo (ex: Observações)"
+                              value={newFieldName}
+                              onChange={(e) => setNewFieldName(e.target.value)}
+                              className="border p-2 rounded flex-1 text-xs"
+                            />
+                            <select value={newFieldType} onChange={(e) => setNewFieldType(e.target.value)} className="border p-2 rounded text-xs">
+                              <option value="Texto livre">Texto livre</option>
+                              <option value="Número">Número</option>
+                            </select>
+                            <button onClick={handleAddCustomField} className="bg-teal-600 text-white px-4 py-2 rounded font-medium flex items-center gap-1">
+                              <Plus className="w-3.5 h-3.5" /> Adicionar Campo
+                            </button>
+                          </div>
+                        </div>
+                      )}
+
+                      {customFields.length === 0 ? (
+                        <div className="text-slate-500 py-6">Nenhum campo criado.</div>
+                      ) : (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          {customFields.map((field) => (
+                            <div key={field.id}>
+                              <label className="block text-slate-600 mb-1 font-medium">{field.field_name}</label>
+                              <input
+                                type="text"
+                                defaultValue={field.field_value}
+                                className="w-full border rounded p-2 text-slate-800"
+                              />
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
                       <div className="flex justify-end pt-4 border-t border-slate-100">
-                        <button onClick={handleSave} className="bg-slate-300 text-slate-500 cursor-not-allowed font-medium px-6 py-2 rounded text-xs">
+                        <button onClick={handleSaveProfile} className="bg-teal-600 hover:bg-teal-700 text-white font-medium px-6 py-2 rounded text-xs">
                           Salvar alterações
                         </button>
                       </div>
                     </div>
                   )}
 
-                  {/* SUB-ABA: ADMISSÃO */}
-                  {profileSubTab === 'admissao' && (
-                    <div className="p-6 space-y-6 text-xs">
-                      <div className="space-y-3">
-                        <h4 className="font-bold text-slate-700 uppercase tracking-wide">INFORMAÇÕES SOLICITADAS</h4>
-                        <div className="text-slate-500 py-2">
-                          Nenhum item encontrado
-                        </div>
-                      </div>
-
-                      <hr className="border-slate-100" />
-
-                      <div className="space-y-3">
-                        <h4 className="font-bold text-slate-700 uppercase tracking-wide">ARQUIVOS SOLICITADOS</h4>
-                        <div className="text-slate-500 py-2">
-                          Nenhum item encontrado
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* SUB-ABA: ANEXOS */}
+                  {/* SUB-ABA: ANEXOS (UPLOAD MÚLTIPLO) */}
                   {profileSubTab === 'anexos' && (
                     <div className="p-6 space-y-6 text-xs">
                       <div className="flex justify-between items-center">
+                        <input
+                          type="file"
+                          multiple
+                          ref={fileInputRef}
+                          onChange={handleFileUpload}
+                          className="hidden"
+                          accept="image/*,.pdf,.doc,.docx"
+                        />
                         <div></div>
                         <div className="text-right">
-                          <button className="bg-teal-600 hover:bg-teal-700 text-white font-medium px-4 py-2 rounded transition-colors inline-flex items-center gap-1.5">
-                            Anexar novo arquivo
+                          <button
+                            onClick={() => fileInputRef.current?.click()}
+                            className="bg-teal-600 hover:bg-teal-700 text-white font-medium px-4 py-2 rounded transition-colors inline-flex items-center gap-1.5"
+                          >
+                            <Upload className="w-3.5 h-3.5" /> Anexar novo arquivo
                           </button>
                           <span className="block text-[10px] text-slate-400 mt-1">Limite por arquivo: 50MB</span>
                         </div>
@@ -429,69 +591,31 @@ export default function Usuario() {
                             <th className="py-2 text-right">ANEXADO EM</th>
                           </tr>
                         </thead>
+                        <tbody>
+                          {attachments.map((file) => (
+                            <tr key={file.id} className="border-b">
+                              <td className="py-2 font-medium text-teal-600">
+                                <a href={file.file_url} target="_blank" rel="noreferrer" className="hover:underline">
+                                  {file.file_name}
+                                </a>
+                              </td>
+                              <td className="py-2 text-right text-slate-400">
+                                {new Date(file.created_at).toLocaleDateString('pt-BR')}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
                       </table>
 
-                      <div className="py-12 text-center text-slate-500">
-                        Nenhum anexo encontrado
-                      </div>
-
-                      <div className="flex justify-between items-center pt-4 border-t border-slate-100 text-slate-500">
-                        <span>0 Resultado</span>
-                        <div className="flex items-center gap-2">
-                          <span>Itens por página</span>
-                          <select className="border rounded p-1 bg-white">
-                            <option>10</option>
-                            <option>20</option>
-                          </select>
-                        </div>
-                      </div>
+                      {attachments.length === 0 && (
+                        <div className="py-12 text-center text-slate-500">Nenhum anexo encontrado</div>
+                      )}
                     </div>
                   )}
-
-                  {/* SUB-ABA: ARQUIVOS DISTRIBUÍDOS */}
-                  {profileSubTab === 'arquivos' && (
-                    <div className="p-6 space-y-6 text-xs">
-                      <div className="flex justify-between items-center gap-4">
-                        <div className="relative flex-1 max-w-xs">
-                          <Search className="w-3.5 h-3.5 absolute left-2.5 top-2.5 text-slate-400" />
-                          <input type="text" placeholder="Buscar" className="w-full pl-8 pr-3 py-1.5 border rounded text-xs bg-slate-50" />
-                        </div>
-                        <select className="border rounded px-3 py-1.5 bg-white text-slate-600">
-                          <option>Todos</option>
-                        </select>
-                      </div>
-
-                      <table className="w-full text-left border-collapse">
-                        <thead>
-                          <tr className="border-b text-slate-500 font-semibold uppercase tracking-wider text-[11px]">
-                            <th className="py-2">DESCRIÇÃO</th>
-                            <th className="py-2">TIPO</th>
-                            <th className="py-2 text-right">DATA</th>
-                          </tr>
-                        </thead>
-                      </table>
-
-                      <div className="py-12 text-center text-slate-500">
-                        Nenhum resultado encontrado
-                      </div>
-
-                      <div className="flex justify-between items-center pt-4 border-t border-slate-100 text-slate-500">
-                        <span>0 Resultado</span>
-                        <div className="flex items-center gap-2">
-                          <span>Itens por página</span>
-                          <select className="border rounded p-1 bg-white">
-                            <option>10</option>
-                            <option>20</option>
-                          </select>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
                 </div>
               )}
 
-              {/* CONTEÚDO: 2. JORNADA DE TRABALHO */}
+              {/* 2. JORNADA DE TRABALHO */}
               {activeTab === 'jornada' && (
                 <div>
                   <div className="flex border-b border-slate-200 px-4 pt-2 gap-6 text-sm">
@@ -509,101 +633,88 @@ export default function Usuario() {
                     </button>
                   </div>
 
-                  <div className="p-6 space-y-6 text-xs">
-                    <div className="space-y-3">
-                      <label className="flex items-center gap-2 cursor-pointer">
-                        <input type="checkbox" className="rounded text-teal-600" />
-                        <span>Permitir ponto offline pelo aplicativo celular para este usuário</span>
-                      </label>
-                      <label className="flex items-center gap-2 cursor-pointer">
-                        <input type="checkbox" className="rounded text-teal-600" />
-                        <span>Bloquear ponto pelo aplicativo celular para este usuário</span>
-                      </label>
-                      <label className="flex items-center gap-2 cursor-pointer">
-                        <input type="checkbox" className="rounded text-teal-600" />
-                        <span>Bloquear ponto pelo navegador web para este usuário</span>
-                      </label>
-                    </div>
+                  {jornadaSubTab === 'jornadas' ? (
+                    <div className="p-6 space-y-6 text-xs">
+                      <div className="flex justify-between items-center">
+                        <button onClick={handleAddSchedule} className="border border-teal-600 text-teal-600 px-4 py-2 rounded font-medium hover:bg-teal-50 flex items-center gap-1">
+                          <Plus className="w-3.5 h-3.5" /> Adicionar nova
+                        </button>
+                      </div>
 
-                    <hr className="border-slate-100" />
+                      <div className="space-y-4">
+                        {schedules.map((s) => (
+                          <div key={s.id} className="grid grid-cols-1 md:grid-cols-3 gap-4 items-center border p-3 rounded">
+                            <div>
+                              <label className="block text-slate-500 text-[10px]">Início em</label>
+                              <input type="date" defaultValue={s.start_date} className="border rounded p-1.5 text-xs w-full" />
+                            </div>
+                            <div>
+                              <label className="block text-slate-500 text-[10px]">Jornada</label>
+                              <select defaultValue={s.schedule_name} className="border rounded p-1.5 text-xs w-full">
+                                <option value="SEG A SEX 8H AS 12H DAS 14H AS 18H SAB 08H AS 12H">
+                                  SEG A SEX 8H AS 12H DAS 14H AS 18H SAB 08H AS 12H
+                                </option>
+                              </select>
+                            </div>
+                            <div className="text-right">
+                              <button className="text-red-500 hover:underline">Remover</button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
 
-                    <div>
-                      <h4 className="font-semibold text-slate-800 mb-2">Jornada atual</h4>
-                      <p className="text-slate-600 mb-1"><strong>Nome:</strong> SEG A SEX 8H AS 12H DAS 14H AS 18H SAB 08H AS 12H</p>
-                      <p className="text-slate-600 mb-1"><strong>Tipo:</strong> Padrão</p>
-                      <p className="text-slate-600 mb-4"><strong>Usada desde:</strong> 06/08/2026</p>
-
-                      <table className="w-full border-collapse border border-slate-200 text-left text-xs">
-                        <thead>
-                          <tr className="bg-slate-50 text-slate-600 border-b">
-                            <th className="p-2 border-r">DIA DA SEMANA</th>
-                            <th className="p-2 border-r">ENTRADA</th>
-                            <th className="p-2 border-r">SAÍDA</th>
-                            <th className="p-2 border-r">ENTRADA</th>
-                            <th className="p-2">SAÍDA</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-100">
-                          <tr>
-                            <td className="p-2 border-r font-medium">Segunda, Terça, Quarta, Quinta, Sexta</td>
-                            <td className="p-2 border-r">08:00</td>
-                            <td className="p-2 border-r">12:00</td>
-                            <td className="p-2 border-r">14:00</td>
-                            <td className="p-2">18:00</td>
-                          </tr>
-                          <tr>
-                            <td className="p-2 border-r font-medium">Sábado</td>
-                            <td className="p-2 border-r">08:00</td>
-                            <td className="p-2 border-r">12:00</td>
-                            <td className="p-2 border-r">-</td>
-                            <td className="p-2">-</td>
-                          </tr>
-                        </tbody>
-                      </table>
-                      <div className="text-right mt-2 text-slate-500 font-semibold">
-                        Total de horas semanal: 44h00min
+                      <div className="flex justify-end pt-4">
+                        <button onClick={handleSaveProfile} className="bg-teal-600 hover:bg-teal-700 text-white font-medium px-6 py-2 rounded text-xs">
+                          Salvar alterações
+                        </button>
                       </div>
                     </div>
-
-                    <div className="flex justify-end pt-4">
-                      <button onClick={handleSave} className="bg-teal-600 hover:bg-teal-700 text-white font-medium px-6 py-2 rounded text-xs transition-colors">
-                        Salvar alterações
-                      </button>
+                  ) : (
+                    <div className="p-6 space-y-6 text-xs">
+                      <p className="text-slate-600 font-medium">Jornada Atual e Parâmetros de Ponto Celular/Web</p>
                     </div>
-                  </div>
+                  )}
                 </div>
               )}
 
-              {/* CONTEÚDO: 3. CERCAS */}
+              {/* 3. CERCAS (Geofencing) */}
               {activeTab === 'cercas' && (
                 <div className="p-6 text-xs space-y-6">
                   <div className="flex justify-between items-center">
                     <h3 className="font-semibold text-slate-800 text-sm">Cercas do Usuário</h3>
-                    <button className="flex items-center gap-1 border border-teal-600 text-teal-600 px-3 py-1.5 rounded hover:bg-teal-50 font-medium">
-                      <MapPin className="w-3.5 h-3.5" /> Gerenciar Cercas <ExternalLink className="w-3 h-3" />
+                    <button onClick={() => setShowGeofenceModal(true)} className="flex items-center gap-1 border border-teal-600 text-teal-600 px-3 py-1.5 rounded hover:bg-teal-50 font-medium">
+                      <MapPin className="w-3.5 h-3.5" /> Adicionar Cerca no Mapa
                     </button>
                   </div>
 
-                  <div className="border-2 border-dashed border-slate-200 rounded-lg p-12 text-center text-slate-400 space-y-2">
-                    <MapPin className="w-8 h-8 mx-auto text-slate-300" />
-                    <p className="font-medium text-slate-600">Nenhuma cerca cadastrada</p>
-                    <p>Cadastre cercas em "Gerenciar Cercas" para vincular ao usuário</p>
-                  </div>
-
-                  <div className="flex justify-end">
-                    <button onClick={handleSave} className="bg-teal-600 hover:bg-teal-700 text-white font-medium px-6 py-2 rounded text-xs transition-colors">
-                      Salvar Alterações
-                    </button>
-                  </div>
+                  {geofences.length === 0 ? (
+                    <div className="border-2 border-dashed border-slate-200 rounded-lg p-12 text-center text-slate-400 space-y-2">
+                      <MapPin className="w-8 h-8 mx-auto text-slate-300" />
+                      <p className="font-medium text-slate-600">Nenhuma cerca cadastrada</p>
+                      <p>Adicione um raio no mapa onde o ponto será liberado sem alerta.</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {geofences.map(f => (
+                        <div key={f.id} className="p-3 border rounded flex justify-between items-center">
+                          <div>
+                            <strong className="text-slate-800 block">{f.name}</strong>
+                            <span className="text-slate-500">Lat: {f.latitude}, Lng: {f.longitude} (Raio: {f.radius_meters}m)</span>
+                          </div>
+                          <span className="bg-teal-100 text-teal-800 px-2 py-0.5 rounded text-[10px]">Ativa</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               )}
 
-              {/* CONTEÚDO: 4. FÉRIAS */}
+              {/* 4. FÉRIAS */}
               {activeTab === 'ferias' && (
                 <div className="p-6 text-xs space-y-6">
                   <div className="flex justify-between items-center">
-                    <span className="text-slate-500">Admitido em 06/08/2026</span>
-                    <button className="bg-teal-600 hover:bg-teal-700 text-white font-medium px-4 py-2 rounded transition-colors">
+                    <span className="text-slate-500">Admitido em {usuarioData.dataAdmissao}</span>
+                    <button onClick={() => setShowVacationModal(true)} className="bg-teal-600 hover:bg-teal-700 text-white font-medium px-4 py-2 rounded transition-colors">
                       Adicionar período
                     </button>
                   </div>
@@ -611,27 +722,29 @@ export default function Usuario() {
                   <table className="w-full text-left border-collapse">
                     <thead>
                       <tr className="border-b text-slate-500 font-semibold">
-                        <th className="py-2">PERÍODO AQUISITIVO</th>
-                        <th className="py-2">STATUS</th>
-                        <th className="py-2 text-right">SALDO</th>
+                        <th className="py-2">INÍCIO</th>
+                        <th className="py-2">FIM</th>
+                        <th className="py-2 text-right">STATUS</th>
                       </tr>
                     </thead>
                     <tbody>
-                      <tr className="border-b">
-                        <td className="py-3 font-medium text-slate-700">&gt; 06/08/2026 à 05/08/2027</td>
-                        <td className="py-3 text-slate-400">-</td>
-                        <td className="py-3 text-right font-medium">0 dias</td>
-                      </tr>
+                      {vacations.map(v => (
+                        <tr key={v.id} className="border-b">
+                          <td className="py-3 font-medium text-slate-700">{v.start_date}</td>
+                          <td className="py-3 text-slate-700">{v.end_date}</td>
+                          <td className="py-3 text-right font-medium text-teal-600">{v.status}</td>
+                        </tr>
+                      ))}
                     </tbody>
                   </table>
                 </div>
               )}
 
-              {/* CONTEÚDO: 5. DEPENDENTES */}
+              {/* 5. DEPENDENTES */}
               {activeTab === 'dependentes' && (
                 <div className="p-6 text-xs space-y-6">
                   <div className="flex justify-end">
-                    <button className="bg-teal-600 hover:bg-teal-700 text-white font-medium px-4 py-2 rounded transition-colors">
+                    <button onClick={() => setShowDependentModal(true)} className="bg-teal-600 hover:bg-teal-700 text-white font-medium px-4 py-2 rounded transition-colors">
                       Adicionar novo
                     </button>
                   </div>
@@ -640,19 +753,24 @@ export default function Usuario() {
                     <thead>
                       <tr className="border-b text-slate-500 font-semibold">
                         <th className="py-2">NOME</th>
-                        <th className="py-2">IDADE</th>
+                        <th className="py-2">NASCIMENTO</th>
                         <th className="py-2">VÍNCULO</th>
                       </tr>
                     </thead>
+                    <tbody>
+                      {dependents.map(d => (
+                        <tr key={d.id} className="border-b">
+                          <td className="py-2 font-medium">{d.first_name} {d.last_name}</td>
+                          <td className="py-2">{d.birth_date}</td>
+                          <td className="py-2">{d.relationship}</td>
+                        </tr>
+                      ))}
+                    </tbody>
                   </table>
-
-                  <div className="py-12 text-center text-slate-400">
-                    Nenhum dependente informado até o momento.
-                  </div>
                 </div>
               )}
 
-              {/* CONTEÚDO: 6. ACESSO AO SISTEMA */}
+              {/* 6. ACESSO AO SISTEMA */}
               {activeTab === 'acesso' && (
                 <div className="p-6 space-y-6 text-xs">
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pb-4 border-b border-slate-100">
@@ -676,10 +794,13 @@ export default function Usuario() {
                       name="tipoAcesso"
                       value={usuarioData.tipoAcesso}
                       onChange={handleInputChange}
-                      className="w-full md:w-1/3 border rounded p-2 text-slate-800"
+                      className="w-full md:w-1/2 border rounded p-2 text-slate-800"
                     >
-                      <option value="Colaborador">Colaborador</option>
-                      <option value="Administrador">Administrador</option>
+                      <option value="Colaborador">Colaborador - Permissão simples aos módulos</option>
+                      <option value="Gerente Leitor">Gerente Leitor - Visualizar usuários das filiais</option>
+                      <option value="Gerente Editor">Gerente Editor - Gerenciar usuários das filiais</option>
+                      <option value="Administrador">Administrador - Permissão total</option>
+                      <option value="Dono da Conta">Dono da Conta - Permissão total + Gestão</option>
                     </select>
                   </div>
 
@@ -690,63 +811,103 @@ export default function Usuario() {
                       <h4 className="font-semibold text-slate-800">Senha</h4>
                       <p className="text-slate-500">Reconfigurar senha do usuário para o padrão inicial (CPF do usuário)</p>
                     </div>
-                    <button className="bg-teal-600 hover:bg-teal-700 text-white px-4 py-2 rounded font-medium transition-colors">
+                    <button onClick={handleResetPassword} className="bg-teal-600 hover:bg-teal-700 text-white px-4 py-2 rounded font-medium transition-colors">
                       Resetar senha
-                    </button>
-                  </div>
-
-                  <hr className="border-slate-100" />
-
-                  <div>
-                    <h4 className="font-semibold text-slate-800 mb-1">Status do usuário</h4>
-                    <p className="text-slate-500 mb-3">
-                      Ao inativar, você <strong>bloqueia</strong> o acesso do usuário ao sistema e ele deixa de ser cobrado na fatura
-                    </p>
-                    <div className="flex gap-4">
-                      <label className="flex items-center gap-1.5 cursor-pointer">
-                        <input
-                          type="radio"
-                          name="statusUsuario"
-                          value="Ativo"
-                          checked={usuarioData.statusUsuario === 'Ativo'}
-                          onChange={handleInputChange}
-                          className="text-teal-600"
-                        />
-                        <span>Ativo</span>
-                      </label>
-                      <label className="flex items-center gap-1.5 cursor-pointer">
-                        <input
-                          type="radio"
-                          name="statusUsuario"
-                          value="Inativo"
-                          checked={usuarioData.statusUsuario === 'Inativo'}
-                          onChange={handleInputChange}
-                          className="text-teal-600"
-                        />
-                        <span>Inativo</span>
-                      </label>
-                    </div>
-                  </div>
-
-                  <hr className="border-slate-100" />
-
-                  <div>
-                    <h4 className="font-semibold text-slate-800 mb-1">Deletar usuário</h4>
-                    <p className="text-slate-500 mb-3">
-                      Ao deletar, você apaga o usuário de forma <strong>permanente</strong>, sem possibilidade de recuperação
-                    </p>
-                    <button className="border border-slate-300 text-slate-400 px-4 py-2 rounded font-medium cursor-not-allowed">
-                      Deletar usuário
                     </button>
                   </div>
                 </div>
               )}
-
             </div>
           </div>
-
         </div>
       </main>
+
+      {/* MODAL FÉRIAS */}
+      {showVacationModal && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+          <div className="bg-white p-6 rounded-lg w-full max-w-md space-y-4">
+            <h3 className="font-bold text-slate-800 text-sm">Adicionar Período de Férias</h3>
+            <div>
+              <label className="block text-xs text-slate-600">Data de Início*</label>
+              <input type="date" onChange={(e) => setNewVacation({...newVacation, start_date: e.target.value})} className="w-full border rounded p-2 text-xs" />
+            </div>
+            <div>
+              <label className="block text-xs text-slate-600">Data de Fim*</label>
+              <input type="date" onChange={(e) => setNewVacation({...newVacation, end_date: e.target.value})} className="w-full border rounded p-2 text-xs" />
+            </div>
+            <div className="flex justify-end gap-2 pt-2">
+              <button onClick={() => setShowVacationModal(false)} className="px-4 py-2 border rounded text-xs">Cancelar</button>
+              <button onClick={handleAddVacation} className="px-4 py-2 bg-teal-600 text-white rounded text-xs font-medium">Adicionar</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL DEPENDENTES */}
+      {showDependentModal && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+          <div className="bg-white p-6 rounded-lg w-full max-w-md space-y-4">
+            <h3 className="font-bold text-slate-800 text-sm">Novo dependente</h3>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="block text-xs text-slate-600">Primeiro nome*</label>
+                <input type="text" onChange={(e) => setNewDependent({...newDependent, first_name: e.target.value})} className="w-full border rounded p-2 text-xs" />
+              </div>
+              <div>
+                <label className="block text-xs text-slate-600">Sobrenome*</label>
+                <input type="text" onChange={(e) => setNewDependent({...newDependent, last_name: e.target.value})} className="w-full border rounded p-2 text-xs" />
+              </div>
+            </div>
+            <div>
+              <label className="block text-xs text-slate-600">Data de nascimento*</label>
+              <input type="date" onChange={(e) => setNewDependent({...newDependent, birth_date: e.target.value})} className="w-full border rounded p-2 text-xs" />
+            </div>
+            <div>
+              <label className="block text-xs text-slate-600">Vínculo*</label>
+              <select onChange={(e) => setNewDependent({...newDependent, relationship: e.target.value})} className="w-full border rounded p-2 text-xs">
+                <option value="Filho(a)">Filho(a)</option>
+                <option value="Cônjuge">Cônjuge</option>
+                <option value="Outro">Outro</option>
+              </select>
+            </div>
+            <div className="flex justify-end gap-2 pt-2">
+              <button onClick={() => setShowDependentModal(false)} className="px-4 py-2 border rounded text-xs">Cancelar</button>
+              <button onClick={handleAddDependent} className="px-4 py-2 bg-teal-600 text-white rounded text-xs font-medium">Salvar</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL CERCA NO MAPA */}
+      {showGeofenceModal && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+          <div className="bg-white p-6 rounded-lg w-full max-w-md space-y-4">
+            <h3 className="font-bold text-slate-800 text-sm">Cadastrar Cerca Geográfica</h3>
+            <div>
+              <label className="block text-xs text-slate-600">Nome do Local</label>
+              <input type="text" placeholder="Ex: Sede Viamão" onChange={(e) => setNewFence({...newFence, name: e.target.value})} className="w-full border rounded p-2 text-xs" />
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="block text-xs text-slate-600">Latitude</label>
+                <input type="number" step="any" value={newFence.latitude} onChange={(e) => setNewFence({...newFence, latitude: parseFloat(e.target.value)})} className="w-full border rounded p-2 text-xs" />
+              </div>
+              <div>
+                <label className="block text-xs text-slate-600">Longitude</label>
+                <input type="number" step="any" value={newFence.longitude} onChange={(e) => setNewFence({...newFence, longitude: parseFloat(e.target.value)})} className="w-full border rounded p-2 text-xs" />
+              </div>
+            </div>
+            <div>
+              <label className="block text-xs text-slate-600">Raio de Cobertura (Metros)</label>
+              <input type="number" value={newFence.radius_meters} onChange={(e) => setNewFence({...newFence, radius_meters: parseInt(e.target.value)})} className="w-full border rounded p-2 text-xs" />
+            </div>
+            <div className="flex justify-end gap-2 pt-2">
+              <button onClick={() => setShowGeofenceModal(false)} className="px-4 py-2 border rounded text-xs">Cancelar</button>
+              <button onClick={handleAddGeofence} className="px-4 py-2 bg-teal-600 text-white rounded text-xs font-medium">Salvar Cerca</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

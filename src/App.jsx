@@ -28,7 +28,7 @@ import PontoEletronico from './pages/admin/Ponto';
 import Usuario from './pages/admin/Usuario';
 import Admissao from './pages/admin/Admissao';
 
-// Novos imports das páginas criadas
+// Imports das Páginas Admin Criadas
 import Contratos from './pages/admin/Contratos';
 import Banco from './pages/admin/Banco';
 import Documentos from './pages/admin/Documentos';
@@ -37,7 +37,6 @@ import Ajuda from './pages/admin/Ajuda';
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
 
-  // Se estiver carregando auth apenas (liberando a renderização caso publicSettings retorne null)
   if (isLoadingAuth) {
     return (
       <div className="fixed inset-0 flex items-center justify-center">
@@ -66,11 +65,14 @@ const AuthenticatedApp = () => {
       {/* Rotas Protegidas */}
       <Route element={<ProtectedRoute unauthenticatedElement={<Navigate to="/login" replace />} />}>
         
-        {/* Rotas do Colaborador (COM Menu) */}
+        {/* Rotas Diretas do Colaborador (Livre do Layout legado Base44) */}
+        <Route path="/" element={<PunchClock />} />
+        <Route path="/ponto" element={<PunchClock />} />
+        <Route path="/espelho" element={<TimeClockMirror />} />
+
+        {/* Rotas Legadas (que usavam Layout antigo) */}
         <Route element={<Layout />}>
-          <Route path="/" element={<Home />} />
-          <Route path="/ponto" element={<PunchClock />} />
-          <Route path="/espelho" element={<TimeClockMirror />} />
+          <Route path="/home-old" element={<Home />} />
           <Route path="/solicitacoes" element={<Requests />} />
           <Route path="/contracheque" element={<Payslip />} />
           <Route path="/configuracoes" element={<Settings />} />
@@ -78,7 +80,7 @@ const AuthenticatedApp = () => {
           <Route path="/admin-old" element={<Admin />} />
         </Route>
 
-        {/* Novas Rotas do Admin */}
+        {/* Rotas do Painel Admin */}
         <Route path="/admin" element={<AdminDashboard />} />
         <Route path="/admin/ponto" element={<PontoEletronico />} />
         <Route path="/admin/colaboradores" element={<Employees />} />

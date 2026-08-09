@@ -28,6 +28,12 @@ import PontoEletronico from './pages/admin/Ponto';
 import Usuario from './pages/admin/Usuario';
 import Admissao from './pages/admin/Admissao';
 
+// Novos imports das páginas criadas
+import Contratos from './pages/admin/Contratos';
+import Banco from './pages/admin/Banco';
+import Documentos from './pages/admin/Documentos';
+import Ajuda from './pages/admin/Ajuda';
+
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
 
@@ -79,7 +85,10 @@ const AuthenticatedApp = () => {
         <Route path="/admin/empresa" element={<CompanySettings />} />
         <Route path="/admin/usuario" element={<Usuario />} />
         <Route path="/admin/admissao" element={<Admissao />} />
-        
+        <Route path="/admin/contratos" element={<Contratos />} />
+        <Route path="/admin/banco-horas" element={<Banco />} />
+        <Route path="/admin/documentos" element={<Documentos />} />
+        <Route path="/admin/ajuda" element={<Ajuda />} />
 
       </Route>
 

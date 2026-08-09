@@ -32,7 +32,7 @@ export default function Contratos() {
       }
     } catch (err) {
       console.error('Erro ao buscar contratos:', err);
-    } font-finally {
+    } finally {
       setLoading(false);
     }
   };

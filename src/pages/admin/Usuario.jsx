@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
 import Navbar from '@/components/Navbar';
+import { supabase } from '@/lib/supabase'; // Certifique-se de que o caminho do seu supabase client esteja correto
 import {
   User,
   Clock,
@@ -9,19 +10,23 @@ import {
   Users,
   KeyRound,
   ArrowLeft,
-  ExternalLink
+  ExternalLink,
+  Settings,
+  Upload,
+  Search
 } from 'lucide-react';
 
 export default function Usuario() {
-  const [activeTab, setActiveTab] = useState('informacoes');
-  
-  // Estado para sub-abas internas de "Dados do perfil"
-  const [profileSubTab, setProfileSubTab] = useState('dados');
-  
-  // Estado para sub-abas internas de "Jornada de trabalho"
-  const [jornadaSubTab, setJornadaSubTab] = useState('informacoes');
+  const [searchParams] = useSearchParams();
+  const userId = searchParams.get('id');
 
-  // Dados mockados do usuário
+  const [activeTab, setActiveTab] = useState('informacoes');
+  const [profileSubTab, setProfileSubTab] = useState('dados');
+  const [jornadaSubTab, setJornadaSubTab] = useState('informacoes');
+  const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  // Estado dos dados do Usuário/Colaborador
   const [usuarioData, setUsuarioData] = useState({
     primeiroNome: 'Joquebede',
     sobrenome: 'de Oliveira',
@@ -49,16 +54,105 @@ export default function Usuario() {
     agencia: '',
     conta: '',
     observacoes: '',
-    // Configurações de Acesso
     idPonto: '7412',
     login: '60017206065',
     tipoAcesso: 'Colaborador',
     statusUsuario: 'Ativo'
   });
 
+  // Carregar dados do Banco de Dados caso haja um ID na URL
+  useEffect(() => {
+    if (userId && supabase) {
+      async function fetchUser() {
+        setLoading(true);
+        const { data, error } = await supabase
+          .from('Employees')
+          .select('*')
+          .eq('id', userId)
+          .single();
+
+        if (!error && data) {
+          setUsuarioData(prev => ({
+            ...prev,
+            primeiroNome: data.first_name || data.full_name?.split(' ')[0] || prev.primeiroNome,
+            sobrenome: data.last_name || data.full_name?.split(' ').slice(1).join(' ') || prev.sobrenome,
+            genero: data.gender || prev.genero,
+            email: data.email || prev.email,
+            telefone: data.phone || prev.telefone,
+            estadoCivil: data.marital_status || prev.estadoCivil,
+            cpf: data.cpf || prev.cpf,
+            rg: data.rg || prev.rg,
+            pisPasep: data.pis_pasep || prev.pisPasep,
+            cargo: data.position || prev.cargo,
+            salario: data.salary || prev.salario,
+            dataAdmissao: data.admission_date || prev.dataAdmissao,
+            cep: data.cep || prev.cep,
+            rua: data.street || prev.rua,
+            numero: data.number || prev.numero,
+            bairro: data.neighborhood || prev.bairro,
+            complemento: data.complement || prev.complemento,
+            cidade: data.city || prev.cidade,
+            estado: data.state || prev.estado,
+            idPonto: data.point_id || prev.idPonto,
+            tipoAcesso: data.access_type || prev.tipoAcesso,
+            statusUsuario: data.status || prev.statusUsuario
+          }));
+        }
+        setLoading(false);
+      }
+      fetchUser();
+    }
+  }, [userId]);
+
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setUsuarioData(prev => ({ ...prev, [name]: value }));
+  };
+
+  // Função para salvar as alterações no Banco de Dados Supabase
+  const handleSave = async () => {
+    if (!supabase) return;
+    setSaving(true);
+    try {
+      const fullName = `${usuarioData.primeiroNome} ${usuarioData.sobrenome}`.trim();
+      const payload = {
+        full_name: fullName,
+        first_name: usuarioData.primeiroNome,
+        last_name: usuarioData.sobrenome,
+        gender: usuarioData.genero,
+        email: usuarioData.email,
+        phone: usuarioData.telefone,
+        marital_status: usuarioData.estadoCivil,
+        cpf: usuarioData.cpf,
+        rg: usuarioData.rg,
+        pis_pasep: usuarioData.pisPasep,
+        position: usuarioData.cargo,
+        salary: usuarioData.salario.replace('R$', '').trim(),
+        admission_date: usuarioData.dataAdmissao || null,
+        cep: usuarioData.cep,
+        street: usuarioData.rua,
+        number: usuarioData.numero,
+        neighborhood: usuarioData.bairro,
+        complement: usuarioData.complemento,
+        city: usuarioData.cidade,
+        state: usuarioData.estado,
+        point_id: usuarioData.idPonto,
+        access_type: usuarioData.tipoAcesso,
+        status: usuarioData.statusUsuario
+      };
+
+      if (userId) {
+        await supabase.from('Employees').update(payload).eq('id', userId);
+      } else {
+        await supabase.from('Employees').insert([payload]);
+      }
+      alert('Alterações salvas com sucesso!');
+    } catch (err) {
+      console.error(err);
+      alert('Erro ao salvar alterações.');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const menuItems = [
@@ -105,8 +199,8 @@ export default function Usuario() {
           {/* SIDEBAR DA PÁGINA */}
           <div className="md:col-span-1 space-y-4">
             <div className="flex items-center gap-3 p-2">
-              <div className="w-10 h-10 rounded-full bg-slate-300 flex items-center justify-center font-semibold text-slate-600">
-                JD
+              <div className="w-10 h-10 rounded-full bg-slate-300 flex items-center justify-center font-semibold text-slate-600 uppercase">
+                {usuarioData.primeiroNome?.[0]}{usuarioData.sobrenome?.[0]}
               </div>
               <span className="font-semibold text-slate-800 text-sm">
                 {usuarioData.primeiroNome} {usuarioData.sobrenome}
@@ -149,22 +243,29 @@ export default function Usuario() {
               {/* CONTEÚDO: 1. INFORMAÇÕES (DADOS DO PERFIL) */}
               {activeTab === 'informacoes' && (
                 <div>
-                  <div className="flex border-b border-slate-200 px-4 pt-2 gap-6 text-sm">
-                    {['dados', 'campos_adicionais', 'admissao', 'anexos', 'arquivos'].map((tab) => (
+                  <div className="flex border-b border-slate-200 px-4 pt-2 gap-6 text-sm overflow-x-auto">
+                    {[
+                      { id: 'dados', label: 'Dados do perfil' },
+                      { id: 'campos_adicionais', label: 'Campos adicionais' },
+                      { id: 'admissao', label: 'Admissão' },
+                      { id: 'anexos', label: 'Anexos' },
+                      { id: 'arquivos', label: 'Arquivos distribuídos' }
+                    ].map((tab) => (
                       <button
-                        key={tab}
-                        onClick={() => setProfileSubTab(tab)}
-                        className={`pb-3 capitalize transition-all ${
-                          profileSubTab === tab
+                        key={tab.id}
+                        onClick={() => setProfileSubTab(tab.id)}
+                        className={`pb-3 whitespace-nowrap transition-all ${
+                          profileSubTab === tab.id
                             ? 'border-b-2 border-teal-500 text-teal-600 font-medium'
                             : 'text-slate-500 hover:text-slate-700'
                         }`}
                       >
-                        {tab === 'dados' ? 'Dados do perfil' : tab.replace('_', ' ')}
+                        {tab.label}
                       </button>
                     ))}
                   </div>
 
+                  {/* SUB-ABA: DADOS DO PERFIL */}
                   {profileSubTab === 'dados' && (
                     <div className="p-6 space-y-8 text-xs">
                       {/* Informações básicas */}
@@ -228,7 +329,7 @@ export default function Usuario() {
                           </div>
                           <div>
                             <label className="block text-slate-600 mb-1">Salário bruto</label>
-                            <input type="text" name="salario" value={`R$ ${usuarioData.salario}`} onChange={handleInputChange} className="w-full border rounded p-2 text-slate-800" />
+                            <input type="text" name="salario" value={usuarioData.salario.includes('R$') ? usuarioData.salario : `R$ ${usuarioData.salario}`} onChange={handleInputChange} className="w-full border rounded p-2 text-slate-800" />
                           </div>
                           <div>
                             <label className="block text-slate-600 mb-1">Data de admissão</label>
@@ -259,12 +360,134 @@ export default function Usuario() {
                       </section>
 
                       <div className="flex justify-end pt-4">
-                        <button className="bg-teal-600 hover:bg-teal-700 text-white font-medium px-6 py-2 rounded text-xs transition-colors">
+                        <button onClick={handleSave} disabled={saving} className="bg-teal-600 hover:bg-teal-700 text-white font-medium px-6 py-2 rounded text-xs transition-colors disabled:opacity-50">
+                          {saving ? 'Salvando...' : 'Salvar alterações'}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* SUB-ABA: CAMPOS ADICIONAIS */}
+                  {profileSubTab === 'campos_adicionais' && (
+                    <div className="p-6 space-y-8 text-xs min-h-[300px] flex flex-col justify-between">
+                      <div className="space-y-6">
+                        <button className="flex items-center gap-1.5 border border-teal-600 text-teal-600 px-3 py-1.5 rounded font-medium hover:bg-teal-50">
+                          <Settings className="w-3.5 h-3.5" /> Configurar campos
+                        </button>
+
+                        <div className="text-slate-600 pt-4">
+                          Nenhum campo criado.
+                        </div>
+                      </div>
+
+                      <div className="flex justify-end pt-4 border-t border-slate-100">
+                        <button onClick={handleSave} className="bg-slate-300 text-slate-500 cursor-not-allowed font-medium px-6 py-2 rounded text-xs">
                           Salvar alterações
                         </button>
                       </div>
                     </div>
                   )}
+
+                  {/* SUB-ABA: ADMISSÃO */}
+                  {profileSubTab === 'admissao' && (
+                    <div className="p-6 space-y-6 text-xs">
+                      <div className="space-y-3">
+                        <h4 className="font-bold text-slate-700 uppercase tracking-wide">INFORMAÇÕES SOLICITADAS</h4>
+                        <div className="text-slate-500 py-2">
+                          Nenhum item encontrado
+                        </div>
+                      </div>
+
+                      <hr className="border-slate-100" />
+
+                      <div className="space-y-3">
+                        <h4 className="font-bold text-slate-700 uppercase tracking-wide">ARQUIVOS SOLICITADOS</h4>
+                        <div className="text-slate-500 py-2">
+                          Nenhum item encontrado
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* SUB-ABA: ANEXOS */}
+                  {profileSubTab === 'anexos' && (
+                    <div className="p-6 space-y-6 text-xs">
+                      <div className="flex justify-between items-center">
+                        <div></div>
+                        <div className="text-right">
+                          <button className="bg-teal-600 hover:bg-teal-700 text-white font-medium px-4 py-2 rounded transition-colors inline-flex items-center gap-1.5">
+                            Anexar novo arquivo
+                          </button>
+                          <span className="block text-[10px] text-slate-400 mt-1">Limite por arquivo: 50MB</span>
+                        </div>
+                      </div>
+
+                      <table className="w-full text-left border-collapse">
+                        <thead>
+                          <tr className="border-b text-slate-500 font-semibold uppercase tracking-wider text-[11px]">
+                            <th className="py-2">ARQUIVO</th>
+                            <th className="py-2 text-right">ANEXADO EM</th>
+                          </tr>
+                        </thead>
+                      </table>
+
+                      <div className="py-12 text-center text-slate-500">
+                        Nenhum anexo encontrado
+                      </div>
+
+                      <div className="flex justify-between items-center pt-4 border-t border-slate-100 text-slate-500">
+                        <span>0 Resultado</span>
+                        <div className="flex items-center gap-2">
+                          <span>Itens por página</span>
+                          <select className="border rounded p-1 bg-white">
+                            <option>10</option>
+                            <option>20</option>
+                          </select>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* SUB-ABA: ARQUIVOS DISTRIBUÍDOS */}
+                  {profileSubTab === 'arquivos' && (
+                    <div className="p-6 space-y-6 text-xs">
+                      <div className="flex justify-between items-center gap-4">
+                        <div className="relative flex-1 max-w-xs">
+                          <Search className="w-3.5 h-3.5 absolute left-2.5 top-2.5 text-slate-400" />
+                          <input type="text" placeholder="Buscar" className="w-full pl-8 pr-3 py-1.5 border rounded text-xs bg-slate-50" />
+                        </div>
+                        <select className="border rounded px-3 py-1.5 bg-white text-slate-600">
+                          <option>Todos</option>
+                        </select>
+                      </div>
+
+                      <table className="w-full text-left border-collapse">
+                        <thead>
+                          <tr className="border-b text-slate-500 font-semibold uppercase tracking-wider text-[11px]">
+                            <th className="py-2">DESCRIÇÃO</th>
+                            <th className="py-2">TIPO</th>
+                            <th className="py-2 text-right">DATA</th>
+                          </tr>
+                        </thead>
+                      </table>
+
+                      <div className="py-12 text-center text-slate-500">
+                        Nenhum resultado encontrado
+                      </div>
+
+                      <div className="flex justify-between items-center pt-4 border-t border-slate-100 text-slate-500">
+                        <span>0 Resultado</span>
+                        <div className="flex items-center gap-2">
+                          <span>Itens por página</span>
+                          <select className="border rounded p-1 bg-white">
+                            <option>10</option>
+                            <option>20</option>
+                          </select>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
                 </div>
               )}
 
@@ -343,7 +566,7 @@ export default function Usuario() {
                     </div>
 
                     <div className="flex justify-end pt-4">
-                      <button className="bg-teal-600 hover:bg-teal-700 text-white font-medium px-6 py-2 rounded text-xs transition-colors">
+                      <button onClick={handleSave} className="bg-teal-600 hover:bg-teal-700 text-white font-medium px-6 py-2 rounded text-xs transition-colors">
                         Salvar alterações
                       </button>
                     </div>
@@ -368,7 +591,7 @@ export default function Usuario() {
                   </div>
 
                   <div className="flex justify-end">
-                    <button className="bg-teal-600 hover:bg-teal-700 text-white font-medium px-6 py-2 rounded text-xs transition-colors">
+                    <button onClick={handleSave} className="bg-teal-600 hover:bg-teal-700 text-white font-medium px-6 py-2 rounded text-xs transition-colors">
                       Salvar Alterações
                     </button>
                   </div>

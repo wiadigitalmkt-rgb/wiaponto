@@ -26,6 +26,7 @@ import Employees from './pages/admin/Employees';
 import CompanySettings from './pages/admin/CompanySettings';
 import PontoEletronico from './pages/admin/Ponto';
 import Usuario from './pages/admin/Usuario';
+import Admissao from './pages/admin/admissao';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -77,6 +78,8 @@ const AuthenticatedApp = () => {
         <Route path="/admin/colaboradores" element={<Employees />} />
         <Route path="/admin/empresa" element={<CompanySettings />} />
         <Route path="/admin/usuario" element={<Usuario />} />
+        <Route path="/admin/admissao" element={<Admissao />} />
+        
 
       </Route>
 

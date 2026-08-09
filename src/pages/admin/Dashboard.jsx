@@ -11,13 +11,15 @@ import {
   Briefcase, 
   ShieldCheck, 
   Calendar, 
-  Award
+  Award,
+  X
 } from 'lucide-react';
 
 export default function Dashboard() {
   const [selectedCompany, setSelectedCompany] = useState('Sua Empresa');
+  const [activeModal, setActiveModal] = useState(null); // 'comunicacao' | 'assistente' | 'perfil-seguro' | null
 
-  // Módulos principais
+  // Módulos principais com rotas ou disparo de popups
   const modules = [
     { title: 'Ponto eletrônico', icon: Clock, path: '/admin/ponto' },
     { title: 'Usuários', icon: Users, path: '/admin/colaboradores' },
@@ -26,13 +28,38 @@ export default function Dashboard() {
     { title: 'Banco de horas', icon: Calendar, path: '/admin/banco-horas' },
     { title: 'Distribuição de Docs', icon: FileText, path: '/admin/documentos' },
     { title: 'Central de Ajuda', icon: HelpCircle, path: '/admin/ajuda' },
-    { title: 'Comunicação interna', icon: MessageSquare, isNew: true, path: '/admin/comunicacao' },
-    { title: 'Assistente Trabalhista', icon: Briefcase, isNew: true, path: '/admin/assistente' },
-    { title: 'Perfil Seguro', icon: ShieldCheck, isNew: true, path: '/admin/perfil-seguro' },
+    { 
+      title: 'Comunicação interna', 
+      icon: MessageSquare, 
+      isNew: true, 
+      isPopup: true, 
+      modalType: 'comunicacao' 
+    },
+    { 
+      title: 'Assistente Trabalhista', 
+      icon: Briefcase, 
+      isNew: true, 
+      isPopup: true, 
+      modalType: 'assistente' 
+    },
+    { 
+      title: 'Perfil Seguro', 
+      icon: ShieldCheck, 
+      isNew: true, 
+      isPopup: true, 
+      modalType: 'perfil-seguro' 
+    },
   ];
 
+  // Imagens dos banners correspondentes a cada modal
+  const modalImages = {
+    comunicacao: 'https://images.unsplash.com/photo-1577563908411-5077b6dc7624?q=80&w=1000&auto=format&fit=crop',
+    assistente: 'https://images.unsplash.com/photo-1486312338219-ce68d2c6f44d?q=80&w=1000&auto=format&fit=crop',
+    'perfil-seguro': 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?q=80&w=1000&auto=format&fit=crop'
+  };
+
   return (
-    <div className="min-h-screen bg-slate-100/70 text-slate-800 pb-12">
+    <div className="min-h-screen bg-slate-100/70 text-slate-800 pb-12 relative">
       {/* Navbar Padronizada */}
       <Navbar selectedCompany={selectedCompany} />
 
@@ -76,6 +103,27 @@ export default function Dashboard() {
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
             {modules.map((m, idx) => {
               const Icon = m.icon;
+              
+              if (m.isPopup) {
+                return (
+                  <div
+                    key={idx}
+                    onClick={() => setActiveModal(m.modalType)}
+                    className="relative group bg-white p-5 rounded-lg border border-slate-200/80 shadow-sm hover:shadow-md hover:border-[#ff8b00] transition cursor-pointer flex flex-col items-center text-center select-none"
+                  >
+                    {m.isNew && (
+                      <span className="absolute top-2.5 right-2.5 text-[9px] font-extrabold bg-[#ff8b00] text-white px-2 py-0.5 rounded-md uppercase tracking-wider">
+                        Novo
+                      </span>
+                    )}
+                    <div className="w-11 h-11 rounded-full bg-slate-100 group-hover:bg-orange-50 text-[#1a2c6a] group-hover:text-[#ff8b00] flex items-center justify-center mb-3 transition">
+                      <Icon size={22} />
+                    </div>
+                    <span className="text-xs font-bold text-slate-700 group-hover:text-[#1a2c6a] transition">{m.title}</span>
+                  </div>
+                );
+              }
+
               return (
                 <Link 
                   key={idx}
@@ -231,6 +279,50 @@ export default function Dashboard() {
         </div>
 
       </main>
+
+      {/* POPUP / MODAL: PERÍODO DE TESTE ENCERRADO */}
+      {activeModal && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full overflow-hidden flex flex-col md:flex-row relative animate-in fade-in zoom-in duration-200">
+            {/* Botão Fechar */}
+            <button
+              onClick={() => setActiveModal(null)}
+              className="absolute top-3 right-3 text-slate-400 hover:text-slate-600 bg-white/80 hover:bg-white rounded-full p-1.5 transition z-10 shadow-sm"
+            >
+              <X size={18} />
+            </button>
+
+            {/* Imagem do Modal */}
+            <div className="md:w-1/2 h-56 md:h-auto relative bg-slate-100">
+              <img
+                src={modalImages[activeModal]}
+                alt="Banner do recurso"
+                className="w-full h-full object-cover"
+              />
+            </div>
+
+            {/* Conteúdo do Modal */}
+            <div className="md:w-1/2 p-8 flex flex-col justify-center text-left space-y-4">
+              <h3 className="text-lg font-bold text-slate-800 leading-snug">
+                Período de teste encerrado
+              </h3>
+
+              <p className="text-xs text-slate-500 leading-relaxed">
+                O período de teste deste recurso já terminou. Para ativar na sua empresa, entre em contato com o suporte comercial.
+              </p>
+
+              <div className="pt-2">
+                <button
+                  onClick={() => window.open('https://wa.me/5500000000000', '_blank')}
+                  className="w-full bg-[#009688] hover:bg-[#00897b] text-white text-xs font-bold py-3 px-4 rounded-md transition shadow-md hover:shadow-lg text-center"
+                >
+                  Falar com o comercial
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

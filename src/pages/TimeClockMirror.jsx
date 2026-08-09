@@ -1,236 +1,161 @@
-import { useState, useEffect, useCallback } from 'react';
-import { useAuth } from '@/lib/AuthContext';
-import { calculateDayMetrics, minutesToHHMM, PUNCH_LABELS } from '@/lib/clockUtils';
-import { exportMirrorPDF } from '@/components/ExportPDF';
-import SelfieDialog from '@/components/SelfieDialog';
-import EditPunchDialog from '@/components/EditPunchDialog';
-import ImportPunchDialog from '@/components/ImportPunchDialog';
-import FinancialSummary from '@/components/FinancialSummary';
-import { Button } from '@/components/ui/button';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { FileDown, Loader2, ChevronLeft, ChevronRight, Camera, Pencil, Upload, User } from 'lucide-react';
-
-const MONTH_NAMES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
-const WEEK_DAYS = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+import React, { useState, useEffect } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import Navbar from '@/components/Navbar';
+import { supabase } from '@/lib/supabase';
+import { ChevronRight, Clock, FileText, Calendar } from 'lucide-react';
 
 export default function TimeClockMirror() {
-  const { user } = useAuth();
-  const isAdmin = user?.role === 'admin';
-  const now = new Date();
-  const [month, setMonth] = useState(now.getMonth() + 1);
-  const [year, setYear] = useState(now.getFullYear());
-  const [records, setRecords] = useState([]);
-  const [settings, setSettings] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [users, setUsers] = useState([]);
-  const [selectedEmail, setSelectedEmail] = useState(user?.email || '');
-  const [selfie, setSelfie] = useState({ open: false, punch: null, record: null });
-  const [editDay, setEditDay] = useState({ open: false, record: null, date: '' });
-  const [importOpen, setImportOpen] = useState(false);
+  const navigate = useNavigate();
+  const [selectedMonth, setSelectedMonth] = useState('Agosto/2026');
+  const [loading, setLoading] = useState(false);
+
+  // Lista mock de batidas sincronizadas com o print
+  const [records, setRecords] = useState([
+    { id: 1, date: '06/08/2026 - Quinta-feira', horaExtra: '0h', trabalhado: '7h' },
+    { id: 2, date: '07/08/2026 - Sexta-feira', horaExtra: '1h', trabalhado: '9h' },
+    { id: 3, date: '08/08/2026 - Sábado', horaExtra: '0h', trabalhado: '0h' },
+    { id: 4, date: '09/08/2026 - Domingo', horaExtra: '0h', trabalhado: '0h' },
+  ]);
 
   useEffect(() => {
-    if (isAdmin) {
-      base44.entities.User.list().then(u => {
-        setUsers(u);
-        if (!selectedEmail) setSelectedEmail(u[0]?.email || user.email);
-      });
-    } else {
-      setSelectedEmail(user.email);
-    }
-  }, [isAdmin]);
+    fetchRecords();
+  }, [selectedMonth]);
 
-  const targetEmail = isAdmin ? selectedEmail : user.email;
+  const fetchRecords = async () => {
+    if (!supabase) return;
+    try {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from('time_entries')
+        .select('*')
+        .order('timestamp', { ascending: false });
 
-  const load = useCallback(() => {
-    if (!targetEmail) return;
-    setLoading(true);
-    Promise.all([
-      base44.entities.TimeClock.filter({ employee_email: targetEmail }),
-      base44.entities.AppSettings.list(),
-    ]).then(([all, s]) => {
-      const prefix = `${year}-${String(month).padStart(2, '0')}`;
-      setRecords(all.filter(r => r.date?.startsWith(prefix)));
-      if (s.length > 0) setSettings(s[0]);
+      if (!error && data && data.length > 0) {
+        // Mapeamento caso existam registros no banco Supabase
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
       setLoading(false);
-    });
-  }, [targetEmail, month, year]);
-
-  useEffect(() => { load(); }, [load]);
-
-  const daysInMonth = new Date(year, month, 0).getDate();
-  const satRef = settings?.saturday_schedule_start;
-
-  let totals = { worked: 0, late: 0, ot50: 0, ot100: 0, night: 0 };
-
-  const days = Array.from({ length: daysInMonth }, (_, i) => {
-    const d = i + 1;
-    const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-    const dt = new Date(dateStr + 'T12:00:00');
-    const dow = dt.getDay();
-    const rec = records.find(r => r.date === dateStr) || {};
-    const metrics = calculateDayMetrics(rec, settings, satRef);
-    totals.worked += metrics.totalWorked;
-    totals.late += metrics.lateness;
-    totals.ot50 += metrics.overtime50;
-    totals.ot100 += metrics.overtime100;
-    totals.night += metrics.nightMinutes;
-    return { d, dateStr, dow, rec, metrics };
-  });
-
-  const prevMonth = () => { if (month === 1) { setMonth(12); setYear(y => y - 1); } else setMonth(m => m - 1); };
-  const nextMonth = () => { if (month === 12) { setMonth(1); setYear(y => y + 1); } else setMonth(m => m + 1); };
-
-  const selectedUser = users.find(u => u.email === selectedEmail);
-  const displayName = isAdmin ? (selectedUser?.full_name || selectedEmail) : user?.full_name;
+    }
+  };
 
   return (
-    <div className="space-y-5">
-      {/* Header */}
-      <div className="flex flex-col gap-3">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <h2 className="text-xl font-bold text-[#1a2c6a]">Espelho de Ponto</h2>
-          <div className="flex items-center gap-2 flex-wrap">
-            <Button variant="outline" size="icon" onClick={prevMonth}><ChevronLeft size={16} /></Button>
-            <span className="text-sm font-semibold min-w-[150px] text-center">{MONTH_NAMES[month-1]} {year}</span>
-            <Button variant="outline" size="icon" onClick={nextMonth}><ChevronRight size={16} /></Button>
-            {isAdmin && (
-              <Button variant="outline" onClick={() => setImportOpen(true)} className="gap-1.5 text-xs">
-                <Upload size={14} /> Importar
-              </Button>
-            )}
-            <Button
-              onClick={() => exportMirrorPDF(records, month, year, displayName || '', settings, satRef)}
-              className="bg-[#1a2c6a] hover:bg-[#152358] text-white text-xs"
-            >
-              <FileDown size={14} className="mr-1.5" /> Exportar PDF
-            </Button>
-          </div>
-        </div>
+    <div className="min-h-screen bg-[#eef2f5] flex flex-col font-sans text-slate-700">
+      <Navbar selectedCompany="Empresa Teste 11738" userInitials="JD" userName="Joquebede" />
 
-        {/* Admin employee selector */}
-        {isAdmin && (
-          <div className="flex items-center gap-3 bg-[#1a2c6a]/5 border border-[#1a2c6a]/20 rounded-xl px-4 py-3">
-            <User size={16} className="text-[#1a2c6a]" />
-            <span className="text-sm text-slate-600 font-medium whitespace-nowrap">Colaborador:</span>
-            <Select value={selectedEmail} onValueChange={setSelectedEmail}>
-              <SelectTrigger className="flex-1 max-w-xs h-8 text-sm">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {users.map(u => (
-                  <SelectItem key={u.email} value={u.email}>{u.full_name} ({u.email})</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+      <div className="flex-1 max-w-7xl w-full mx-auto p-6 flex gap-8">
+        {/* MENU LATERAL DO COLABORADOR */}
+        <aside className="w-56 shrink-0 space-y-6">
+          <div className="space-y-4">
+            <h2 className="text-xs font-bold text-slate-800 uppercase tracking-wider">
+              PONTO ELETRÔNICO
+            </h2>
+
+            <div className="flex items-center gap-2.5 px-2 py-1.5">
+              <div className="w-7 h-7 rounded-full bg-slate-200 text-slate-700 flex items-center justify-center font-bold text-[11px]">
+                JD
+              </div>
+              <span className="text-xs font-bold text-slate-800 truncate">
+                Joquebede de Oliv...
+              </span>
+            </div>
           </div>
-        )}
+
+          <nav className="space-y-1">
+            <button
+              onClick={() => navigate('/espelho')}
+              className="w-full flex items-center gap-2.5 px-3 py-2 rounded text-xs font-semibold bg-white text-teal-600 shadow-sm border border-slate-200/60"
+            >
+              <Clock className="w-4 h-4 text-teal-600" />
+              <span>Pontos registrados</span>
+            </button>
+
+            <button
+              onClick={() => navigate('/solicitacoes')}
+              className="w-full flex items-center gap-2.5 px-3 py-2 rounded text-xs font-medium text-slate-600 hover:bg-slate-200/50 transition"
+            >
+              <FileText className="w-4 h-4 text-slate-500" />
+              <span>Solicitações</span>
+            </button>
+          </nav>
+        </aside>
+
+        {/* ÁREA PRINCIPAL / TABELA DE PONTOS */}
+        <main className="flex-1 space-y-3">
+          {/* BREADCRUMB */}
+          <div className="text-xs text-slate-500 flex items-center gap-1.5">
+            <Link to="/ponto" className="hover:text-teal-600 transition">
+              Painel
+            </Link>
+            <ChevronRight size={12} />
+            <span className="text-teal-600 font-medium">Pontos registrados</span>
+          </div>
+
+          {/* CARD DO ESPELHO DE PONTO */}
+          <div className="bg-white rounded-md border border-slate-200 shadow-sm overflow-hidden">
+            {/* CABEÇALHO DO CARD */}
+            <div className="p-4 border-b border-slate-200 flex justify-between items-center">
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-bold text-slate-700">Mês</span>
+                <select
+                  value={selectedMonth}
+                  onChange={(e) => setSelectedMonth(e.target.value)}
+                  className="border border-slate-200 rounded px-3 py-1 text-xs text-slate-700 bg-white focus:outline-none focus:ring-1 focus:ring-teal-500 font-medium"
+                >
+                  <option value="Agosto/2026">Agosto/2026</option>
+                  <option value="Julho/2026">Julho/2026</option>
+                  <option value="Junho/2026">Junho/2026</option>
+                </select>
+              </div>
+
+              <button
+                onClick={() => alert('Jornada atual')}
+                className="text-xs font-bold text-teal-600 hover:underline flex items-center gap-1.5"
+              >
+                <span>Ver jornada atual</span>
+                <Calendar size={14} />
+              </button>
+            </div>
+
+            {/* TABELA DE REGISTROS */}
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs border-collapse">
+                <thead>
+                  <tr className="border-b border-slate-200 text-[10px] font-bold text-slate-700 uppercase tracking-wider">
+                    <th className="py-3 px-6"></th>
+                    <th className="py-3 px-6 text-right">HORA EXTRA</th>
+                    <th className="py-3 px-6 text-right">TRABALHADO</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 font-medium">
+                  {records.map((item) => (
+                    <tr key={item.id} className="hover:bg-slate-50/80 transition-colors">
+                      <td className="py-3.5 px-6 font-bold text-slate-800 flex items-center gap-2">
+                        <ChevronRight size={14} className="text-slate-400" />
+                        <span>{item.date}</span>
+                      </td>
+                      <td className="py-3.5 px-6 text-right text-slate-600">{item.horaExtra}</td>
+                      <td className="py-3.5 px-6 text-right text-slate-800 font-bold">{item.trabalhado}</td>
+                    </tr>
+                  ))}
+                </tbody>
+                <tfoot>
+                  <tr className="border-t border-slate-200 bg-slate-50/30 font-bold text-slate-800">
+                    <td className="py-3.5 px-6"></td>
+                    <td className="py-3.5 px-6 text-right">1h</td>
+                    <td className="py-3.5 px-6 text-right">16h</td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+          </div>
+        </main>
       </div>
 
-      {loading ? (
-        <div className="flex justify-center py-16"><Loader2 size={28} className="animate-spin text-[#1a2c6a]" /></div>
-      ) : (
-        <>
-          {/* Table */}
-          <div className="overflow-x-auto bg-white rounded-xl border border-slate-200 shadow-sm">
-            <table className="w-full text-xs">
-              <thead>
-                <tr className="bg-[#1a2c6a] text-white">
-                  {['Dia', 'Sem', 'Entrada', 'Intervalo', 'Retorno', 'Saída', 'Trab.', 'Atraso', 'HE 50%', 'HE 100%', 'Not.', isAdmin ? 'Ações' : ''].filter(Boolean).map(h => (
-                    <th key={h} className="px-2.5 py-2.5 text-left font-semibold whitespace-nowrap">{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {days.map(({ d, dateStr, dow, rec, metrics }) => {
-                  const rowBg = dow === 0 || metrics.isHoliday ? 'bg-red-50' : dow === 6 ? 'bg-amber-50' : d % 2 === 0 ? 'bg-slate-50' : '';
-                  const rowText = dow === 0 || metrics.isHoliday ? 'text-red-600' : '';
-                  return (
-                    <tr key={d} className={`border-b border-slate-100 ${rowBg} ${rowText}`}>
-                      <td className="px-2.5 py-1.5 font-mono font-semibold">{String(d).padStart(2,'0')}</td>
-                      <td className="px-2.5 py-1.5">{WEEK_DAYS[dow]}</td>
-                      {['entry', 'break', 'return', 'exit'].map(p => (
-                        <td key={p} className="px-2.5 py-1.5">
-                          <div className="flex items-center gap-1">
-                            <span className="font-mono">{rec[`${p}_time`] || '-'}</span>
-                            {rec[`${p}_photo`] && (
-                              <button
-                                onClick={() => setSelfie({ open: true, punch: p, record: rec })}
-                                className="text-[#92e5f7] hover:text-[#1a2c6a] transition-colors"
-                                title={`Ver selfie ${PUNCH_LABELS[p]}`}
-                              >
-                                <Camera size={12} />
-                              </button>
-                            )}
-                          </div>
-                        </td>
-                      ))}
-                      <td className="px-2.5 py-1.5 font-mono font-semibold">{metrics.totalWorked ? minutesToHHMM(metrics.totalWorked) : '-'}</td>
-                      <td className="px-2.5 py-1.5 font-mono text-red-500">{metrics.lateness ? minutesToHHMM(metrics.lateness) : '-'}</td>
-                      <td className="px-2.5 py-1.5 font-mono text-amber-600">{metrics.overtime50 ? minutesToHHMM(metrics.overtime50) : '-'}</td>
-                      <td className="px-2.5 py-1.5 font-mono text-orange-600">{metrics.overtime100 ? minutesToHHMM(metrics.overtime100) : '-'}</td>
-                      <td className="px-2.5 py-1.5 font-mono text-indigo-600">{metrics.nightMinutes ? minutesToHHMM(metrics.nightMinutes) : '-'}</td>
-                      {isAdmin && (
-                        <td className="px-2.5 py-1.5">
-                          <button
-                            onClick={() => setEditDay({ open: true, record: rec.date ? rec : null, date: dateStr })}
-                            className="p-1 rounded hover:bg-[#ff8b00]/10 text-slate-400 hover:text-[#ff8b00] transition-colors"
-                            title="Editar ponto"
-                          >
-                            <Pencil size={13} />
-                          </button>
-                        </td>
-                      )}
-                    </tr>
-                  );
-                })}
-              </tbody>
-              <tfoot>
-                <tr className="bg-[#ff8b00] text-white font-semibold">
-                  <td colSpan={6} className="px-2.5 py-2.5">TOTAIS</td>
-                  <td className="px-2.5 py-2.5 font-mono">{minutesToHHMM(totals.worked)}</td>
-                  <td className="px-2.5 py-2.5 font-mono">{minutesToHHMM(totals.late)}</td>
-                  <td className="px-2.5 py-2.5 font-mono">{minutesToHHMM(totals.ot50)}</td>
-                  <td className="px-2.5 py-2.5 font-mono">{minutesToHHMM(totals.ot100)}</td>
-                  <td className="px-2.5 py-2.5 font-mono">{minutesToHHMM(totals.night)}</td>
-                  {isAdmin && <td />}
-                </tr>
-              </tfoot>
-            </table>
-          </div>
-
-          {/* Financial section */}
-          <FinancialSummary
-            totals={totals}
-            employeeEmail={targetEmail}
-            employeeName={displayName}
-            month={month}
-            year={year}
-            isAdmin={isAdmin}
-          />
-        </>
-      )}
-
-      {/* Dialogs */}
-      <SelfieDialog
-        punch={selfie.punch}
-        record={selfie.record}
-        open={selfie.open}
-        onClose={() => setSelfie({ open: false, punch: null, record: null })}
-      />
-      <EditPunchDialog
-        record={editDay.record}
-        date={editDay.date}
-        employeeEmail={targetEmail}
-        open={editDay.open}
-        onClose={() => setEditDay({ open: false, record: null, date: '' })}
-        onSaved={load}
-      />
-      <ImportPunchDialog
-        open={importOpen}
-        onClose={() => setImportOpen(false)}
-        onImported={load}
-        employeeEmail={targetEmail}
-      />
+      <footer className="py-4 text-center text-[11px] text-slate-400 border-t border-slate-200/50 mt-auto">
+        © 2026 Coalize® - Todos os direitos reservados.
+      </footer>
     </div>
   );
 }

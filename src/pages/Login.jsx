@@ -10,28 +10,26 @@ export default function Login() {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    // Lógica do Supabase
     console.log({ email, password, rememberMe });
   };
 
   const handleGoogleLogin = () => {
-    // Lógica do Google Auth
     console.log('Login com Google');
   };
 
   return (
-    <div className="h-screen w-screen flex bg-white overflow-hidden font-['Plus_Jakarta_Sans',sans-serif]">
+    <div className="h-screen w-screen flex bg-white overflow-hidden font-['Inter',-apple-system,BlinkMacSystemFont,'Segoe_UI',Roboto,sans-serif]">
       
-      {/* LADO ESQUERDO - Novo Formulário (Conforme o Print "Bem-vindo!") */}
+      {/* LADO ESQUERDO - Formulário com a Fonte do Print da Direita */}
       <div className="w-1/2 h-full flex flex-col justify-center items-center px-8 sm:px-12 md:px-16 lg:px-24">
         <div className="max-w-md w-full space-y-6">
           
           {/* Cabeçalho do Form */}
-          <div className="space-y-1">
-            <h1 className="text-3xl sm:text-4xl font-extrabold text-[#111827] tracking-tight">
+          <div className="space-y-1.5">
+            <h1 className="text-3xl font-bold text-[#1e293b] tracking-tight">
               Bem-vindo!
             </h1>
-            <p className="text-sm font-medium text-slate-600">
+            <p className="text-sm font-normal text-slate-500">
               Informe seus dados abaixo para entrar
             </p>
           </div>
@@ -41,7 +39,7 @@ export default function Login() {
             
             {/* Campo Usuário / E-mail */}
             <div className="space-y-1.5">
-              <label className="text-xs font-bold text-slate-700">
+              <label className="text-xs font-semibold text-slate-800">
                 Usuário*
               </label>
               <input
@@ -50,13 +48,13 @@ export default function Login() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="Login"
-                className="w-full px-4 py-2.5 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#00a887] focus:border-transparent transition-all text-sm text-slate-700 bg-white placeholder:text-slate-300 font-normal"
+                className="w-full px-3.5 py-2.5 rounded-md border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#00a887] focus:border-transparent transition-all text-xs text-slate-700 bg-white placeholder:text-slate-400 font-normal"
               />
             </div>
 
             {/* Campo Senha */}
             <div className="space-y-1.5">
-              <label className="text-xs font-bold text-slate-700">
+              <label className="text-xs font-semibold text-slate-800">
                 Senha*
               </label>
               <div className="relative">
@@ -66,21 +64,21 @@ export default function Login() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="Senha"
-                  className="w-full px-4 py-2.5 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#00a887] focus:border-transparent transition-all text-sm text-slate-700 pr-10 bg-white placeholder:text-slate-300 font-normal"
+                  className="w-full px-3.5 py-2.5 rounded-md border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#00a887] focus:border-transparent transition-all text-xs text-slate-700 pr-10 bg-white placeholder:text-slate-400 font-normal"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 focus:outline-none"
                 >
-                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                 </button>
               </div>
             </div>
 
             {/* Continuar logado e Esqueci minha senha */}
             <div className="flex items-center justify-between text-xs pt-1">
-              <label className="flex items-center gap-2 cursor-pointer text-slate-600 font-medium">
+              <label className="flex items-center gap-2 cursor-pointer text-slate-700 font-normal">
                 <input
                   type="checkbox"
                   checked={rememberMe}
@@ -92,7 +90,7 @@ export default function Login() {
 
               <a
                 href="/recuperar-senha"
-                className="font-medium text-slate-600 hover:text-slate-900"
+                className="font-normal text-slate-700 hover:text-slate-900"
               >
                 Esqueci a minha senha
               </a>
@@ -101,17 +99,17 @@ export default function Login() {
             {/* Botão Entrar */}
             <button
               type="submit"
-              className="w-full py-3 px-6 rounded-lg bg-[#00a887] hover:bg-[#008f73] text-white font-bold text-sm flex items-center justify-center gap-2 transition-all shadow-sm active:scale-[0.99] mt-2"
+              className="w-full py-2.5 px-6 rounded-md bg-[#00a887] hover:bg-[#008f73] text-white font-semibold text-sm flex items-center justify-center gap-2 transition-all shadow-sm active:scale-[0.99] mt-2"
             >
               Entrar
-              <ArrowRight size={18} />
+              <ArrowRight size={16} />
             </button>
           </form>
 
           {/* Divisor "OU" */}
           <div className="relative flex items-center justify-center py-2">
             <div className="border-t border-slate-200 w-full" />
-            <span className="bg-white px-3 text-xs font-semibold text-slate-400 uppercase tracking-wider absolute">
+            <span className="bg-white px-3 text-[11px] font-normal text-slate-400 uppercase tracking-widest absolute">
               ou
             </span>
           </div>
@@ -120,7 +118,7 @@ export default function Login() {
           <button
             type="button"
             onClick={handleGoogleLogin}
-            className="w-full py-2.5 px-6 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-bold text-sm flex items-center justify-center gap-3 transition-all"
+            className="w-full py-2.5 px-6 rounded-md border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-semibold text-xs flex items-center justify-center gap-2.5 transition-all"
           >
             <svg className="w-4 h-4" viewBox="0 0 24 24">
               <path
@@ -146,7 +144,7 @@ export default function Login() {
         </div>
       </div>
 
-      {/* LADO DIREITO - Mantido 100% igual (Banner com bgloginponto.png + Recrutamento e Vagas) */}
+      {/* LADO DIREITO - Mantido 100% intacto */}
       <div className="w-1/2 h-full relative overflow-hidden bg-black flex flex-col justify-between p-12 lg:p-16">
         
         {/* Imagem de Fundo de Alta Resolução */}

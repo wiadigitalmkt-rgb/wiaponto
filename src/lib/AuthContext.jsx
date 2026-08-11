@@ -1,5 +1,4 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
-import { supabase } from "@/lib/supabase";
 
 const AuthContext = createContext({});
 
@@ -9,64 +8,39 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // 1. Busca a sessão inicial
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      setLoading(false);
-    });
+    // Busca a sessão salva no localStorage ou sessionStorage
+    const localData = localStorage.getItem('userSession');
+    const sessionData = sessionStorage.getItem('userSession');
+    
+    const savedSession = localData || sessionData;
 
-    // 2. Escuta mudanças na autenticação (login, logout, etc.)
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      setLoading(false);
-    });
+    if (savedSession) {
+      try {
+        const parsedUser = JSON.parse(savedSession);
+        setUser(parsedUser);
+        setSession({ user: parsedUser });
+      } catch (e) {
+        console.error("Erro ao carregar sessão local:", e);
+      }
+    }
 
-    return () => subscription.unsubscribe();
+    setLoading(false);
   }, []);
 
-  const signIn = async ({ email, password }) => {
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-    if (error) throw error;
-    return data;
-  };
-
-  const signUp = async ({ email, password }) => {
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-    });
-    if (error) throw error;
-    return data;
-  };
-
   const signOut = async () => {
-    const { error } = await supabase.auth.signOut();
-    if (error) throw error;
-  };
-
-  const signInWithOAuth = async ({ provider }) => {
-    const { data, error } = await supabase.auth.signInWithOAuth({
-      provider,
-    });
-    if (error) throw error;
-    return data;
+    localStorage.removeItem('userSession');
+    sessionStorage.removeItem('userSession');
+    setUser(null);
+    setSession(null);
   };
 
   const value = {
     user,
     session,
     loading,
-    signIn,
-    signUp,
+    isLoadingAuth: loading, // Compatibilidade com o App.jsx
+    authError: !user && !loading ? { type: 'auth_required' } : null,
     signOut,
-    signInWithOAuth,
   };
 
   return (

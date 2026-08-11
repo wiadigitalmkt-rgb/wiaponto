@@ -112,11 +112,11 @@ export default function Login() {
                 Usuário*
               </label>
               <input
-                type="text"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="Login ou CPF"
+  type="text"
+  required
+  value={email}
+  onChange={(e) => setEmail(e.target.value)}
+  placeholder="Login"
                 className="w-full px-3.5 py-2.5 rounded-md border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#00a887] focus:border-transparent transition-all text-xs text-slate-700 bg-white placeholder:text-slate-400 font-normal"
               />
             </div>

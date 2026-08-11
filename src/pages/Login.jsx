@@ -6,55 +6,58 @@ export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [rememberMe, setRememberMe] = useState(false);
 
   const handleSubmit = (e) => {
     e.preventDefault();
     // Lógica do Supabase
-    console.log({ email, password });
+    console.log({ email, password, rememberMe });
+  };
+
+  const handleGoogleLogin = () => {
+    // Lógica do Google Auth
+    console.log('Login com Google');
   };
 
   return (
     <div className="h-screen w-screen flex bg-white overflow-hidden font-['Plus_Jakarta_Sans',sans-serif]">
       
-      {/* LADO ESQUERDO - Formulário (50% da tela) */}
+      {/* LADO ESQUERDO - Novo Formulário (Conforme o Print "Bem-vindo!") */}
       <div className="w-1/2 h-full flex flex-col justify-center items-center px-8 sm:px-12 md:px-16 lg:px-24">
-        <div className="max-w-md w-full space-y-8">
+        <div className="max-w-md w-full space-y-6">
           
-          {/* Logo WiaPonto */}
-          <div>
-            <span className="text-4xl font-extrabold text-[#00c062] tracking-tight">
-              Wia<span className="text-[#00c062]">Ponto</span>
-            </span>
-          </div>
-
-          {/* Título */}
-          <div>
-            <h1 className="text-3xl sm:text-4xl font-black text-slate-900 tracking-tight">
-              Entrar na sua conta
+          {/* Cabeçalho do Form */}
+          <div className="space-y-1">
+            <h1 className="text-3xl sm:text-4xl font-extrabold text-[#111827] tracking-tight">
+              Bem-vindo!
             </h1>
+            <p className="text-sm font-medium text-slate-600">
+              Informe seus dados abaixo para entrar
+            </p>
           </div>
 
           {/* Form */}
-          <form onSubmit={handleSubmit} className="space-y-6">
+          <form onSubmit={handleSubmit} className="space-y-4">
             
-            {/* Campo E-mail */}
-            <div className="space-y-2">
-              <label className="text-sm font-bold text-slate-400">
-                E-mail
+            {/* Campo Usuário / E-mail */}
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-slate-700">
+                Usuário*
               </label>
               <input
                 type="email"
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full px-5 py-3.5 rounded-full border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#00c062] focus:border-transparent transition-all text-slate-700 bg-white font-medium"
+                placeholder="Login"
+                className="w-full px-4 py-2.5 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#00a887] focus:border-transparent transition-all text-sm text-slate-700 bg-white placeholder:text-slate-300 font-normal"
               />
             </div>
 
             {/* Campo Senha */}
-            <div className="space-y-2">
-              <label className="text-sm font-bold text-slate-400">
-                Senha
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-slate-700">
+                Senha*
               </label>
               <div className="relative">
                 <input
@@ -62,59 +65,88 @@ export default function Login() {
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full px-5 py-3.5 rounded-full border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#00c062] focus:border-transparent transition-all text-slate-700 pr-12 bg-white font-medium"
+                  placeholder="Senha"
+                  className="w-full px-4 py-2.5 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#00a887] focus:border-transparent transition-all text-sm text-slate-700 pr-10 bg-white placeholder:text-slate-300 font-normal"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 focus:outline-none"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 focus:outline-none"
                 >
-                  {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                 </button>
               </div>
             </div>
 
-            {/* Esqueceu a senha */}
-            <div className="text-right">
+            {/* Continuar logado e Esqueci minha senha */}
+            <div className="flex items-center justify-between text-xs pt-1">
+              <label className="flex items-center gap-2 cursor-pointer text-slate-600 font-medium">
+                <input
+                  type="checkbox"
+                  checked={rememberMe}
+                  onChange={(e) => setRememberMe(e.target.checked)}
+                  className="w-4 h-4 rounded border-slate-300 text-[#00a887] focus:ring-[#00a887]"
+                />
+                Continuar logado
+              </label>
+
               <a
                 href="/recuperar-senha"
-                className="text-sm font-bold text-[#00c062] hover:underline"
+                className="font-medium text-slate-600 hover:text-slate-900"
               >
-                Esqueci minha senha
+                Esqueci a minha senha
               </a>
             </div>
 
             {/* Botão Entrar */}
             <button
               type="submit"
-              className="w-full py-4 px-6 rounded-full bg-[#00c062] hover:bg-[#00a855] text-white font-extrabold text-base flex items-center justify-center gap-2 transition-all shadow-md active:scale-[0.99]"
+              className="w-full py-3 px-6 rounded-lg bg-[#00a887] hover:bg-[#008f73] text-white font-bold text-sm flex items-center justify-center gap-2 transition-all shadow-sm active:scale-[0.99] mt-2"
             >
-              <LogIn size={20} className="rotate-180" />
               Entrar
+              <ArrowRight size={18} />
             </button>
           </form>
 
-          {/* Rodapé do Form */}
-          <div className="text-center space-y-4 pt-4">
-            <p className="text-sm text-slate-400 font-bold">
-              Ainda não possui conta?{' '}
-              <a href="/cadastrar" className="text-[#00c062] font-black hover:underline">
-                Crie uma agora.
-              </a>
-            </p>
-
-            <p className="text-xs text-slate-400 font-medium max-w-xs mx-auto leading-relaxed">
-              Para saber como tratamos os dados pessoais visite nosso{' '}
-              <a href="/privacidade" className="underline hover:text-slate-600">
-                Aviso de privacidade
-              </a>
-            </p>
+          {/* Divisor "OU" */}
+          <div className="relative flex items-center justify-center py-2">
+            <div className="border-t border-slate-200 w-full" />
+            <span className="bg-white px-3 text-xs font-semibold text-slate-400 uppercase tracking-wider absolute">
+              ou
+            </span>
           </div>
+
+          {/* Botão Google */}
+          <button
+            type="button"
+            onClick={handleGoogleLogin}
+            className="w-full py-2.5 px-6 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-bold text-sm flex items-center justify-center gap-3 transition-all"
+          >
+            <svg className="w-4 h-4" viewBox="0 0 24 24">
+              <path
+                fill="#4285F4"
+                d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+              />
+              <path
+                fill="#34A853"
+                d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+              />
+              <path
+                fill="#FBBC05"
+                d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"
+              />
+              <path
+                fill="#EA4335"
+                d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
+              />
+            </svg>
+            Continuar com Google
+          </button>
 
         </div>
       </div>
 
-      {/* LADO DIREITO - Banner com a Imagem bgloginponto.png (50% da tela) */}
+      {/* LADO DIREITO - Mantido 100% igual (Banner com bgloginponto.png + Recrutamento e Vagas) */}
       <div className="w-1/2 h-full relative overflow-hidden bg-black flex flex-col justify-between p-12 lg:p-16">
         
         {/* Imagem de Fundo de Alta Resolução */}

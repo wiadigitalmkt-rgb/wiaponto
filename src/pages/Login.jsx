@@ -1,13 +1,13 @@
 import React, { useState } from 'react';
 import { Eye, EyeOff, ArrowRight, LogIn } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from '../supabaseClient'; // Certifique-se de que o caminho do seu cliente Supabase está correto aqui
+import { supabase } from '../supabaseClient';
 import bgLoginImg from './bgloginponto.png';
 
 export default function Login() {
   const navigate = useNavigate();
   const [showPassword, setShowPassword] = useState(false);
-  const [email, setEmail] = useState('');
+  const [userInput, setUserInput] = useState(''); // Alterado para aceitar CPF ou E-mail sem validação forçada do navegador
   const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -19,14 +19,20 @@ export default function Login() {
     setErrorMsg('');
 
     try {
-      // Limpa pontuações caso o usuário digite CPF com máscara (. ou -)
-      const cleanInput = email.trim().replace(/[^\w@.]/g, '');
+      // Trata o texto digitado limpando pontuações caso seja digitado CPF com máscara
+      const rawInput = userInput.trim();
+      const cleanCPF = rawInput.replace(/\D/g, '');
 
-      // 1. Consulta no Supabase pelo CPF ou pelo E-mail
-      const { data: employees, error } = await supabase
-        .from('Employees')
-        .select('*')
-        .or(`cpf.eq.${cleanInput},email.eq.${email.trim()}`);
+      // Busca na tabela pelo CPF limpo OU pelo e-mail exatamente igual ao digitado
+      let query = supabase.from('Employees').select('*');
+
+      if (cleanCPF.length > 0) {
+        query = query.or(`cpf.eq.${cleanCPF},email.eq.${rawInput}`);
+      } else {
+        query = query.eq('email', rawInput);
+      }
+
+      const { data: employees, error } = await query;
 
       if (error) {
         throw error;
@@ -40,14 +46,14 @@ export default function Login() {
 
       const user = employees[0];
 
-      // 2. Validação da Senha
+      // Validação da Senha
       if (user.password_hash !== password) {
         setErrorMsg('Usuário ou senha incorretos.');
         setLoading(false);
         return;
       }
 
-      // 3. Salvar sessão do usuário logado
+      // Salva a sessão localmente
       const sessionData = {
         id: user.id,
         full_name: user.full_name,
@@ -61,7 +67,7 @@ export default function Login() {
         sessionStorage.setItem('userSession', JSON.stringify(sessionData));
       }
 
-      // 4. Redirecionar baseado no papel (role)
+      // Redirecionamento por Papel (Role)
       if (user.role === 'gestor') {
         navigate('/admin/ponto');
       } else {
@@ -104,19 +110,22 @@ export default function Login() {
           )}
 
           {/* Form */}
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-4" noValidate>
             
-            {/* Campo Usuário / E-mail */}
+            {/* Campo Usuário / CPF / E-mail */}
             <div className="space-y-1.5">
               <label className="text-xs font-semibold text-slate-800">
                 Usuário*
               </label>
               <input
-  type="text"
-  required
-  value={email}
-  onChange={(e) => setEmail(e.target.value)}
-  placeholder="Login"
+                type="text"
+                name="username"
+                id="username"
+                autoComplete="off"
+                required
+                value={userInput}
+                onChange={(e) => setUserInput(e.target.value)}
+                placeholder="Login"
                 className="w-full px-3.5 py-2.5 rounded-md border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#00a887] focus:border-transparent transition-all text-xs text-slate-700 bg-white placeholder:text-slate-400 font-normal"
               />
             </div>

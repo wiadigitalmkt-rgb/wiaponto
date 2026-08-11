@@ -34,25 +34,32 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   const signOut = async () => {
-    localStorage.removeItem('userSession');
-    sessionStorage.removeItem('userSession');
+    localStorage.clear();
+    sessionStorage.clear();
     setUser(null);
     setSession(null);
     window.location.href = '/login';
   };
 
   const navigateToLogin = () => {
-    if (window.location.pathname !== '/login') {
+    // Só redireciona se NÃO estiver em uma rota pública de login/registro
+    const publicPaths = ['/login', '/register', '/forgot-password', '/reset-password'];
+    if (!publicPaths.includes(window.location.pathname)) {
       window.location.href = '/login';
     }
   };
+
+  // Se não estiver logado E não estiver na tela de login, informa auth_required
+  const publicPaths = ['/login', '/register', '/forgot-password', '/reset-password'];
+  const isPublicRoute = publicPaths.includes(window.location.pathname);
+  const authError = (!user && !loading && !isPublicRoute) ? { type: 'auth_required' } : null;
 
   const value = {
     user,
     session,
     loading,
     isLoadingAuth: loading,
-    authError: !user && !loading ? { type: 'auth_required' } : null,
+    authError,
     signOut,
     navigateToLogin,
     refreshSession: checkLocalSession,

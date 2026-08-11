@@ -7,11 +7,9 @@ export const AuthProvider = ({ children }) => {
   const [session, setSession] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    // Busca a sessão salva no localStorage ou sessionStorage
+  const checkLocalSession = () => {
     const localData = localStorage.getItem('userSession');
     const sessionData = sessionStorage.getItem('userSession');
-    
     const savedSession = localData || sessionData;
 
     if (savedSession) {
@@ -21,10 +19,18 @@ export const AuthProvider = ({ children }) => {
         setSession({ user: parsedUser });
       } catch (e) {
         console.error("Erro ao carregar sessão local:", e);
+        setUser(null);
+        setSession(null);
       }
+    } else {
+      setUser(null);
+      setSession(null);
     }
-
     setLoading(false);
+  };
+
+  useEffect(() => {
+    checkLocalSession();
   }, []);
 
   const signOut = async () => {
@@ -32,15 +38,24 @@ export const AuthProvider = ({ children }) => {
     sessionStorage.removeItem('userSession');
     setUser(null);
     setSession(null);
+    window.location.href = '/login';
+  };
+
+  const navigateToLogin = () => {
+    if (window.location.pathname !== '/login') {
+      window.location.href = '/login';
+    }
   };
 
   const value = {
     user,
     session,
     loading,
-    isLoadingAuth: loading, // Compatibilidade com o App.jsx
+    isLoadingAuth: loading,
     authError: !user && !loading ? { type: 'auth_required' } : null,
     signOut,
+    navigateToLogin,
+    refreshSession: checkLocalSession,
   };
 
   return (

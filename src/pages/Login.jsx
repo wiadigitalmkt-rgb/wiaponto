@@ -69,7 +69,7 @@ export default function Login() {
 
       // Redirecionamento por Papel (Role)
       if (user.role === 'gestor') {
-        navigate('/admin/ponto');
+        navigate('/admin');
       } else {
         navigate('/ponto');
       }

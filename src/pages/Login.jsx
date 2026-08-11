@@ -1,16 +1,78 @@
 import React, { useState } from 'react';
 import { Eye, EyeOff, ArrowRight, LogIn } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { supabase } from '../supabaseClient'; // Certifique-se de que o caminho do seu cliente Supabase está correto aqui
 import bgLoginImg from './bgloginponto.png';
 
 export default function Login() {
+  const navigate = useNavigate();
   const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState('');
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    console.log({ email, password, rememberMe });
+    setLoading(true);
+    setErrorMsg('');
+
+    try {
+      // Limpa pontuações caso o usuário digite CPF com máscara (. ou -)
+      const cleanInput = email.trim().replace(/[^\w@.]/g, '');
+
+      // 1. Consulta no Supabase pelo CPF ou pelo E-mail
+      const { data: employees, error } = await supabase
+        .from('Employees')
+        .select('*')
+        .or(`cpf.eq.${cleanInput},email.eq.${email.trim()}`);
+
+      if (error) {
+        throw error;
+      }
+
+      if (!employees || employees.length === 0) {
+        setErrorMsg('Usuário ou senha incorretos.');
+        setLoading(false);
+        return;
+      }
+
+      const user = employees[0];
+
+      // 2. Validação da Senha
+      if (user.password_hash !== password) {
+        setErrorMsg('Usuário ou senha incorretos.');
+        setLoading(false);
+        return;
+      }
+
+      // 3. Salvar sessão do usuário logado
+      const sessionData = {
+        id: user.id,
+        full_name: user.full_name,
+        cpf: user.cpf,
+        role: user.role || 'colaborador',
+      };
+
+      if (rememberMe) {
+        localStorage.setItem('userSession', JSON.stringify(sessionData));
+      } else {
+        sessionStorage.setItem('userSession', JSON.stringify(sessionData));
+      }
+
+      // 4. Redirecionar baseado no papel (role)
+      if (user.role === 'gestor') {
+        navigate('/admin/ponto');
+      } else {
+        navigate('/ponto');
+      }
+    } catch (err) {
+      console.error('Erro na autenticação:', err);
+      setErrorMsg('Falha na conexão com o servidor. Tente novamente.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleGoogleLogin = () => {
@@ -34,6 +96,13 @@ export default function Login() {
             </p>
           </div>
 
+          {/* Alerta visual de erro */}
+          {errorMsg && (
+            <div className="p-3 rounded-md bg-red-50 border border-red-200 text-red-600 text-xs font-medium">
+              {errorMsg}
+            </div>
+          )}
+
           {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-4">
             
@@ -43,11 +112,11 @@ export default function Login() {
                 Usuário*
               </label>
               <input
-                type="email"
+                type="text"
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="Login"
+                placeholder="Login ou CPF"
                 className="w-full px-3.5 py-2.5 rounded-md border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#00a887] focus:border-transparent transition-all text-xs text-slate-700 bg-white placeholder:text-slate-400 font-normal"
               />
             </div>
@@ -99,10 +168,11 @@ export default function Login() {
             {/* Botão Entrar */}
             <button
               type="submit"
-              className="w-full py-2.5 px-6 rounded-md bg-[#00a887] hover:bg-[#008f73] text-white font-semibold text-sm flex items-center justify-center gap-2 transition-all shadow-sm active:scale-[0.99] mt-2"
+              disabled={loading}
+              className="w-full py-2.5 px-6 rounded-md bg-[#00a887] hover:bg-[#008f73] text-white font-semibold text-sm flex items-center justify-center gap-2 transition-all shadow-sm active:scale-[0.99] mt-2 cursor-pointer disabled:opacity-50"
             >
-              Entrar
-              <ArrowRight size={16} />
+              {loading ? 'Entrando...' : 'Entrar'}
+              {!loading && <ArrowRight size={16} />}
             </button>
           </form>
 

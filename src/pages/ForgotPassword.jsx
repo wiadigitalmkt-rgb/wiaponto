@@ -29,8 +29,12 @@ export default function ForgotPassword() {
       const cleanCPF = rawInput.replace(/\D/g, '');
 
       let query = supabase.from('Employees').select('*');
+
       if (cleanCPF.length > 0) {
-        query = query.or(`cpf.eq.${cleanCPF},email.eq.${rawInput}`);
+        // Formata o CPF para o formato padronizado com pontos e hífen
+        const formattedCPF = cleanCPF.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4");
+        // Busca aceitando CPF limpo, CPF formatado ou e-mail
+        query = query.or(`cpf.eq.${cleanCPF},cpf.eq.${formattedCPF},email.eq.${rawInput}`);
       } else {
         query = query.eq('email', rawInput);
       }

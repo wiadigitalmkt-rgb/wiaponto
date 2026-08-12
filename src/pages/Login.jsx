@@ -3,9 +3,11 @@ import { Eye, EyeOff, ArrowRight, LogIn } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import bgLoginImg from './bgloginponto.png';
+import { useAuth } from '@/lib/AuthContext';
 
 export default function Login() {
   const navigate = useNavigate();
+  const { refreshSession } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
   const [userInput, setUserInput] = useState(''); // Alterado para aceitar CPF ou E-mail sem validação forçada do navegador
   const [password, setPassword] = useState('');

@@ -102,48 +102,54 @@ export default function Employees() {
 
   // 2. INSERIR NOVO COLABORADOR NO SUPABASE
   const handleConfirmCreate = async () => {
-    const fullName = `${formData.primeiroNome} ${formData.sobrenome}`.trim();
+  const fullName = `${formData.primeiroNome} ${formData.sobrenome}`.trim();
 
-    try {
-      const { error } = await supabase.from('Employees').insert([
-        {
-          full_name: fullName,
-          cpf: formData.cpf,
-          admission_date: formData.dataAdmissao || null,
-          role: formData.tipoAcesso === 'Administrador' ? 'admin' : 'employee',
-          department: formData.departamento || null,
-          position: formData.cargo || null,
-          salary: formData.salario || null,
-          contract_type: formData.tipoContrato || null,
-          work_schedule: formData.jornada || '08:00 - 18:00',
-        },
-      ]);
+  try {
+    const { data, error } = await supabase.from('Employees').insert([
+      {
+        full_name: fullName,
+        first_name: formData.primeiroNome,
+        last_name: formData.sobrenome,
+        cpf: formData.cpf,
+        admission_date: formData.dataAdmissao || null,
+        role: formData.tipoAcesso === 'Administrador' ? 'admin' : 'employee',
+        access_type: formData.tipoAcesso,
+        department: formData.departamento || null,
+        position: formData.cargo || null,
+        salary: formData.salario || null,
+        contract_type: formData.tipoContrato || null,
+        work_schedule: formData.jornada || '08:00 - 18:00',
+      },
+    ]).select();
 
-      if (error) throw error;
+    if (error) throw error;
 
-      // Recarrega a lista diretamente do Banco
+    setShowAccessModal(false);
+    setFormData({
+      primeiroNome: '',
+      sobrenome: '',
+      cpf: '',
+      dataAdmissao: '',
+      tipoAcesso: 'Colaborador',
+      departamento: '',
+      cargo: '',
+      salario: '',
+      tipoContrato: '',
+      inicioJornada: '',
+      jornada: '',
+    });
+
+    // Redireciona para o usuário recém-criado usando o id retornado pelo banco
+    if (data && data[0]?.id) {
+      navigate(`/admin/usuario?id=${data[0].id}`);
+    } else {
       await fetchEmployees();
-
-      // Limpa Formulário
-      setShowAccessModal(false);
       setCurrentView('list');
-      setFormData({
-        primeiroNome: '',
-        sobrenome: '',
-        cpf: '',
-        dataAdmissao: '',
-        tipoAcesso: 'Colaborador',
-        departamento: '',
-        cargo: '',
-        salario: '',
-        tipoContrato: '',
-        inicioJornada: '',
-        jornada: '',
-      });
-    } catch (err) {
-      alert('Erro ao salvar colaborador: ' + err.message);
     }
-  };
+  } catch (err) {
+    alert('Erro ao salvar colaborador: ' + err.message);
+  }
+};
 
   const cleanCpf = formData.cpf.replace(/\D/g, '') || '60062246070';
 

@@ -69,6 +69,9 @@ export default function Login() {
         sessionStorage.setItem('userSession', JSON.stringify(sessionData));
       }
 
+      // Atualiza o estado global do AuthContext antes do redirecionamento
+      refreshSession();
+
       // Redirecionamento por Papel (Role)
       if (user.role === 'gestor') {
         navigate('/admin');

@@ -92,7 +92,7 @@ const AuthenticatedApp = () => {
         <Route path="/admin/ponto" element={<PontoEletronico />} />
         <Route path="/admin/colaboradores" element={<Employees />} />
         <Route path="/admin/empresa" element={<CompanySettings />} />
-        <Route path="/admin/usuarios" element={<Usuario />} />
+        <Route path="/admin/usuario" element={<Usuario />} />
         <Route path="/admin/admissao" element={<Admissao />} />
         <Route path="/admin/contratos" element={<Contratos />} />
         <Route path="/admin/banco-horas" element={<Banco />} />

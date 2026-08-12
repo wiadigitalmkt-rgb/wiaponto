@@ -32,34 +32,34 @@ export default function Usuario() {
   const fileInputRef = useRef(null);
 
   // Estados dos Dados Principais
-  const [usuarioData, setUsuarioData] = useState({
-    primeiroNome: 'Joquebede',
-    sobrenome: 'de Oliveira',
-    genero: 'Feminino',
-    email: 'elenuzaazp@gmail.com',
-    telefone: '(51) 98901-9193',
-    estadoCivil: 'Casado(a)',
-    cpf: '600.172.060-65',
-    rg: '',
-    pisPasep: '000.00000.00-0',
-    departamento: '',
-    dataNascimento: '1999-02-04',
-    cargo: 'Atendente',
-    salario: '1.621,00',
-    dataAdmissao: '2026-08-06',
-    tipoContrato: 'CLT',
-    cep: '94510-344',
-    rua: 'Rua Tais de Souza',
-    numero: '87',
-    bairro: 'augusta',
-    complemento: 'casa',
-    estado: 'Rio Grande do Sul',
-    cidade: 'Viamão',
-    idPonto: '7412',
-    login: '60017206065',
-    tipoAcesso: 'Colaborador',
-    statusUsuario: 'Ativo'
-  });
+const [usuarioData, setUsuarioData] = useState({
+  primeiroNome: '',
+  sobrenome: '',
+  genero: '',
+  email: '',
+  telefone: '',
+  estadoCivil: '',
+  cpf: '',
+  rg: '',
+  pisPasep: '',
+  departamento: '',
+  dataNascimento: '',
+  cargo: '',
+  salario: '',
+  dataAdmissao: '',
+  tipoContrato: '',
+  cep: '',
+  rua: '',
+  numero: '',
+  bairro: '',
+  complemento: '',
+  estado: '',
+  cidade: '',
+  idPonto: '',
+  login: '',
+  tipoAcesso: 'Colaborador',
+  statusUsuario: 'Ativo'
+});
 
   // Estados dos Recursos Específicos
   const [customFields, setCustomFields] = useState([]);
@@ -91,40 +91,39 @@ export default function Usuario() {
 
   // Carregar dados iniciais do Supabase
   useEffect(() => {
-    if (userId && supabase) {
-      async function fetchData() {
-        setLoading(true);
+  if (userId && supabase) {
+    async function fetchData() {
+      setLoading(true);
 
-        // 1. Employee Info
-        const { data: emp } = await supabase.from('Employees').select('*').eq('id', userId).single();
-        if (emp) {
-          setUsuarioData(prev => ({
-            ...prev,
-            primeiroNome: emp.first_name || emp.full_name?.split(' ')[0] || prev.primeiroNome,
-            sobrenome: emp.last_name || emp.full_name?.split(' ').slice(1).join(' ') || prev.sobrenome,
-            genero: emp.gender || prev.genero,
-            email: emp.email || prev.email,
-            telefone: emp.phone || prev.telefone,
-            estadoCivil: emp.marital_status || prev.estadoCivil,
-            cpf: emp.cpf || prev.cpf,
-            rg: emp.rg || prev.rg,
-            pisPasep: emp.pis_pasep || prev.pisPasep,
-            cargo: emp.position || prev.cargo,
-            salario: emp.salary || prev.salario,
-            dataAdmissao: emp.admission_date || prev.dataAdmissao,
-            cep: emp.cep || prev.cep,
-            rua: emp.street || prev.rua,
-            numero: emp.number || prev.numero,
-            bairro: emp.neighborhood || prev.bairro,
-            complemento: emp.complement || prev.complemento,
-            cidade: emp.city || prev.cidade,
-            estado: emp.state || prev.estado,
-            idPonto: emp.point_id || prev.idPonto,
-            login: emp.cpf ? emp.cpf.replace(/\D/g, '') : prev.login,
-            tipoAcesso: emp.access_type || prev.tipoAcesso,
-            statusUsuario: emp.status || prev.statusUsuario
-          }));
-        }
+      // 1. Employee Info
+      const { data: emp } = await supabase.from('Employees').select('*').eq('id', userId).single();
+      if (emp) {
+        setUsuarioData({
+          primeiroNome: emp.first_name || emp.full_name?.split(' ')[0] || '',
+          sobrenome: emp.last_name || emp.full_name?.split(' ').slice(1).join(' ') || '',
+          genero: emp.gender || '',
+          email: emp.email || '',
+          telefone: emp.phone || '',
+          estadoCivil: emp.marital_status || '',
+          cpf: emp.cpf || '',
+          rg: emp.rg || '',
+          pisPasep: emp.pis_pasep || '',
+          cargo: emp.position || '',
+          salario: emp.salary || '',
+          dataAdmissao: emp.admission_date || '',
+          cep: emp.cep || '',
+          rua: emp.street || '',
+          numero: emp.number || '',
+          bairro: emp.neighborhood || '',
+          complemento: emp.complement || '',
+          cidade: emp.city || '',
+          estado: emp.state || '',
+          idPonto: emp.point_id || '',
+          login: emp.cpf ? emp.cpf.replace(/\D/g, '') : '',
+          tipoAcesso: emp.role === 'admin' ? 'Administrador' : (emp.access_type || 'Colaborador'),
+          statusUsuario: emp.status || 'Ativo'
+        });
+      }
 
         // 2. Sub-tabelas
         const { data: fields } = await supabase.from('employee_custom_fields').select('*').eq('employee_id', userId);

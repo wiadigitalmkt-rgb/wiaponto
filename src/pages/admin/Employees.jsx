@@ -242,10 +242,10 @@ export default function Employees() {
                     ) : filteredUsers.length > 0 ? (
                       filteredUsers.map((user) => (
                         <tr 
-                          key={user.id} 
-                          onClick={() => navigate('/admin/usuario')}
-                          className="hover:bg-slate-50/80 transition-colors cursor-pointer"
-                        >
+  key={user.id} 
+  onClick={() => navigate(`/admin/usuario?id=${user.id}`)} // <--- Adicionado ?id=
+  className="hover:bg-slate-50/80 transition-colors cursor-pointer"
+>
                           <td className="py-3.5 px-6">
                             <div className="flex items-center space-x-3">
                               <div className="w-8 h-8 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center font-semibold text-slate-600 text-xs shrink-0">

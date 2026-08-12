@@ -258,17 +258,29 @@ export default function Login() {
             </span>
 
             <h2 className="text-3xl md:text-4xl font-extrabold text-white tracking-tight leading-tight">
-              Facilite sua rotina
+              Facilite a sua rotina!
             </h2>
 
             <p className="text-slate-100 font-medium text-sm md:text-base leading-relaxed">
-             Registre sua jornada de trabalho de forma rápida, segura e sem complicações!
+              Registre sua jornada de trabalho de forma rápida, segura e sem complicações!.
             </p>
+
+            <div className="pt-2">
+              <a
+                href="/testar"
+                className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-white text-slate-900 font-extrabold hover:bg-slate-100 transition-all shadow-lg"
+              >
+                <ArrowRight size={18} />
+                Testar
+              </a>
+            </div>
+          </div>
 
           {/* Traço verde inferior */}
           <div>
             <div className="w-8 h-1.5 bg-[#00c062] rounded-full"></div>
           </div>
+        </div>
 
       </div>
 

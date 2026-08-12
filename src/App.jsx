@@ -25,7 +25,7 @@ import AdminDashboard from './pages/admin/Dashboard';
 import Employees from './pages/admin/Employees';
 import CompanySettings from './pages/admin/CompanySettings';
 import PontoEletronico from './pages/admin/Ponto';
-import Usuario from './pages/admin/Cadastros';
+import Usuario from './pages/admin/Usuarios';
 import Admissao from './pages/admin/Admissao';
 
 // Imports das Páginas Admin Criadas
@@ -92,7 +92,7 @@ const AuthenticatedApp = () => {
         <Route path="/admin/ponto" element={<PontoEletronico />} />
         <Route path="/admin/cadastros" element={<Employees />} />
         <Route path="/admin/empresa" element={<CompanySettings />} />
-        <Route path="/admin/cadastros" element={<Cadastros />} />
+        <Route path="/admin/usuarios" element={<Usuarios />} />
         <Route path="/admin/admissao" element={<Admissao />} />
         <Route path="/admin/contratos" element={<Contratos />} />
         <Route path="/admin/banco-horas" element={<Banco />} />

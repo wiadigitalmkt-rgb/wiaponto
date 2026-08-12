@@ -90,7 +90,7 @@ const AuthenticatedApp = () => {
         {/* Rotas do Painel Admin */}
         <Route path="/admin" element={<AdminDashboard />} />
         <Route path="/admin/ponto" element={<PontoEletronico />} />
-        <Route path="/admin/cadastros" element={<Employees />} />
+        <Route path="/admin/colaboradores" element={<Employees />} />
         <Route path="/admin/empresa" element={<CompanySettings />} />
         <Route path="/admin/usuarios" element={<Usuarios />} />
         <Route path="/admin/admissao" element={<Admissao />} />

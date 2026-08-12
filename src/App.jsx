@@ -25,7 +25,7 @@ import AdminDashboard from './pages/admin/Dashboard';
 import Employees from './pages/admin/Employees';
 import CompanySettings from './pages/admin/CompanySettings';
 import PontoEletronico from './pages/admin/Ponto';
-import Usuario from './pages/admin/Usuario';
+import Usuario from './pages/admin/Cadastros';
 import Admissao from './pages/admin/Admissao';
 
 // Imports das Páginas Admin Criadas

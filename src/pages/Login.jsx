@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Eye, EyeOff, ArrowRight, LogIn } from 'lucide-react';
+import { Eye, EyeOff, ArrowRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import bgLoginImg from './bgloginponto.png';
@@ -228,7 +228,7 @@ export default function Login() {
         </div>
       </div>
 
-      {/* LADO DIREITO - Mantido 100% intacto */}
+      {/* LADO DIREITO - Limpo de botões e destaques excedentes */}
       <div className="w-1/2 h-full relative overflow-hidden bg-black flex flex-col justify-between p-12 lg:p-16">
         
         {/* Imagem de Fundo de Alta Resolução */}
@@ -242,21 +242,9 @@ export default function Login() {
         {/* Overlay Escuro para dar contraste ao texto */}
         <div className="absolute inset-0 bg-black/30" />
 
-        {/* Botão superior direito */}
-        <div className="relative z-10 flex justify-end">
-          <button className="p-3 bg-white/20 backdrop-blur-md rounded-full text-white hover:bg-white/30 transition-all">
-            <LogIn size={20} />
-          </button>
-        </div>
-
-        {/* Bloco inferior com o Texto e Barrinha Verde */}
+        {/* Bloco inferior com o Título e Subtítulo */}
         <div className="relative z-10 space-y-6 mt-auto">
-          {/* Conteúdo em Destaque (Posicionado Embaixo) */}
           <div className="max-w-lg space-y-4">
-            <span className="inline-block px-3 py-1 rounded-full bg-[#00c062] text-slate-900 font-black text-xs uppercase tracking-wider">
-              NOVIDADE
-            </span>
-
             <h2 className="text-3xl md:text-4xl font-extrabold text-white tracking-tight leading-tight">
               Facilite a sua rotina!
             </h2>
@@ -264,21 +252,6 @@ export default function Login() {
             <p className="text-slate-100 font-medium text-sm md:text-base leading-relaxed">
               Registre sua jornada de trabalho de forma rápida, segura e sem complicações!.
             </p>
-
-            <div className="pt-2">
-              <a
-                href="/testar"
-                className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-white text-slate-900 font-extrabold hover:bg-slate-100 transition-all shadow-lg"
-              >
-                <ArrowRight size={18} />
-                Testar
-              </a>
-            </div>
-          </div>
-
-          {/* Traço verde inferior */}
-          <div>
-            <div className="w-8 h-1.5 bg-[#00c062] rounded-full"></div>
           </div>
         </div>
 

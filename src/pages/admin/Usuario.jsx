@@ -403,7 +403,7 @@ export default function Usuario() {
                     ))}
                   </div>
 
-                  {/* SUB-ABA: DADOS DO PERFIL (Com Bairro, Complemento, Estado, Cidade) */}
+                  {/* SUB-ABA: DADOS DO PERFIL */}
                   {profileSubTab === 'dados' && (
                     <div className="p-6 space-y-8 text-xs">
                       <section className="space-y-4">

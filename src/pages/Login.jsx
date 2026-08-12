@@ -258,11 +258,12 @@ export default function Login() {
             </span>
 
             <h2 className="text-3xl md:text-4xl font-extrabold text-white tracking-tight leading-tight">
-              Recrutamento e Vagas
+              Facilite sua rotina
             </h2>
 
             <p className="text-slate-100 font-medium text-sm md:text-base leading-relaxed">
-              Crie vagas e formulários; compartilhe, publique e centralize candidaturas no sistema de ponto.
+             Registre sua jornada de trabalho de forma
+rápida, segura e sem complicações!
             </p>
 
             <div className="pt-2">

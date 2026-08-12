@@ -269,7 +269,6 @@ export default function Login() {
           <div>
             <div className="w-8 h-1.5 bg-[#00c062] rounded-full"></div>
           </div>
-        </div>
 
       </div>
 

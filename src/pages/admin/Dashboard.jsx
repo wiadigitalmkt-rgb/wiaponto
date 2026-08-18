@@ -135,7 +135,7 @@ export default function Dashboard() {
                 <div className="space-y-3">
                   <div className="flex items-center justify-between p-3 rounded-md bg-slate-50 text-xs">
                     <span className="font-semibold text-slate-600">Presença Registrada</span>
-                    <span className="font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded-md">1 / 2 Funcionários</span>
+                    <span className="font-bold text-amber-600 bg-amber-50 px-2 py-1 rounded-md">1 / 2 Funcionários</span>
                   </div>
                   <div className="flex items-center justify-between p-3 rounded-md bg-slate-50 text-xs">
                     <span className="font-semibold text-slate-600">Atrasos / Justificativas</span>

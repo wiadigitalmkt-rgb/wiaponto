@@ -10,7 +10,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 
 // Import da imagem exatamente como está salva em src/assets/logowiaponto.png
-import logoImg from '@/assets/logowiaponto.png';
+import logoImg from '@/assets/logowia.png';
 
 export default function Navbar({ selectedCompany = 'PontoMax' }) {
   const { user, signOut } = useAuth();

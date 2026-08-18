@@ -275,7 +275,7 @@ export default function AdminPonto() {
     <div className="flex items-center space-x-2">
       <span className="text-xs font-semibold text-slate-600">Usuário</span>
       <DropdownMenu modal={false}>
-        <DropdownMenuTrigger className="flex items-center justify-between border border-slate-300 rounded px-3 py-1 bg-white text-xs text-slate-700 min-w-[170px] focus:outline-none shadow-xs hover:border-slate-400">
+        <DropdownMenuTrigger className="flex items-center justify-between border border-slate-300 rounded px-3 py-1 bg-white text-xs text-slate-700 hover:bg-[#1a2c6a] hover:text-white transition-colors min-w-[170px] focus:outline-none shadow-xs">
           <span className="truncate pr-2">{selectedUser ? selectedUser.full_name : 'Carregando...'}...</span>
           <ChevronDown className="w-3.5 h-3.5 text-slate-400 shrink-0" />
         </DropdownMenuTrigger>
@@ -352,8 +352,8 @@ export default function AdminPonto() {
                 onClick={() => setActiveTab('pontos')}
                 className={`w-full flex items-center space-x-3 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
                   activeTab === 'pontos'
-                    ? 'bg-[#ff8b00]/10 text-[#ff8b00] border-l-4 border-[#ff8b00] shadow-sm font-semibold'
-                    : 'text-slate-500 hover:bg-slate-200/50'
+                    ? 'bg-white text-slate-700 hover:bg-[#1a2c6a] hover:text-white border-l-4 border-[#ff8b00] shadow-sm font-semibold'
+                    : 'bg-white text-slate-500 hover:bg-[#1a2c6a] hover:text-white'
                 }`}
               >
                 <Clock className="w-4 h-4 shrink-0" />
@@ -364,8 +364,8 @@ export default function AdminPonto() {
                 onClick={() => setActiveTab('resumo')}
                 className={`w-full flex items-center space-x-3 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
                   activeTab === 'resumo'
-                    ? 'bg-[#ff8b00]/10 text-[#ff8b00] border-l-4 border-[#ff8b00] shadow-sm font-semibold'
-                    : 'text-slate-500 hover:bg-slate-200/50'
+                    ? 'bg-white text-slate-700 hover:bg-[#1a2c6a] hover:text-white border-l-4 border-[#ff8b00] shadow-sm font-semibold'
+                    : 'bg-white text-slate-500 hover:bg-[#1a2c6a] hover:text-white'
                 }`}
               >
                 <FileText className="w-4 h-4 shrink-0" />
@@ -463,7 +463,7 @@ export default function AdminPonto() {
                           <div className="px-8 py-4 bg-slate-50/40 border-t border-b border-slate-200 text-xs">
                             <div className="flex items-center justify-between mb-4">
                               <DropdownMenu modal={false}>
-                                <DropdownMenuTrigger className="flex items-center space-x-1 border border-slate-300 bg-white px-3 py-1 rounded font-medium text-slate-700 hover:bg-slate-50 focus:outline-none">
+                                <DropdownMenuTrigger className="flex items-center space-x-1 border border-slate-300 bg-white px-3 py-1 rounded font-medium text-slate-700 hover:bg-[#1a2c6a] hover:text-white transition-colors focus:outline-none">
                                   <span>Adicionar</span>
                                   <ChevronDown className="w-3.5 h-3.5" />
                                 </DropdownMenuTrigger>
@@ -565,7 +565,7 @@ export default function AdminPonto() {
 
                                         <button 
                                           onClick={() => handleSaveEdit(item.id, idx, b.db_id)}
-                                          className="bg-[#2a3c7e] text-white font-medium px-4 py-1 rounded text-xs hover:bg-[#1f2d60] transition-colors"
+                                          className="bg-white border border-[#1a2c6a] text-[#1a2c6a] hover:bg-[#1a2c6a] hover:text-white font-medium px-4 py-1 rounded text-xs transition-colors"
                                         >
                                           Salvar
                                         </button>
@@ -655,7 +655,7 @@ export default function AdminPonto() {
 
                 <button 
                   onClick={handleDownloadPDF}
-                  className="border border-slate-300 text-slate-700 hover:bg-slate-50 px-3 py-1 rounded text-xs font-semibold transition-colors flex items-center space-x-1.5 cursor-pointer shadow-2xs"
+                  className="bg-white border border-slate-300 text-slate-700 hover:bg-[#1a2c6a] hover:text-white px-3 py-1 rounded text-xs font-semibold transition-colors flex items-center space-x-1.5 cursor-pointer shadow-2xs"
                 >
                   <span>Baixar em PDF</span>
                 </button>
@@ -824,7 +824,7 @@ export default function AdminPonto() {
             <div className="p-4 border-t border-slate-100 flex justify-end">
               <button 
                 onClick={() => setShowHistoryModal(false)}
-                className="bg-[#2a3c7e] text-white font-medium px-6 py-2 rounded text-xs hover:bg-[#1f2d60] transition-colors"
+                className="bg-white border border-[#1a2c6a] text-[#1a2c6a] hover:bg-[#1a2c6a] hover:text-white font-medium px-6 py-2 rounded text-xs transition-colors"
               >
                 Fechar
               </button>
@@ -899,7 +899,7 @@ export default function AdminPonto() {
               </button>
               <button 
                 onClick={() => setShowJornadaModal(false)}
-                className="bg-[#2a3c7e] text-white font-medium px-6 py-2 rounded text-xs hover:bg-[#1f2d60] transition-colors"
+                className="bg-white border border-[#1a2c6a] text-[#1a2c6a] hover:bg-[#1a2c6a] hover:text-white font-medium px-6 py-2 rounded text-xs transition-colors"
               >
                 Fechar
               </button>
@@ -910,7 +910,7 @@ export default function AdminPonto() {
 
       {/* Widget Flutuante de Suporte */}
       <div className="fixed bottom-6 right-6">
-        <button className="w-10 h-10 bg-[#2a3c7e] text-white rounded-md flex items-center justify-center shadow-lg hover:bg-[#1f2d60] transition-colors">
+        <button className="w-10 h-10 bg-white border border-[#1a2c6a] text-[#1a2c6a] hover:bg-[#1a2c6a] hover:text-white rounded-md flex items-center justify-center shadow-lg transition-colors">
           <MessageSquare className="w-5 h-5" />
         </button>
       </div>

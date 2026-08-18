@@ -288,7 +288,7 @@ export default function AdminPonto() {
               placeholder="Buscar usuário..."
               value={userSearchTerm}
               onChange={(e) => setUserSearchTerm(e.target.value)}
-              className="w-full pl-8 pr-2 py-1 text-xs border border-slate-200 rounded text-slate-700 focus:outline-none focus:border-teal-600"
+              className="w-full pl-8 pr-2 py-1 text-xs border border-slate-200 rounded text-slate-700 focus:outline-none focus:border-[#2a3c7e]"
               onClick={(e) => e.stopPropagation()}
             />
           </div>
@@ -305,7 +305,7 @@ export default function AdminPonto() {
                   }}
                   className={`cursor-pointer text-xs px-2.5 py-2 rounded transition-colors ${
                     selectedUser && selectedUser.id === user.id
-                      ? 'bg-[#00897b] text-white font-medium hover:bg-[#00796b]' 
+                      ? 'bg-[#2a3c7e] text-white font-medium hover:bg-[#1f2d60]' 
                       : 'text-slate-700 hover:bg-slate-100'
                   }`}
                 >
@@ -526,7 +526,7 @@ export default function AdminPonto() {
                                           placeholder="Max 15 caractere"
                                           value={editFormData.obs}
                                           onChange={(e) => setEditFormData({ ...editFormData, obs: e.target.value })}
-                                          className="border border-slate-300 rounded px-2 py-1 text-xs w-32 focus:outline-none focus:border-[#ff8b00]"
+                                          className="border border-slate-300 rounded px-2 py-1 text-xs w-32 focus:outline-none focus:border-[#2a3c7e]"
                                         />
                                       </div>
 
@@ -565,7 +565,7 @@ export default function AdminPonto() {
 
                                         <button 
                                           onClick={() => handleSaveEdit(item.id, idx, b.db_id)}
-                                          className="bg-[#ff8b00] text-white font-medium px-4 py-1 rounded text-xs hover:bg-[#e07a00] transition-colors"
+                                          className="bg-[#2a3c7e] text-white font-medium px-4 py-1 rounded text-xs hover:bg-[#1f2d60] transition-colors"
                                         >
                                           Salvar
                                         </button>
@@ -824,7 +824,7 @@ export default function AdminPonto() {
             <div className="p-4 border-t border-slate-100 flex justify-end">
               <button 
                 onClick={() => setShowHistoryModal(false)}
-                className="bg-[#ff8b00] text-white font-medium px-6 py-2 rounded text-xs hover:bg-[#e07a00] transition-colors"
+                className="bg-[#2a3c7e] text-white font-medium px-6 py-2 rounded text-xs hover:bg-[#1f2d60] transition-colors"
               >
                 Fechar
               </button>
@@ -899,7 +899,7 @@ export default function AdminPonto() {
               </button>
               <button 
                 onClick={() => setShowJornadaModal(false)}
-                className="bg-[#ff8b00] text-white font-medium px-6 py-2 rounded text-xs hover:bg-[#e07a00] transition-colors"
+                className="bg-[#2a3c7e] text-white font-medium px-6 py-2 rounded text-xs hover:bg-[#1f2d60] transition-colors"
               >
                 Fechar
               </button>
@@ -910,7 +910,7 @@ export default function AdminPonto() {
 
       {/* Widget Flutuante de Suporte */}
       <div className="fixed bottom-6 right-6">
-        <button className="w-10 h-10 bg-[#ff8b00] text-white rounded-md flex items-center justify-center shadow-lg hover:bg-[#e07a00] transition-colors">
+        <button className="w-10 h-10 bg-[#2a3c7e] text-white rounded-md flex items-center justify-center shadow-lg hover:bg-[#1f2d60] transition-colors">
           <MessageSquare className="w-5 h-5" />
         </button>
       </div>

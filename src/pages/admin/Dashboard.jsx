@@ -282,7 +282,7 @@ export default function Dashboard() {
               <div className="pt-2">
                 <button
                   onClick={() => window.open('https://wa.me/5500000000000', '_blank')}
-                  className="w-full bg-[#ff8b00]] hover:bg-[#ab5d00] text-white text-xs font-bold py-3 px-4 rounded-md transition shadow-md hover:shadow-lg text-center"
+                  className="w-full bg-[#ff7614] hover:bg-[#ab5d00] text-white text-xs font-bold py-3 px-4 rounded-md transition shadow-md hover:shadow-lg text-center"
                 >
                   Falar com o comercial
                 </button>

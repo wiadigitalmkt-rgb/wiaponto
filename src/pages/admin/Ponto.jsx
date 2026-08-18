@@ -305,7 +305,7 @@ export default function AdminPonto() {
                   }}
                   className={`cursor-pointer text-xs px-2.5 py-2 rounded transition-colors ${
                     selectedUser && selectedUser.id === user.id
-                      ? 'bg-[#2a3c7e] text-white font-medium hover:bg-[#1f2d60]' 
+                      ? 'bg-[#1a2c6a] text-[#ff8b00] font-medium hover:bg-[#2a3c7e]' 
                       : 'text-slate-700 hover:bg-slate-100'
                   }`}
                 >
@@ -565,7 +565,7 @@ export default function AdminPonto() {
 
                                         <button 
                                           onClick={() => handleSaveEdit(item.id, idx, b.db_id)}
-                                          className="bg-[#2a3c7e] text-white font-medium px-4 py-1 rounded text-xs hover:bg-[#1f2d60] transition-colors"
+                                          className="bg-[#1a2c6a] text-[#ff8b00] font-medium px-4 py-1 rounded text-xs hover:bg-[#2a3c7e] transition-colors"
                                         >
                                           Salvar
                                         </button>
@@ -824,7 +824,7 @@ export default function AdminPonto() {
             <div className="p-4 border-t border-slate-100 flex justify-end">
               <button 
                 onClick={() => setShowHistoryModal(false)}
-                className="bg-[#2a3c7e] text-white font-medium px-6 py-2 rounded text-xs hover:bg-[#1f2d60] transition-colors"
+                className="bg-[#1a2c6a] text-[#ff8b00] font-medium px-6 py-2 rounded text-xs hover:bg-[#2a3c7e] transition-colors"
               >
                 Fechar
               </button>
@@ -899,7 +899,7 @@ export default function AdminPonto() {
               </button>
               <button 
                 onClick={() => setShowJornadaModal(false)}
-                className="bg-[#2a3c7e] text-white font-medium px-6 py-2 rounded text-xs hover:bg-[#1f2d60] transition-colors"
+                className="bg-[#1a2c6a] text-[#ff8b00] font-medium px-6 py-2 rounded text-xs hover:bg-[#2a3c7e] transition-colors"
               >
                 Fechar
               </button>
@@ -910,7 +910,7 @@ export default function AdminPonto() {
 
       {/* Widget Flutuante de Suporte */}
       <div className="fixed bottom-6 right-6">
-        <button className="w-10 h-10 bg-[#2a3c7e] text-white rounded-md flex items-center justify-center shadow-lg hover:bg-[#1f2d60] transition-colors">
+        <button className="w-10 h-10 bg-[#1a2c6a] text-[#ff8b00] rounded-md flex items-center justify-center shadow-lg hover:bg-[#2a3c7e] transition-colors">
           <MessageSquare className="w-5 h-5" />
         </button>
       </div>

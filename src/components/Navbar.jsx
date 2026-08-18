@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Clock, ChevronDown, LogOut, Search } from 'lucide-react';
+import { ChevronDown, LogOut, Search } from 'lucide-react';
 import { useAuth } from '@/lib/AuthContext';
 import {
   DropdownMenu,
@@ -8,6 +8,9 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+
+// Import da imagem exatamente como está salva em src/assets/logowiaponto.png
+import logoImg from '@/assets/logowiaponto.png';
 
 export default function Navbar({ selectedCompany = 'PontoMax' }) {
   const { user, signOut } = useAuth();
@@ -40,11 +43,12 @@ export default function Navbar({ selectedCompany = 'PontoMax' }) {
     <header className="bg-[#1a2c6a] text-white h-16 shadow-md w-full shrink-0 flex items-center justify-between px-6 border-b border-[#2a3c7e] select-none">
       {/* Lado Esquerdo */}
       <div className="flex items-center gap-8">
-        <Link to="/admin" className="flex items-center gap-2 font-bold text-xl tracking-tight">
-          <div className="w-8 h-8 rounded-lg bg-[#ff8b00] flex items-center justify-center text-white shrink-0 shadow-sm">
-            <Clock size={20} className="stroke-[2.5]" />
-          </div>
-          <span className="text-white text-lg font-bold">PontoMax</span>
+        <Link to="/admin" className="flex items-center gap-2">
+          <img 
+            src={logoImg} 
+            alt="WiaPonto Logo" 
+            className="h-9 w-auto object-contain" 
+          />
         </Link>
 
         <nav className="hidden md:flex items-center gap-6 text-sm font-medium text-slate-200">

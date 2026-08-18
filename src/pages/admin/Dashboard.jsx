@@ -11,7 +11,6 @@ import {
   Briefcase, 
   ShieldCheck, 
   Calendar, 
-  Award,
   X
 } from 'lucide-react';
 
@@ -65,37 +64,6 @@ export default function Dashboard() {
 
       {/* Conteúdo Principal */}
       <main className="max-w-7xl mx-auto px-6 py-8 space-y-8">
-        
-        {/* Banner de Setup / Progresso */}
-        <div className="bg-white rounded-lg p-6 shadow-sm border border-slate-200/80">
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="text-sm font-bold text-slate-700">Setup Inicial</h2>
-            <span className="text-xs font-semibold text-[#ff8b00]">
-              Seu teste acaba em 14 dias
-            </span>
-          </div>
-
-          <div className="flex items-center gap-3 mb-5">
-            <div className="flex-1 bg-slate-100 rounded-full h-2 overflow-hidden">
-              <div className="bg-[#ff8b00] h-2 rounded-full transition-all duration-500" style={{ width: '86%' }}></div>
-            </div>
-            <span className="text-xs font-bold text-slate-600">86%</span>
-          </div>
-
-          <div className="border border-slate-200 rounded-md flex flex-col sm:flex-row items-stretch overflow-hidden bg-white">
-            <div className="flex-1 p-3.5 flex items-center gap-3 text-xs text-slate-600">
-              <Award className="text-[#ff8b00] shrink-0" size={18} />
-              <span>
-                <strong className="text-slate-800 font-bold">Próxima etapa:</strong> Cadastrar colaboradores e definir horários de trabalho
-              </span>
-            </div>
-            <div className="border-t sm:border-t-0 sm:border-l border-slate-200 p-2 flex items-center justify-center bg-white">
-              <button className="bg-[#ff8b00] hover:bg-[#e67a00] text-white px-6 py-2 rounded-md text-xs font-bold transition w-full sm:w-auto">
-                Continuar
-              </button>
-            </div>
-          </div>
-        </div>
 
         {/* Grid de Cards de Módulos */}
         <div>

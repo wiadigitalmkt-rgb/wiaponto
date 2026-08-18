@@ -326,11 +326,11 @@ const [usuarioData, setUsuarioData] = useState({
         <div className="max-w-6xl mx-auto mb-4">
           <h1 className="text-xl font-bold uppercase text-slate-800 tracking-wide mb-2">Usuários</h1>
           <div className="text-sm text-slate-500 flex items-center gap-2">
-            <Link to="/admin" className="hover:text-teal-600 transition-colors">Painel</Link>
+            <Link to="/admin" className="hover:text-[#ff8b00] transition-colors">Painel</Link>
             <span>&gt;</span>
-            <Link to="/admin/colaboradores" className="hover:text-teal-600 transition-colors">Usuários</Link>
+            <Link to="/admin/colaboradores" className="hover:text-[#ff8b00] transition-colors">Usuários</Link>
             <span>&gt;</span>
-            <span className="text-teal-600 font-medium">Edição</span>
+            <span className="text-[#ff8b00] font-medium">Edição</span>
           </div>
         </div>
 
@@ -356,7 +356,7 @@ const [usuarioData, setUsuarioData] = useState({
                     onClick={() => setActiveTab(item.id)}
                     className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm transition-all ${
                       isActive
-                        ? 'bg-white text-teal-600 font-semibold shadow-sm border-l-4 border-teal-500'
+                        ? 'bg-white text-[#ff8b00] font-semibold shadow-sm border-l-4 border-[#ff8b00]'
                         : 'text-slate-600 hover:bg-slate-200/60'
                     }`}
                   >
@@ -393,7 +393,7 @@ const [usuarioData, setUsuarioData] = useState({
                         onClick={() => setProfileSubTab(tab.id)}
                         className={`pb-3 whitespace-nowrap transition-all ${
                           profileSubTab === tab.id
-                            ? 'border-b-2 border-teal-500 text-teal-600 font-medium'
+                            ? 'border-b-2 border-[#ff8b00] text-[#ff8b00] font-medium'
                             : 'text-slate-500 hover:text-slate-700'
                         }`}
                       >
@@ -410,45 +410,45 @@ const [usuarioData, setUsuarioData] = useState({
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                           <div>
                             <label className="block text-slate-600 mb-1">Primeiro nome*</label>
-                            <input type="text" name="primeiroNome" value={usuarioData.primeiroNome} onChange={handleInputChange} className="w-full border rounded p-2 text-slate-800" />
+                            <input type="text" name="primeiroNome" value={usuarioData.primeiroNome} onChange={handleInputChange} className="w-full border rounded p-2 text-slate-800 focus:outline-none focus:border-[#ff8b00]" />
                           </div>
                           <div>
                             <label className="block text-slate-600 mb-1">Sobrenome*</label>
-                            <input type="text" name="sobrenome" value={usuarioData.sobrenome} onChange={handleInputChange} className="w-full border rounded p-2 text-slate-800" />
+                            <input type="text" name="sobrenome" value={usuarioData.sobrenome} onChange={handleInputChange} className="w-full border rounded p-2 text-slate-800 focus:outline-none focus:border-[#ff8b00]" />
                           </div>
                           <div>
                             <label className="block text-slate-600 mb-1">Gênero</label>
-                            <select name="genero" value={usuarioData.genero} onChange={handleInputChange} className="w-full border rounded p-2 text-slate-800">
+                            <select name="genero" value={usuarioData.genero} onChange={handleInputChange} className="w-full border rounded p-2 text-slate-800 focus:outline-none focus:border-[#ff8b00]">
                               <option value="Feminino">Feminino</option>
                               <option value="Masculino">Masculino</option>
                             </select>
                           </div>
                           <div>
                             <label className="block text-slate-600 mb-1">E-mail</label>
-                            <input type="email" name="email" value={usuarioData.email} onChange={handleInputChange} className="w-full border rounded p-2 text-slate-800" />
+                            <input type="email" name="email" value={usuarioData.email} onChange={handleInputChange} className="w-full border rounded p-2 text-slate-800 focus:outline-none focus:border-[#ff8b00]" />
                           </div>
                           <div>
                             <label className="block text-slate-600 mb-1">Telefone</label>
-                            <input type="text" name="telefone" value={usuarioData.telefone} onChange={handleInputChange} className="w-full border rounded p-2 text-slate-800" />
+                            <input type="text" name="telefone" value={usuarioData.telefone} onChange={handleInputChange} className="w-full border rounded p-2 text-slate-800 focus:outline-none focus:border-[#ff8b00]" />
                           </div>
                           <div>
                             <label className="block text-slate-600 mb-1">Estado civil</label>
-                            <select name="estadoCivil" value={usuarioData.estadoCivil} onChange={handleInputChange} className="w-full border rounded p-2 text-slate-800">
+                            <select name="estadoCivil" value={usuarioData.estadoCivil} onChange={handleInputChange} className="w-full border rounded p-2 text-slate-800 focus:outline-none focus:border-[#ff8b00]">
                               <option value="Casado(a)">Casado(a)</option>
                               <option value="Solteiro(a)">Solteiro(a)</option>
                             </select>
                           </div>
                           <div>
                             <label className="block text-slate-600 mb-1">CPF*</label>
-                            <input type="text" name="cpf" value={usuarioData.cpf} onChange={handleInputChange} className="w-full border rounded p-2 text-slate-800" />
+                            <input type="text" name="cpf" value={usuarioData.cpf} onChange={handleInputChange} className="w-full border rounded p-2 text-slate-800 focus:outline-none focus:border-[#ff8b00]" />
                           </div>
                           <div>
                             <label className="block text-slate-600 mb-1">RG</label>
-                            <input type="text" name="rg" value={usuarioData.rg} onChange={handleInputChange} className="w-full border rounded p-2 text-slate-800" />
+                            <input type="text" name="rg" value={usuarioData.rg} onChange={handleInputChange} className="w-full border rounded p-2 text-slate-800 focus:outline-none focus:border-[#ff8b00]" />
                           </div>
                           <div>
                             <label className="block text-slate-600 mb-1">PIS/PASEP</label>
-                            <input type="text" name="pisPasep" value={usuarioData.pisPasep} onChange={handleInputChange} className="w-full border rounded p-2 text-slate-800" />
+                            <input type="text" name="pisPasep" value={usuarioData.pisPasep} onChange={handleInputChange} className="w-full border rounded p-2 text-slate-800 focus:outline-none focus:border-[#ff8b00]" />
                           </div>
                         </div>
                       </section>
@@ -461,27 +461,27 @@ const [usuarioData, setUsuarioData] = useState({
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                           <div>
                             <label className="block text-slate-600 mb-1">CEP</label>
-                            <input type="text" name="cep" value={usuarioData.cep} onChange={handleInputChange} className="w-full border rounded p-2 text-slate-800" />
+                            <input type="text" name="cep" value={usuarioData.cep} onChange={handleInputChange} className="w-full border rounded p-2 text-slate-800 focus:outline-none focus:border-[#ff8b00]" />
                           </div>
                           <div>
                             <label className="block text-slate-600 mb-1">Rua</label>
-                            <input type="text" name="rua" value={usuarioData.rua} onChange={handleInputChange} className="w-full border rounded p-2 text-slate-800" />
+                            <input type="text" name="rua" value={usuarioData.rua} onChange={handleInputChange} className="w-full border rounded p-2 text-slate-800 focus:outline-none focus:border-[#ff8b00]" />
                           </div>
                           <div>
                             <label className="block text-slate-600 mb-1">Número</label>
-                            <input type="text" name="numero" value={usuarioData.numero} onChange={handleInputChange} className="w-full border rounded p-2 text-slate-800" />
+                            <input type="text" name="numero" value={usuarioData.numero} onChange={handleInputChange} className="w-full border rounded p-2 text-slate-800 focus:outline-none focus:border-[#ff8b00]" />
                           </div>
                           <div>
                             <label className="block text-slate-600 mb-1">Bairro</label>
-                            <input type="text" name="bairro" value={usuarioData.bairro} onChange={handleInputChange} className="w-full border rounded p-2 text-slate-800" />
+                            <input type="text" name="bairro" value={usuarioData.bairro} onChange={handleInputChange} className="w-full border rounded p-2 text-slate-800 focus:outline-none focus:border-[#ff8b00]" />
                           </div>
                           <div>
                             <label className="block text-slate-600 mb-1">Complemento</label>
-                            <input type="text" name="complemento" value={usuarioData.complemento} onChange={handleInputChange} className="w-full border rounded p-2 text-slate-800" />
+                            <input type="text" name="complemento" value={usuarioData.complemento} onChange={handleInputChange} className="w-full border rounded p-2 text-slate-800 focus:outline-none focus:border-[#ff8b00]" />
                           </div>
                           <div>
                             <label className="block text-slate-600 mb-1">Estado</label>
-                            <select name="estado" value={usuarioData.estado} onChange={handleInputChange} className="w-full border rounded p-2 text-slate-800">
+                            <select name="estado" value={usuarioData.estado} onChange={handleInputChange} className="w-full border rounded p-2 text-slate-800 focus:outline-none focus:border-[#ff8b00]">
                               <option value="Rio Grande do Sul">Rio Grande do Sul</option>
                               <option value="Santa Catarina">Santa Catarina</option>
                               <option value="Paraná">Paraná</option>
@@ -490,13 +490,13 @@ const [usuarioData, setUsuarioData] = useState({
                           </div>
                           <div>
                             <label className="block text-slate-600 mb-1">Cidade</label>
-                            <input type="text" name="cidade" value={usuarioData.cidade} onChange={handleInputChange} className="w-full border rounded p-2 text-slate-800" />
+                            <input type="text" name="cidade" value={usuarioData.cidade} onChange={handleInputChange} className="w-full border rounded p-2 text-slate-800 focus:outline-none focus:border-[#ff8b00]" />
                           </div>
                         </div>
                       </section>
 
                       <div className="flex justify-end pt-4">
-                        <button onClick={handleSaveProfile} disabled={saving} className="bg-teal-600 hover:bg-teal-700 text-white font-medium px-6 py-2 rounded text-xs transition-colors">
+                        <button onClick={handleSaveProfile} disabled={saving} className="bg-[#ff8b00] hover:bg-[#e07a00] text-white font-medium px-6 py-2 rounded text-xs transition-colors">
                           {saving ? 'Salvando...' : 'Salvar alterações'}
                         </button>
                       </div>
@@ -507,7 +507,7 @@ const [usuarioData, setUsuarioData] = useState({
                   {profileSubTab === 'campos_adicionais' && (
                     <div className="p-6 space-y-6 text-xs">
                       <div className="flex justify-between items-center">
-                        <button onClick={() => setShowConfigCampos(!showConfigCampos)} className="flex items-center gap-1.5 border border-teal-600 text-teal-600 px-3 py-1.5 rounded font-medium hover:bg-teal-50">
+                        <button onClick={() => setShowConfigCampos(!showConfigCampos)} className="flex items-center gap-1.5 border border-[#ff8b00] text-[#ff8b00] px-3 py-1.5 rounded font-medium hover:bg-[#ff8b00]/10 transition-colors">
                           <Settings className="w-3.5 h-3.5" /> Configurar campos
                         </button>
                       </div>
@@ -521,13 +521,13 @@ const [usuarioData, setUsuarioData] = useState({
                               placeholder="Digite o nome do campo (ex: Observações)"
                               value={newFieldName}
                               onChange={(e) => setNewFieldName(e.target.value)}
-                              className="border p-2 rounded flex-1 text-xs"
+                              className="border p-2 rounded flex-1 text-xs focus:outline-none focus:border-[#ff8b00]"
                             />
-                            <select value={newFieldType} onChange={(e) => setNewFieldType(e.target.value)} className="border p-2 rounded text-xs">
+                            <select value={newFieldType} onChange={(e) => setNewFieldType(e.target.value)} className="border p-2 rounded text-xs focus:outline-none focus:border-[#ff8b00]">
                               <option value="Texto livre">Texto livre</option>
                               <option value="Número">Número</option>
                             </select>
-                            <button onClick={handleAddCustomField} className="bg-teal-600 text-white px-4 py-2 rounded font-medium flex items-center gap-1">
+                            <button onClick={handleAddCustomField} className="bg-[#ff8b00] hover:bg-[#e07a00] text-white px-4 py-2 rounded font-medium flex items-center gap-1 transition-colors">
                               <Plus className="w-3.5 h-3.5" /> Adicionar Campo
                             </button>
                           </div>
@@ -544,7 +544,7 @@ const [usuarioData, setUsuarioData] = useState({
                               <input
                                 type="text"
                                 defaultValue={field.field_value}
-                                className="w-full border rounded p-2 text-slate-800"
+                                className="w-full border rounded p-2 text-slate-800 focus:outline-none focus:border-[#ff8b00]"
                               />
                             </div>
                           ))}
@@ -552,7 +552,7 @@ const [usuarioData, setUsuarioData] = useState({
                       )}
 
                       <div className="flex justify-end pt-4 border-t border-slate-100">
-                        <button onClick={handleSaveProfile} className="bg-teal-600 hover:bg-teal-700 text-white font-medium px-6 py-2 rounded text-xs">
+                        <button onClick={handleSaveProfile} className="bg-[#ff8b00] hover:bg-[#e07a00] text-white font-medium px-6 py-2 rounded text-xs transition-colors">
                           Salvar alterações
                         </button>
                       </div>
@@ -575,7 +575,7 @@ const [usuarioData, setUsuarioData] = useState({
                         <div className="text-right">
                           <button
                             onClick={() => fileInputRef.current?.click()}
-                            className="bg-teal-600 hover:bg-teal-700 text-white font-medium px-4 py-2 rounded transition-colors inline-flex items-center gap-1.5"
+                            className="bg-[#ff8b00] hover:bg-[#e07a00] text-white font-medium px-4 py-2 rounded transition-colors inline-flex items-center gap-1.5"
                           >
                             <Upload className="w-3.5 h-3.5" /> Anexar novo arquivo
                           </button>
@@ -593,7 +593,7 @@ const [usuarioData, setUsuarioData] = useState({
                         <tbody>
                           {attachments.map((file) => (
                             <tr key={file.id} className="border-b">
-                              <td className="py-2 font-medium text-teal-600">
+                              <td className="py-2 font-medium text-[#ff8b00]">
                                 <a href={file.file_url} target="_blank" rel="noreferrer" className="hover:underline">
                                   {file.file_name}
                                 </a>
@@ -620,13 +620,13 @@ const [usuarioData, setUsuarioData] = useState({
                   <div className="flex border-b border-slate-200 px-4 pt-2 gap-6 text-sm">
                     <button
                       onClick={() => setJornadaSubTab('informacoes')}
-                      className={`pb-3 ${jornadaSubTab === 'informacoes' ? 'border-b-2 border-teal-500 text-teal-600 font-medium' : 'text-slate-500'}`}
+                      className={`pb-3 ${jornadaSubTab === 'informacoes' ? 'border-b-2 border-[#ff8b00] text-[#ff8b00] font-medium' : 'text-slate-500'}`}
                     >
                       Informações
                     </button>
                     <button
                       onClick={() => setJornadaSubTab('jornadas')}
-                      className={`pb-3 ${jornadaSubTab === 'jornadas' ? 'border-b-2 border-teal-500 text-teal-600 font-medium' : 'text-slate-500'}`}
+                      className={`pb-3 ${jornadaSubTab === 'jornadas' ? 'border-b-2 border-[#ff8b00] text-[#ff8b00] font-medium' : 'text-slate-500'}`}
                     >
                       Jornadas
                     </button>
@@ -635,7 +635,7 @@ const [usuarioData, setUsuarioData] = useState({
                   {jornadaSubTab === 'jornadas' ? (
                     <div className="p-6 space-y-6 text-xs">
                       <div className="flex justify-between items-center">
-                        <button onClick={handleAddSchedule} className="border border-teal-600 text-teal-600 px-4 py-2 rounded font-medium hover:bg-teal-50 flex items-center gap-1">
+                        <button onClick={handleAddSchedule} className="border border-[#ff8b00] text-[#ff8b00] px-4 py-2 rounded font-medium hover:bg-[#ff8b00]/10 flex items-center gap-1 transition-colors">
                           <Plus className="w-3.5 h-3.5" /> Adicionar nova
                         </button>
                       </div>
@@ -645,11 +645,11 @@ const [usuarioData, setUsuarioData] = useState({
                           <div key={s.id} className="grid grid-cols-1 md:grid-cols-3 gap-4 items-center border p-3 rounded">
                             <div>
                               <label className="block text-slate-500 text-[10px]">Início em</label>
-                              <input type="date" defaultValue={s.start_date} className="border rounded p-1.5 text-xs w-full" />
+                              <input type="date" defaultValue={s.start_date} className="border rounded p-1.5 text-xs w-full focus:outline-none focus:border-[#ff8b00]" />
                             </div>
                             <div>
                               <label className="block text-slate-500 text-[10px]">Jornada</label>
-                              <select defaultValue={s.schedule_name} className="border rounded p-1.5 text-xs w-full">
+                              <select defaultValue={s.schedule_name} className="border rounded p-1.5 text-xs w-full focus:outline-none focus:border-[#ff8b00]">
                                 <option value="SEG A SEX 8H AS 12H DAS 14H AS 18H SAB 08H AS 12H">
                                   SEG A SEX 8H AS 12H DAS 14H AS 18H SAB 08H AS 12H
                                 </option>
@@ -663,7 +663,7 @@ const [usuarioData, setUsuarioData] = useState({
                       </div>
 
                       <div className="flex justify-end pt-4">
-                        <button onClick={handleSaveProfile} className="bg-teal-600 hover:bg-teal-700 text-white font-medium px-6 py-2 rounded text-xs">
+                        <button onClick={handleSaveProfile} className="bg-[#ff8b00] hover:bg-[#e07a00] text-white font-medium px-6 py-2 rounded text-xs transition-colors">
                           Salvar alterações
                         </button>
                       </div>
@@ -681,7 +681,7 @@ const [usuarioData, setUsuarioData] = useState({
                 <div className="p-6 text-xs space-y-6">
                   <div className="flex justify-between items-center">
                     <h3 className="font-semibold text-slate-800 text-sm">Cercas do Usuário</h3>
-                    <button onClick={() => setShowGeofenceModal(true)} className="flex items-center gap-1 border border-teal-600 text-teal-600 px-3 py-1.5 rounded hover:bg-teal-50 font-medium">
+                    <button onClick={() => setShowGeofenceModal(true)} className="flex items-center gap-1 border border-[#ff8b00] text-[#ff8b00] px-3 py-1.5 rounded hover:bg-[#ff8b00]/10 font-medium transition-colors">
                       <MapPin className="w-3.5 h-3.5" /> Adicionar Cerca no Mapa
                     </button>
                   </div>
@@ -700,7 +700,7 @@ const [usuarioData, setUsuarioData] = useState({
                             <strong className="text-slate-800 block">{f.name}</strong>
                             <span className="text-slate-500">Lat: {f.latitude}, Lng: {f.longitude} (Raio: {f.radius_meters}m)</span>
                           </div>
-                          <span className="bg-teal-100 text-teal-800 px-2 py-0.5 rounded text-[10px]">Ativa</span>
+                          <span className="bg-[#ff8b00]/10 text-[#ff8b00] px-2 py-0.5 rounded text-[10px] font-semibold">Ativa</span>
                         </div>
                       ))}
                     </div>
@@ -713,7 +713,7 @@ const [usuarioData, setUsuarioData] = useState({
                 <div className="p-6 text-xs space-y-6">
                   <div className="flex justify-between items-center">
                     <span className="text-slate-500">Admitido em {usuarioData.dataAdmissao}</span>
-                    <button onClick={() => setShowVacationModal(true)} className="bg-teal-600 hover:bg-teal-700 text-white font-medium px-4 py-2 rounded transition-colors">
+                    <button onClick={() => setShowVacationModal(true)} className="bg-[#ff8b00] hover:bg-[#e07a00] text-white font-medium px-4 py-2 rounded transition-colors">
                       Adicionar período
                     </button>
                   </div>
@@ -731,7 +731,7 @@ const [usuarioData, setUsuarioData] = useState({
                         <tr key={v.id} className="border-b">
                           <td className="py-3 font-medium text-slate-700">{v.start_date}</td>
                           <td className="py-3 text-slate-700">{v.end_date}</td>
-                          <td className="py-3 text-right font-medium text-teal-600">{v.status}</td>
+                          <td className="py-3 text-right font-medium text-[#ff8b00]">{v.status}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -743,7 +743,7 @@ const [usuarioData, setUsuarioData] = useState({
               {activeTab === 'dependentes' && (
                 <div className="p-6 text-xs space-y-6">
                   <div className="flex justify-end">
-                    <button onClick={() => setShowDependentModal(true)} className="bg-teal-600 hover:bg-teal-700 text-white font-medium px-4 py-2 rounded transition-colors">
+                    <button onClick={() => setShowDependentModal(true)} className="bg-[#ff8b00] hover:bg-[#e07a00] text-white font-medium px-4 py-2 rounded transition-colors">
                       Adicionar novo
                     </button>
                   </div>
@@ -793,7 +793,7 @@ const [usuarioData, setUsuarioData] = useState({
                       name="tipoAcesso"
                       value={usuarioData.tipoAcesso}
                       onChange={handleInputChange}
-                      className="w-full md:w-1/2 border rounded p-2 text-slate-800"
+                      className="w-full md:w-1/2 border rounded p-2 text-slate-800 focus:outline-none focus:border-[#ff8b00]"
                     >
                       <option value="Colaborador">Colaborador - Permissão simples aos módulos</option>
                       <option value="Gerente Leitor">Gerente Leitor - Visualizar usuários das filiais</option>
@@ -810,7 +810,7 @@ const [usuarioData, setUsuarioData] = useState({
                       <h4 className="font-semibold text-slate-800">Senha</h4>
                       <p className="text-slate-500">Reconfigurar senha do usuário para o padrão inicial (CPF do usuário)</p>
                     </div>
-                    <button onClick={handleResetPassword} className="bg-teal-600 hover:bg-teal-700 text-white px-4 py-2 rounded font-medium transition-colors">
+                    <button onClick={handleResetPassword} className="bg-[#ff8b00] hover:bg-[#e07a00] text-white px-4 py-2 rounded font-medium transition-colors">
                       Resetar senha
                     </button>
                   </div>
@@ -828,15 +828,15 @@ const [usuarioData, setUsuarioData] = useState({
             <h3 className="font-bold text-slate-800 text-sm">Adicionar Período de Férias</h3>
             <div>
               <label className="block text-xs text-slate-600">Data de Início*</label>
-              <input type="date" onChange={(e) => setNewVacation({...newVacation, start_date: e.target.value})} className="w-full border rounded p-2 text-xs" />
+              <input type="date" onChange={(e) => setNewVacation({...newVacation, start_date: e.target.value})} className="w-full border rounded p-2 text-xs focus:outline-none focus:border-[#ff8b00]" />
             </div>
             <div>
               <label className="block text-xs text-slate-600">Data de Fim*</label>
-              <input type="date" onChange={(e) => setNewVacation({...newVacation, end_date: e.target.value})} className="w-full border rounded p-2 text-xs" />
+              <input type="date" onChange={(e) => setNewVacation({...newVacation, end_date: e.target.value})} className="w-full border rounded p-2 text-xs focus:outline-none focus:border-[#ff8b00]" />
             </div>
             <div className="flex justify-end gap-2 pt-2">
               <button onClick={() => setShowVacationModal(false)} className="px-4 py-2 border rounded text-xs">Cancelar</button>
-              <button onClick={handleAddVacation} className="px-4 py-2 bg-teal-600 text-white rounded text-xs font-medium">Adicionar</button>
+              <button onClick={handleAddVacation} className="px-4 py-2 bg-[#ff8b00] hover:bg-[#e07a00] text-white rounded text-xs font-medium transition-colors">Adicionar</button>
             </div>
           </div>
         </div>
@@ -850,20 +850,20 @@ const [usuarioData, setUsuarioData] = useState({
             <div className="grid grid-cols-2 gap-2">
               <div>
                 <label className="block text-xs text-slate-600">Primeiro nome*</label>
-                <input type="text" onChange={(e) => setNewDependent({...newDependent, first_name: e.target.value})} className="w-full border rounded p-2 text-xs" />
+                <input type="text" onChange={(e) => setNewDependent({...newDependent, first_name: e.target.value})} className="w-full border rounded p-2 text-xs focus:outline-none focus:border-[#ff8b00]" />
               </div>
               <div>
                 <label className="block text-xs text-slate-600">Sobrenome*</label>
-                <input type="text" onChange={(e) => setNewDependent({...newDependent, last_name: e.target.value})} className="w-full border rounded p-2 text-xs" />
+                <input type="text" onChange={(e) => setNewDependent({...newDependent, last_name: e.target.value})} className="w-full border rounded p-2 text-xs focus:outline-none focus:border-[#ff8b00]" />
               </div>
             </div>
             <div>
               <label className="block text-xs text-slate-600">Data de nascimento*</label>
-              <input type="date" onChange={(e) => setNewDependent({...newDependent, birth_date: e.target.value})} className="w-full border rounded p-2 text-xs" />
+              <input type="date" onChange={(e) => setNewDependent({...newDependent, birth_date: e.target.value})} className="w-full border rounded p-2 text-xs focus:outline-none focus:border-[#ff8b00]" />
             </div>
             <div>
               <label className="block text-xs text-slate-600">Vínculo*</label>
-              <select onChange={(e) => setNewDependent({...newDependent, relationship: e.target.value})} className="w-full border rounded p-2 text-xs">
+              <select onChange={(e) => setNewDependent({...newDependent, relationship: e.target.value})} className="w-full border rounded p-2 text-xs focus:outline-none focus:border-[#ff8b00]">
                 <option value="Filho(a)">Filho(a)</option>
                 <option value="Cônjuge">Cônjuge</option>
                 <option value="Outro">Outro</option>
@@ -871,7 +871,7 @@ const [usuarioData, setUsuarioData] = useState({
             </div>
             <div className="flex justify-end gap-2 pt-2">
               <button onClick={() => setShowDependentModal(false)} className="px-4 py-2 border rounded text-xs">Cancelar</button>
-              <button onClick={handleAddDependent} className="px-4 py-2 bg-teal-600 text-white rounded text-xs font-medium">Salvar</button>
+              <button onClick={handleAddDependent} className="px-4 py-2 bg-[#ff8b00] hover:bg-[#e07a00] text-white rounded text-xs font-medium transition-colors">Salvar</button>
             </div>
           </div>
         </div>
@@ -884,25 +884,25 @@ const [usuarioData, setUsuarioData] = useState({
             <h3 className="font-bold text-slate-800 text-sm">Cadastrar Cerca Geográfica</h3>
             <div>
               <label className="block text-xs text-slate-600">Nome do Local</label>
-              <input type="text" placeholder="Ex: Sede Viamão" onChange={(e) => setNewFence({...newFence, name: e.target.value})} className="w-full border rounded p-2 text-xs" />
+              <input type="text" placeholder="Ex: Sede Viamão" onChange={(e) => setNewFence({...newFence, name: e.target.value})} className="w-full border rounded p-2 text-xs focus:outline-none focus:border-[#ff8b00]" />
             </div>
             <div className="grid grid-cols-2 gap-2">
               <div>
                 <label className="block text-xs text-slate-600">Latitude</label>
-                <input type="number" step="any" value={newFence.latitude} onChange={(e) => setNewFence({...newFence, latitude: parseFloat(e.target.value)})} className="w-full border rounded p-2 text-xs" />
+                <input type="number" step="any" value={newFence.latitude} onChange={(e) => setNewFence({...newFence, latitude: parseFloat(e.target.value)})} className="w-full border rounded p-2 text-xs focus:outline-none focus:border-[#ff8b00]" />
               </div>
               <div>
                 <label className="block text-xs text-slate-600">Longitude</label>
-                <input type="number" step="any" value={newFence.longitude} onChange={(e) => setNewFence({...newFence, longitude: parseFloat(e.target.value)})} className="w-full border rounded p-2 text-xs" />
+                <input type="number" step="any" value={newFence.longitude} onChange={(e) => setNewFence({...newFence, longitude: parseFloat(e.target.value)})} className="w-full border rounded p-2 text-xs focus:outline-none focus:border-[#ff8b00]" />
               </div>
             </div>
             <div>
               <label className="block text-xs text-slate-600">Raio de Cobertura (Metros)</label>
-              <input type="number" value={newFence.radius_meters} onChange={(e) => setNewFence({...newFence, radius_meters: parseInt(e.target.value)})} className="w-full border rounded p-2 text-xs" />
+              <input type="number" value={newFence.radius_meters} onChange={(e) => setNewFence({...newFence, radius_meters: parseInt(e.target.value)})} className="w-full border rounded p-2 text-xs focus:outline-none focus:border-[#ff8b00]" />
             </div>
             <div className="flex justify-end gap-2 pt-2">
               <button onClick={() => setShowGeofenceModal(false)} className="px-4 py-2 border rounded text-xs">Cancelar</button>
-              <button onClick={handleAddGeofence} className="px-4 py-2 bg-teal-600 text-white rounded text-xs font-medium">Salvar Cerca</button>
+              <button onClick={handleAddGeofence} className="px-4 py-2 bg-[#ff8b00] hover:bg-[#e07a00] text-white rounded text-xs font-medium transition-colors">Salvar Cerca</button>
             </div>
           </div>
         </div>

@@ -266,28 +266,28 @@ export default function Admissao() {
       <main className="flex-1 p-6 max-w-7xl w-full mx-auto space-y-4">
         {/* BREADCRUMB */}
         <div className="text-xs text-slate-500 flex items-center gap-1">
-          <Link to="/admin" className="hover:text-teal-600 transition-colors">Painel</Link>
+          <Link to="/admin" className="hover:text-[#ff8b00]-600 transition-colors">Painel</Link>
           <span>&gt;</span>
           <span className="text-slate-600 font-medium">
             {viewState === 'create_template' && (
               <>
-                <button onClick={() => setViewState('list')} className="hover:text-teal-600">Admissão</button>
+                <button onClick={() => setViewState('list')} className="hover:text-[#ff8b00]-600">Admissão</button>
                 <span> &gt; </span>
-                <span className="text-teal-600">Novo Template</span>
+                <span className="text-[#ff8b00]-600">Novo Template</span>
               </>
             )}
             {viewState === 'select_template' && (
               <>
-                <button onClick={() => setViewState('list')} className="hover:text-teal-600">Admissão</button>
+                <button onClick={() => setViewState('list')} className="hover:text-[#ff8b00]-600">Admissão</button>
                 <span> &gt; </span>
-                <span className="text-teal-600">Selecionar template</span>
+                <span className="text-[#ff8b00]-600">Selecionar template</span>
               </>
             )}
             {viewState === 'view_admission' && (
               <>
-                <button onClick={() => setViewState('list')} className="hover:text-teal-600">Admissão</button>
+                <button onClick={() => setViewState('list')} className="hover:text-[#ff8b00]-600">Admissão</button>
                 <span> &gt; </span>
-                <span className="text-teal-600">Visualização</span>
+                <span className="text-[#ff8b00]-600">Visualização</span>
               </>
             )}
             {viewState === 'list' && 'Admissão'}
@@ -335,7 +335,7 @@ export default function Admissao() {
                 onClick={() => setActiveTab('andamento')}
                 className={`pb-3 transition-colors ${
                   activeTab === 'andamento'
-                    ? 'border-b-2 border-teal-500 text-teal-600 font-semibold'
+                    ? 'border-b-2 border-[#ff8b00]-500 text-[#ff8b00]-600 font-semibold'
                     : 'text-slate-500 hover:text-slate-700'
                 }`}
               >
@@ -345,7 +345,7 @@ export default function Admissao() {
                 onClick={() => setActiveTab('concluidos')}
                 className={`pb-3 transition-colors ${
                   activeTab === 'concluidos'
-                    ? 'border-b-2 border-teal-500 text-teal-600 font-semibold'
+                    ? 'border-b-2 border-[#ff8b00]-500 text-[#ff8b00]-600 font-semibold'
                     : 'text-slate-500 hover:text-slate-700'
                 }`}
               >
@@ -355,7 +355,7 @@ export default function Admissao() {
                 onClick={() => setActiveTab('templates')}
                 className={`pb-3 transition-colors ${
                   activeTab === 'templates'
-                    ? 'border-b-2 border-teal-500 text-teal-600 font-semibold'
+                    ? 'border-b-2 border-[#ff8b00]-500 text-[#ff8b00]-600 font-semibold'
                     : 'text-slate-500 hover:text-slate-700'
                 }`}
               >
@@ -376,7 +376,7 @@ export default function Admissao() {
                       ? 'Buscar template...'
                       : 'Digite o nome do funcionário, cargo ou departamento'
                   }
-                  className="w-full pl-9 pr-4 py-2 border border-slate-200 rounded text-xs text-slate-700 focus:outline-none focus:border-teal-500"
+                  className="w-full pl-9 pr-4 py-2 border border-slate-200 rounded text-xs text-slate-700 focus:outline-none focus:border-[#ff8b00]-500"
                 />
               </div>
             </div>
@@ -399,7 +399,7 @@ export default function Admissao() {
                     {loading ? (
                       <tr>
                         <td colSpan="6" className="py-12 text-center text-slate-400">
-                          <Loader2 className="w-6 h-6 animate-spin mx-auto mb-2 text-teal-600" />
+                          <Loader2 className="w-6 h-6 animate-spin mx-auto mb-2 text-[#ff8b00]-600" />
                           Carregando...
                         </td>
                       </tr>
@@ -428,7 +428,7 @@ export default function Admissao() {
                             <td className="py-3 px-4">
                               <div className="flex items-center gap-2">
                                 <div className="w-24 bg-slate-200 h-2 rounded-full overflow-hidden">
-                                  <div className="bg-teal-600 h-full w-[55%]"></div>
+                                  <div className="bg-[#ff8b00]-600 h-full w-[55%]"></div>
                                 </div>
                                 <span className="text-[11px] font-medium text-slate-500">5/9</span>
                               </div>
@@ -466,7 +466,7 @@ export default function Admissao() {
                     {loading ? (
                       <tr>
                         <td colSpan="3" className="py-12 text-center text-slate-400">
-                          <Loader2 className="w-6 h-6 animate-spin mx-auto mb-2 text-teal-600" />
+                          <Loader2 className="w-6 h-6 animate-spin mx-auto mb-2 text-[#ff8b00]-600" />
                           Carregando templates...
                         </td>
                       </tr>
@@ -537,7 +537,7 @@ export default function Admissao() {
                   value={newTemplateName}
                   onChange={(e) => setNewTemplateName(e.target.value)}
                   placeholder="Digite o nome do template"
-                  className="w-full p-2 border border-slate-200 rounded text-xs focus:outline-none focus:border-teal-500"
+                  className="w-full p-2 border border-slate-200 rounded text-xs focus:outline-none focus:border-[#ff8b00]-500"
                 />
               </div>
             </div>
@@ -565,7 +565,7 @@ export default function Admissao() {
                         onChange={() => handleToggleStep(step.id)}
                         className="sr-only peer"
                       />
-                      <div className="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-teal-600"></div>
+                      <div className="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-[#ff8b00]-600"></div>
                       <span className="ml-2 text-xs font-medium text-slate-600">Etapa ativa</span>
                     </label>
                   </div>
@@ -603,7 +603,7 @@ export default function Admissao() {
             <div className="flex justify-between items-center pt-2">
               <button
                 onClick={handleAddCustomStep}
-                className="border border-[#ff8b00] text-[#ff8b00] hover:bg-teal-50 text-xs font-semibold px-4 py-2 rounded transition-colors"
+                className="border border-[#ff8b00] text-[#ff8b00] hover:bg-[#ff8b00]-50 text-xs font-semibold px-4 py-2 rounded transition-colors"
               >
                 Criar nova etapa
               </button>
@@ -651,7 +651,7 @@ export default function Admissao() {
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="Buscar template..."
-                  className="w-full pl-9 pr-4 py-2 border border-slate-200 rounded text-xs text-slate-700 focus:outline-none focus:border-teal-500"
+                  className="w-full pl-9 pr-4 py-2 border border-slate-200 rounded text-xs text-slate-700 focus:outline-none focus:border-[#ff8b00]-500"
                 />
               </div>
             </div>
@@ -733,7 +733,7 @@ export default function Admissao() {
                 Progresso atual 56% (5 de 9 campos preenchidos)
               </span>
               <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
-                <div className="bg-teal-600 h-full w-[56%] transition-all"></div>
+                <div className="bg-[#ff8b00]-600 h-full w-[56%] transition-all"></div>
               </div>
             </div>
 
@@ -775,7 +775,7 @@ export default function Admissao() {
                       <div className="flex items-center gap-3">
                         <span className="text-slate-500 text-[11px]">{item.status}</span>
                         {item.sent ? (
-                          <CheckCircle2 className="w-4 h-4 text-teal-600" />
+                          <CheckCircle2 className="w-4 h-4 text-[#ff8b00]-600" />
                         ) : (
                           <XCircle className="w-4 h-4 text-slate-300" />
                         )}

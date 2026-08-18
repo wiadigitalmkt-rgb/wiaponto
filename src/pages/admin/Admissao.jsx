@@ -312,7 +312,7 @@ export default function Admissao() {
               {activeTab === 'templates' ? (
                 <button
                   onClick={() => setViewState('create_template')}
-                  className="border border-[#009688] text-[#009688] hover:bg-teal-50 text-xs font-semibold px-4 py-2 rounded transition-colors"
+                  className="border border-[#ff8b00] text-[#ff8b00 hover:bg-teal-50 text-xs font-semibold px-4 py-2 rounded transition-colors"
                 >
                   Novo Template
                 </button>
@@ -322,7 +322,7 @@ export default function Admissao() {
                     setSearchQuery('');
                     setActiveTab('andamento');
                   }}
-                  className="bg-[#009688] hover:bg-[#00897b] text-white text-xs font-semibold px-4 py-2 rounded transition-colors shadow-sm"
+                  className="bg-[#ff8b00] hover:bg-[#00897b] text-white text-xs font-semibold px-4 py-2 rounded transition-colors shadow-sm"
                 >
                   Iniciar admissão
                 </button>
@@ -603,7 +603,7 @@ export default function Admissao() {
             <div className="flex justify-between items-center pt-2">
               <button
                 onClick={handleAddCustomStep}
-                className="border border-[#009688] text-[#009688] hover:bg-teal-50 text-xs font-semibold px-4 py-2 rounded transition-colors"
+                className="border border-[#ff8b00] text-[#ff8b00] hover:bg-teal-50 text-xs font-semibold px-4 py-2 rounded transition-colors"
               >
                 Criar nova etapa
               </button>
@@ -611,7 +611,7 @@ export default function Admissao() {
               <button
                 onClick={handleSaveTemplate}
                 disabled={loading}
-                className="bg-[#009688] hover:bg-[#00897b] text-white text-xs font-semibold px-6 py-2 rounded transition-colors shadow-sm"
+                className="bg-[#ff8b00] hover:bg-[#00897b] text-white text-xs font-semibold px-6 py-2 rounded transition-colors shadow-sm"
               >
                 {loading ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : 'Salvar Template'}
               </button>
@@ -635,7 +635,7 @@ export default function Admissao() {
                 disabled={!selectedTemplateId || loading}
                 className={`text-xs font-semibold px-6 py-2 rounded transition-colors ${
                   selectedTemplateId && !loading
-                    ? 'bg-[#009688] hover:bg-[#00897b] text-white cursor-pointer'
+                    ? 'bg-[#ff8b00] hover:bg-[#00897b] text-white cursor-pointer'
                     : 'bg-slate-200 text-slate-400 cursor-not-allowed'
                 }`}
               >
@@ -721,7 +721,7 @@ export default function Admissao() {
 
               <button
                 onClick={() => setViewState('create_template')}
-                className="bg-[#009688] hover:bg-[#00897b] text-white text-xs font-semibold px-4 py-2 rounded transition-colors"
+                className="bg-[#ff8b00] hover:bg-[#00897b] text-white text-xs font-semibold px-4 py-2 rounded transition-colors"
               >
                 Editar Template
               </button>

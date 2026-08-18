@@ -115,9 +115,11 @@ export default function Dashboard() {
 
         {/* PAINEL GERAL (4 CARDS) */}
         <div className="space-y-6">
+          {/* Título com traço e linha estendida estilo Coalize */}
           <div className="flex items-center gap-2">
-            <div className="w-2 h-2 rounded-full bg-[#ff8b00]"></div>
+            <div className="w-3 h-[2px] bg-slate-400"></div>
             <h3 className="text-xs font-bold text-slate-700 uppercase tracking-wider">Painel</h3>
+            <div className="flex-1 h-[1px] bg-slate-300/80"></div>
           </div>
 
           {/* Linha 1: Ponto Eletrônico + Hora Extra */}

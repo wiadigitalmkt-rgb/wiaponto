@@ -40,7 +40,7 @@ export default function Navbar({ selectedCompany = 'PontoMax' }) {
   };
 
   return (
-    <header className="bg-[#1a2c6a] text-white h-16 shadow-md w-full shrink-0 flex items-center justify-between px-6 border-b border-[#2a3c7e] select-none">
+    <header className="sticky top-0 z-50 bg-[#1a2c6a] text-white h-16 shadow-md w-full shrink-0 flex items-center justify-between px-6 border-b border-[#2a3c7e] select-none">
       {/* Lado Esquerdo */}
       <div className="flex items-center gap-8">
         <Link to="/admin" className="flex items-center gap-2">

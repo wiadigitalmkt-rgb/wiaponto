@@ -117,7 +117,7 @@ export default function Dashboard() {
         <div className="space-y-6">
           <div className="flex items-center gap-2">
             <div className="w-2 h-2 rounded-full bg-[#ff8b00]"></div>
-            <h3 className="text-xs font-bold text-slate-700 uppercase tracking-wider">Painel Geral</h3>
+            <h3 className="text-xs font-bold text-slate-700 uppercase tracking-wider">Painel</h3>
           </div>
 
           {/* Linha 1: Ponto Eletrônico + Hora Extra */}

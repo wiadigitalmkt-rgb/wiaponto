@@ -120,7 +120,7 @@ export default function Navbar({ selectedCompany = 'PontoMax' }) {
                     key={company}
                     className={`cursor-pointer text-xs font-bold px-3 py-2.5 rounded-none focus:outline-none transition ${
                       isSelected
-                        ? 'bg-[#d97600] text-white focus:bg-[#ff8b00] focus:text-white'
+                        ? 'bg-[#ff6a00] text-white focus:bg-[#ff7614] focus:text-white'
                         : 'text-slate-700 hover:bg-slate-100 focus:bg-slate-100'
                     }`}
                   >

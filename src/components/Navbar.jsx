@@ -57,16 +57,28 @@ export default function Navbar({ selectedCompany = 'PontoMax' }) {
             <DropdownMenuTrigger className="hover:text-white flex items-center gap-1 transition focus:outline-none">
               Atalhos <ChevronDown size={14} className="opacity-80" />
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="bg-white text-slate-800">
+            <DropdownMenuContent align="start" className="bg-white text-slate-800">  
               <DropdownMenuItem onClick={() => navigate('/admin/ponto')}>
                 Ponto Eletrônico
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => navigate('/admin')}>
-                Visão Geral
+              </DropdownMenuItem> 
+              <DropdownMenuItem onClick={() => navigate('/admin/colaboradores')}>
+                Usuários
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => navigate('/admin/admissao')}>
                 Admissão
               </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => navigate('/admin/contratos')}>
+                Contratos
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => navigate('/admin/banco-horas')}>
+                Banco de Horas
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => navigate('/admin/documentos')}>
+                Distribuição de docs
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => navigate('/admin/ajuda')}>
+                Central de ajuda
+              </DropdownMenuItem>     
             </DropdownMenuContent>
           </DropdownMenu>
 

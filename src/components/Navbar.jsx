@@ -64,6 +64,9 @@ export default function Navbar({ selectedCompany = 'PontoMax' }) {
               <DropdownMenuItem onClick={() => navigate('/admin')}>
                 Visão Geral
               </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => navigate('/admin/admissao')}>
+                Admissão
+              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
 

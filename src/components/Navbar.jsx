@@ -47,7 +47,7 @@ export default function Navbar({ selectedCompany = 'PontoMax' }) {
           <img 
             src={logoImg} 
             alt="WiaPonto Logo" 
-            className="h-12 max-h-full w-auto object-contain py-1" 
+            className="h-10 max-h-full w-auto object-contain py-1" 
           />
         </Link>
 

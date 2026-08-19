@@ -130,9 +130,6 @@ export default function Dashboard() {
               <div className="p-6 pb-0">
                 <div className="flex items-center justify-between mb-4">
                   <h4 className="font-bold text-[#1a2c6a] text-base">Ponto Eletrônico Hoje</h4>
-                  <button className="bg-[#1a2c6a] hover:bg-[#121f4c] text-white text-xs font-bold px-3 py-1.5 rounded-md transition">
-                    Bater Ponto
-                  </button>
                 </div>
                 <div className="space-y-3">
                   <div className="flex items-center justify-between p-3 rounded-md bg-slate-50 text-xs">

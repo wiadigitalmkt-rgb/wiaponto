@@ -12,7 +12,9 @@ import {
   KeyRound,
   X,
   Calendar,
-  Loader2
+  Loader2,
+  Mail,
+  Lock
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -34,12 +36,13 @@ export default function Employees() {
 
   // Modais
   const [showAccessModal, setShowAccessModal] = useState(false);
-  const [isOptionalExpanded, setIsOptionalExpanded] = useState(true);
 
   // Form State
   const [formData, setFormData] = useState({
     primeiroNome: '',
     sobrenome: '',
+    email: '',
+    senha: '',
     cpf: '',
     dataAdmissao: '',
     tipoAcesso: 'Colaborador',
@@ -73,6 +76,7 @@ export default function Employees() {
           id: emp.id,
           initials,
           name: emp.full_name,
+          email: emp.email || '-',
           cargo: emp.position || '(Preencher)',
           departamento: emp.department || '-',
           tipoAcesso: emp.role === 'admin' ? 'Administrador' : 'Colaborador',
@@ -100,63 +104,82 @@ export default function Employees() {
     setShowAccessModal(true);
   };
 
-  // 2. INSERIR NOVO COLABORADOR NO SUPABASE
+  // 2. INSERIR NOVO COLABORADOR NO SUPABASE E SUPABASE AUTH
   const handleConfirmCreate = async () => {
-  const fullName = `${formData.primeiroNome} ${formData.sobrenome}`.trim();
+    const fullName = `${formData.primeiroNome} ${formData.sobrenome}`.trim();
 
-  try {
-    const { data, error } = await supabase.from('Employees').insert([
-      {
-        full_name: fullName,
-        first_name: formData.primeiroNome,
-        last_name: formData.sobrenome,
-        cpf: formData.cpf,
-        admission_date: formData.dataAdmissao || null,
-        role: formData.tipoAcesso === 'Administrador' ? 'admin' : 'employee',
-        access_type: formData.tipoAcesso,
-        department: formData.departamento || null,
-        position: formData.cargo || null,
-        salary: formData.salario || null,
-        contract_type: formData.tipoContrato || null,
-        work_schedule: formData.jornada || '08:00 - 18:00',
-      },
-    ]).select();
+    try {
+      // Criação do usuário na tabela Employees
+      const { data, error } = await supabase.from('Employees').insert([
+        {
+          full_name: fullName,
+          first_name: formData.primeiroNome,
+          last_name: formData.sobrenome,
+          email: formData.email.toLowerCase().trim(),
+          password_hash: formData.senha, // Registra a senha de acesso inicial
+          cpf: formData.cpf,
+          admission_date: formData.dataAdmissao || null,
+          role: formData.tipoAcesso === 'Administrador' ? 'admin' : 'employee',
+          access_type: formData.tipoAcesso,
+          department: formData.departamento || null,
+          position: formData.cargo || null,
+          salary: formData.salario || null,
+          contract_type: formData.tipoContrato || null,
+          work_schedule: formData.jornada || '08:00 - 18:00',
+        },
+      ]).select();
 
-    if (error) throw error;
+      if (error) throw error;
 
-    setShowAccessModal(false);
-    setFormData({
-      primeiroNome: '',
-      sobrenome: '',
-      cpf: '',
-      dataAdmissao: '',
-      tipoAcesso: 'Colaborador',
-      departamento: '',
-      cargo: '',
-      salario: '',
-      tipoContrato: '',
-      inicioJornada: '',
-      jornada: '',
-    });
+      // Cria a conta de autenticação no Supabase Auth
+      const { error: authError } = await supabase.auth.signUp({
+        email: formData.email.toLowerCase().trim(),
+        password: formData.senha,
+        options: {
+          data: {
+            full_name: fullName,
+            role: formData.tipoAcesso === 'Administrador' ? 'admin' : 'employee',
+          }
+        }
+      });
 
-    // Redireciona para o usuário recém-criado usando o id retornado pelo banco
-    if (data && data[0]?.id) {
-      navigate(`/admin/usuario?id=${data[0].id}`);
-    } else {
-      await fetchEmployees();
-      setCurrentView('list');
+      if (authError && !authError.message.includes('already registered')) {
+        console.warn('Aviso no Supabase Auth:', authError.message);
+      }
+
+      setShowAccessModal(false);
+      setFormData({
+        primeiroNome: '',
+        sobrenome: '',
+        email: '',
+        senha: '',
+        cpf: '',
+        dataAdmissao: '',
+        tipoAcesso: 'Colaborador',
+        departamento: '',
+        cargo: '',
+        salario: '',
+        tipoContrato: '',
+        inicioJornada: '',
+        jornada: '',
+      });
+
+      if (data && data[0]?.id) {
+        navigate(`/admin/usuario?id=${data[0].id}`);
+      } else {
+        await fetchEmployees();
+        setCurrentView('list');
+      }
+    } catch (err) {
+      alert('Erro ao salvar colaborador: ' + err.message);
     }
-  } catch (err) {
-    alert('Erro ao salvar colaborador: ' + err.message);
-  }
-};
-
-  const cleanCpf = formData.cpf.replace(/\D/g, '') || '60062246070';
+  };
 
   const filteredUsers = usersData.filter((user) => {
     const term = searchTerm.toLowerCase();
     return (
       user.name.toLowerCase().includes(term) ||
+      user.email.toLowerCase().includes(term) ||
       user.tipoAcesso.toLowerCase().includes(term) ||
       user.cargo.toLowerCase().includes(term)
     );
@@ -209,7 +232,7 @@ export default function Employees() {
                     type="text"
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    placeholder="Digite o nome do usuário ou tipo de acesso"
+                    placeholder="Digite o nome, e-mail do usuário ou tipo de acesso"
                     className="w-full pl-9 pr-3 py-1.5 border border-slate-200 rounded text-xs text-slate-700 focus:outline-none focus:border-[#ff8b00] transition-colors"
                   />
                 </div>
@@ -232,6 +255,7 @@ export default function Employees() {
                   <thead>
                     <tr className="border-b border-slate-100 text-[11px] font-bold text-slate-700 uppercase tracking-wider bg-slate-50/50">
                       <th className="py-3 px-6">NOME</th>
+                      <th className="py-3 px-6">E-MAIL</th>
                       <th className="py-3 px-6">CARGO</th>
                       <th className="py-3 px-6">DEPARTAMENTO</th>
                       <th className="py-3 px-6">TIPO DE ACESSO</th>
@@ -240,7 +264,7 @@ export default function Employees() {
                   <tbody className="divide-y divide-slate-100 text-xs text-slate-700">
                     {loading ? (
                       <tr>
-                        <td colSpan={4} className="py-8 text-center text-slate-400 text-xs">
+                        <td colSpan={5} className="py-8 text-center text-slate-400 text-xs">
                           <Loader2 className="w-5 h-5 animate-spin mx-auto mb-2 text-[#ff8b00]" />
                           Carregando colaboradores do banco de dados...
                         </td>
@@ -262,6 +286,7 @@ export default function Employees() {
                               </span>
                             </div>
                           </td>
+                          <td className="py-3.5 px-6 text-slate-600">{user.email}</td>
                           <td className="py-3.5 px-6 text-slate-600">{user.cargo}</td>
                           <td className="py-3.5 px-6 text-slate-600">{user.departamento}</td>
                           <td className="py-3.5 px-6 text-slate-600">{user.tipoAcesso}</td>
@@ -269,7 +294,7 @@ export default function Employees() {
                       ))
                     ) : (
                       <tr>
-                        <td colSpan={4} className="py-8 text-center text-slate-400 text-xs">
+                        <td colSpan={5} className="py-8 text-center text-slate-400 text-xs">
                           Nenhum usuário encontrado.
                         </td>
                       </tr>
@@ -311,7 +336,7 @@ export default function Employees() {
               <div className="p-6 border-b border-slate-100">
                 <div className="flex items-center space-x-2 mb-6">
                   <div className="w-6 h-6 rounded-full bg-[#ff8b00]/10 text-[#ff8b00] font-bold text-xs flex items-center justify-center">1</div>
-                  <h2 className="text-sm font-bold text-slate-800">Campos obrigatórios</h2>
+                  <h2 className="text-sm font-bold text-slate-800">Campos obrigatórios de Acesso</h2>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
@@ -346,7 +371,29 @@ export default function Employees() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">E-mail do Colaborador (Login)*</label>
+                    <input 
+                      type="email" required placeholder="colaborador@email.com"
+                      value={formData.email}
+                      onChange={(e) => handleInputChange('email', e.target.value)}
+                      className="w-full border border-slate-200 rounded px-3 py-2 text-xs focus:outline-none focus:border-[#ff8b00]"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">Senha de Acesso Inicial*</label>
+                    <input 
+                      type="password" required placeholder="SuaSenhaInicial123"
+                      value={formData.senha}
+                      onChange={(e) => handleInputChange('senha', e.target.value)}
+                      className="w-full border border-slate-200 rounded px-3 py-2 text-xs focus:outline-none focus:border-[#ff8b00]"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-xs font-semibold text-slate-700 mb-1">Data de admissão*</label>
                     <input 
@@ -381,7 +428,7 @@ export default function Employees() {
         )}
       </main>
 
-      {/* MODAL */}
+      {/* MODAL CONFIRMAÇÃO DE DADOS */}
       {showAccessModal && (
         <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg shadow-2xl max-w-md w-full border border-slate-200">
@@ -391,12 +438,12 @@ export default function Employees() {
             </div>
             <div className="p-6 space-y-4">
               <div className="flex items-center space-x-3 text-xs text-slate-700">
-                <UserCheck className="w-5 h-5 text-[#ff8b00]" />
-                <div><span className="font-bold">Login: </span><span className="font-mono">{cleanCpf}</span></div>
+                <Mail className="w-5 h-5 text-[#ff8b00]" />
+                <div><span className="font-bold">E-mail (Login): </span><span className="font-mono">{formData.email}</span></div>
               </div>
               <div className="flex items-center space-x-3 text-xs text-slate-700">
-                <KeyRound className="w-5 h-5 text-[#ff8b00]" />
-                <div><span className="font-bold">Senha Inicial: </span><span className="font-mono">{cleanCpf}</span></div>
+                <Lock className="w-5 h-5 text-[#ff8b00]" />
+                <div><span className="font-bold">Senha Inicial: </span><span className="font-mono">{formData.senha}</span></div>
               </div>
             </div>
             <div className="p-4 border-t border-slate-100 flex justify-end space-x-2 bg-slate-50/50">

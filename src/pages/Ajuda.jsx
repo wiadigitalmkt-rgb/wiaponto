@@ -156,7 +156,7 @@ export default function Ajuda() {
             {selectedCategory && (
               <button
                 onClick={() => setSelectedCategory(null)}
-                className="text-xs text-teal-600 hover:underline font-medium"
+                className="text-xs text-[#ff8b00]-600 hover:underline font-medium"
               >
                 Limpar filtro
               </button>
@@ -171,14 +171,14 @@ export default function Ajuda() {
                     <span className="text-[10px] font-bold tracking-wider text-[#ff8b00] uppercase">
                       {item.category || 'GERAL'}
                     </span>
-                    <h3 className="text-xs text-teal-600 font-medium hover:underline cursor-pointer">
+                    <h3 className="text-xs text-[#ff8b00]-600 font-medium hover:underline cursor-pointer">
                       {item.title}
                     </h3>
                   </div>
 
                   <div className="flex items-center gap-3 text-[11px] text-slate-400 shrink-0">
                     <span>Artigo criado: {item.time || 'há poucos dias'}</span>
-                    <div className="flex items-center gap-1 text-teal-600">
+                    <div className="flex items-center gap-1 text-[#ff8b00]-600">
                       <MessageSquare className="w-3.5 h-3.5" />
                       <span>{item.comments || 0}</span>
                     </div>

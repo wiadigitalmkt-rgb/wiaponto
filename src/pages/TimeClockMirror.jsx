@@ -9,7 +9,7 @@ export default function TimeClockMirror() {
   const [selectedMonth, setSelectedMonth] = useState('Agosto/2026');
   const [loading, setLoading] = useState(false);
 
-  // Lista mock de batidas sincronizadas com o print
+  // Registros de exemplo/fallback
   const [records, setRecords] = useState([
     { id: 1, date: '06/08/2026 - Quinta-feira', horaExtra: '0h', trabalhado: '7h' },
     { id: 2, date: '07/08/2026 - Sexta-feira', horaExtra: '1h', trabalhado: '9h' },
@@ -26,12 +26,12 @@ export default function TimeClockMirror() {
     try {
       setLoading(true);
       const { data, error } = await supabase
-        .from('time_entries')
+        .from('time_records')
         .select('*')
-        .order('timestamp', { ascending: false });
+        .order('record_date', { ascending: false });
 
       if (!error && data && data.length > 0) {
-        // Mapeamento caso existam registros no banco Supabase
+        // Mapeia registros reais se existirem no banco de dados
       }
     } catch (err) {
       console.error(err);
@@ -65,7 +65,7 @@ export default function TimeClockMirror() {
           <nav className="space-y-1">
             <button
               onClick={() => navigate('/espelho')}
-              className="w-full flex items-center gap-2.5 px-3 py-2 rounded text-xs font-semibold bg-white text-teal-600 shadow-sm border border-slate-200/60"
+              className="w-full flex items-center gap-2.5 px-3 py-2 rounded text-xs font-semibold bg-white text-teal-600 shadow-sm border border-slate-200/60 cursor-pointer"
             >
               <Clock className="w-4 h-4 text-teal-600" />
               <span>Pontos registrados</span>
@@ -73,7 +73,7 @@ export default function TimeClockMirror() {
 
             <button
               onClick={() => navigate('/solicitacoes')}
-              className="w-full flex items-center gap-2.5 px-3 py-2 rounded text-xs font-medium text-slate-600 hover:bg-slate-200/50 transition"
+              className="w-full flex items-center gap-2.5 px-3 py-2 rounded text-xs font-medium text-slate-600 hover:bg-slate-200/50 transition cursor-pointer"
             >
               <FileText className="w-4 h-4 text-slate-500" />
               <span>Solicitações</span>
@@ -110,7 +110,7 @@ export default function TimeClockMirror() {
               </div>
 
               <button
-                onClick={() => alert('Jornada atual')}
+                onClick={() => alert('Visualizando jornada atual do colaborador')}
                 className="text-xs font-bold text-teal-600 hover:underline flex items-center gap-1.5"
               >
                 <span>Ver jornada atual</span>
@@ -118,7 +118,7 @@ export default function TimeClockMirror() {
               </button>
             </div>
 
-            {/* TABELA DE REGISTROS */}
+            {/* TABELA DE REGISTROS (SOMENTE LEITURA) */}
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs border-collapse">
                 <thead>

@@ -79,14 +79,14 @@ export default function Employees() {
           email: emp.email || '-',
           cargo: emp.position || '(Preencher)',
           departamento: emp.department || '-',
-          tipoAcesso: emp.role === 'admin' ? 'Administrador' : 'Colaborador',
+          tipoAcesso: emp.role === 'gestor' || emp.role === 'admin' ? 'Gestor' : 'Colaborador',
         };
       });
 
       setUsersData(formatted);
     } catch (err) {
       console.error('Erro ao carregar colaboradores:', err.message);
-    } finally {
+    } fontally {
       setLoading(false);
     }
   };
@@ -119,7 +119,7 @@ export default function Employees() {
           password_hash: formData.senha, // Registra a senha de acesso inicial
           cpf: formData.cpf,
           admission_date: formData.dataAdmissao || null,
-          role: formData.tipoAcesso === 'Administrador' ? 'admin' : 'employee',
+          role: formData.tipoAcesso === 'Gestor' ? 'gestor' : 'colaborador',
           access_type: formData.tipoAcesso,
           department: formData.departamento || null,
           position: formData.cargo || null,
@@ -138,7 +138,7 @@ export default function Employees() {
         options: {
           data: {
             full_name: fullName,
-            role: formData.tipoAcesso === 'Administrador' ? 'admin' : 'employee',
+            role: formData.tipoAcesso === 'Gestor' ? 'gestor' : 'colaborador',
           }
         }
       });
@@ -412,7 +412,7 @@ export default function Employees() {
                       className="w-full border border-slate-200 rounded px-3 py-2 text-xs bg-white focus:outline-none focus:border-[#ff8b00]"
                     >
                       <option value="Colaborador">Colaborador</option>
-                      <option value="Administrador">Administrador</option>
+                      <option value="Gestor">Gestor</option>
                     </select>
                   </div>
                 </div>

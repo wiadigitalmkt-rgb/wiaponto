@@ -35,6 +35,7 @@ import AdminDocumentos from './pages/admin/Documentos';
 
 // Import da Página de Documentos do Colaborador (caminho em minúsculo para bater com a estrutura de pastas)
 import Documentos from './pages/documentos';
+import Ajuda from './pages/Ajuda'; // Ajuste o caminho caso o arquivo esteja em outro diretório
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();

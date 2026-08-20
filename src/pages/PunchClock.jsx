@@ -198,87 +198,8 @@ export default function PunchClock() {
         .font-sig-5 { font-family: 'Pacifico', cursive; }
       `}</style>
 
-      {/* NAVBAR DO COLABORADOR */}
-      <header className="bg-[#1e293b] text-white px-6 py-3 flex justify-between items-center shadow-md relative z-50">
-        <div 
-          onClick={() => setCurrentView('home')} 
-          className="flex items-center gap-2 cursor-pointer"
-        >
-          <div className="w-6 h-6 rounded-full border-2 border-teal-400 flex items-center justify-center">
-            <div className="w-2 h-2 bg-teal-400 rounded-full"></div>
-          </div>
-          <span className="font-bold text-lg tracking-tight">Coalize</span>
-        </div>
-
-        <div className="flex items-center gap-4">
-          <div className="hidden sm:flex items-center gap-2 border border-slate-600 rounded px-3 py-1.5 text-xs text-slate-200">
-            <span>{profileData.empresa}</span>
-            <ChevronDown size={14} className="text-slate-400" />
-          </div>
-
-          <div className="relative" ref={dropdownRef}>
-            <button
-              onClick={() => setIsMenuOpen(!isMenuOpen)}
-              className="flex items-center gap-2 hover:opacity-90 focus:outline-none"
-            >
-              <div className="w-8 h-8 rounded-full bg-slate-300 text-slate-800 flex items-center justify-center font-bold text-xs overflow-hidden border border-slate-400">
-                {profileData.avatarUrl ? (
-                  <img src={profileData.avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
-                ) : (
-                  profileData.initials
-                )}
-              </div>
-              <span className="text-xs font-semibold">{profileData.nome}</span>
-              <ChevronDown size={14} className="text-slate-300" />
-            </button>
-
-            {isMenuOpen && (
-              <div className="absolute right-0 mt-2 w-56 bg-white rounded-md shadow-xl border border-slate-200 text-slate-800 py-3 z-50 animate-in fade-in zoom-in-95">
-                <div className="px-4 pb-3 mb-2 border-b border-slate-100 flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-slate-100 text-slate-600 flex items-center justify-center font-bold text-sm overflow-hidden">
-                    {profileData.avatarUrl ? (
-                      <img src={profileData.avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
-                    ) : (
-                      profileData.initials
-                    )}
-                  </div>
-                  <div>
-                    <p className="font-bold text-sm text-slate-800">{profileData.nome}</p>
-                    <p className="text-xs text-slate-400 font-medium">Colaborador</p>
-                  </div>
-                </div>
-
-                <div className="px-3 mb-2">
-                  <button
-                    onClick={handleOpenMap}
-                    className="w-full bg-[#11998e] hover:bg-[#0f8a80] text-white font-bold text-xs py-2.5 rounded transition uppercase tracking-wider"
-                  >
-                    BATER PONTO
-                  </button>
-                </div>
-
-                <div className="border-t border-slate-100 pt-1">
-                  <button
-                    onClick={() => { setCurrentView('profile'); setIsMenuOpen(false); }}
-                    className="w-full px-4 py-2 text-left text-xs text-slate-700 hover:bg-slate-50 flex items-center gap-2.5 font-medium"
-                  >
-                    <div className="w-4 h-4 rounded-full border border-slate-400 flex items-center justify-center text-[10px]">C</div>
-                    <span>Perfil</span>
-                  </button>
-
-                  <button
-                    onClick={handleLogout}
-                    className="w-full px-4 py-2 text-left text-xs text-slate-700 hover:bg-slate-50 flex items-center gap-2.5 font-medium"
-                  >
-                    <LogOut size={15} className="text-slate-500" />
-                    <span>Sair</span>
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      </header>
+      {/* NAVBAR OFICIAL APLICADA */}
+      <Navbar selectedCompany={profileData.empresa} />
 
       {/* VIEW 1: PAINEL PRINCIPAL (HOME) */}
       {currentView === 'home' && (
@@ -333,7 +254,6 @@ export default function PunchClock() {
             </div>
 
             <div className="p-6">
-              {/* DESVINCULADO DE /espelho -> REDIRECIONA PARA /admin/ponto */}
               <button
                 onClick={() => navigate('/admin/ponto')}
                 className="w-full border border-[#11998e] text-[#11998e] hover:bg-teal-50/50 font-bold text-xs py-2.5 rounded-md transition duration-150 flex items-center justify-center gap-2"

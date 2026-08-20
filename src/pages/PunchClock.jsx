@@ -207,6 +207,7 @@ export default function PunchClock() {
           <h1 className="text-xl md:text-2xl font-bold text-slate-800 mb-8 flex items-center justify-center gap-2">
             <span>Boa noite,</span>
             <span>{profileData.nome}</span>
+            <span>!  👋 </span>
           </h1>
 
           <div className="bg-white rounded-lg border border-slate-200/80 shadow-sm w-full max-w-2xl overflow-hidden">

@@ -256,7 +256,7 @@ export default function PunchClock() {
             <div className="p-6">
               <button
                 onClick={() => navigate('/admin/ponto')}
-                className="w-full border border-[#11998e] text-[#11998e] hover:bg-teal-50/50 font-bold text-xs py-2.5 rounded-md transition duration-150 flex items-center justify-center gap-2"
+                className="w-full border border-[#fc9314] text-[#ff8b00] hover:bg-teal-50/50 font-bold text-xs py-2.5 rounded-md transition duration-150 flex items-center justify-center gap-2"
               >
                 <Calendar size={14} />
                 <span>Ver histórico de pontos</span>

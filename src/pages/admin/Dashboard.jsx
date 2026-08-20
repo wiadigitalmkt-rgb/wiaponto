@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import Navbar from '@/components/Navbar';
+import { supabase } from '@/lib/supabase';
 import { 
   Users, 
   Clock, 
@@ -16,9 +17,70 @@ import {
 
 export default function Dashboard() {
   const [selectedCompany, setSelectedCompany] = useState('Sua Empresa');
-  const [activeModal, setActiveModal] = useState(null); // 'comunicacao' | 'assistente' | 'perfil-seguro' | null
+  const [activeModal, setActiveModal] = useState(null);
 
-  // Módulos principais com rotas ou disparo de popups
+  // Estados dinâmicos do Card Ponto Eletrônico
+  const [totalEmployees, setTotalEmployees] = useState(0);
+  const [presentEmployeesCount, setPresentEmployeesCount] = useState(0);
+  const [pendingRequestsCount, setPendingRequestsCount] = useState(0);
+  const [loadingPonto, setLoadingPonto] = useState(true);
+
+  // Função para pegar a data de hoje no fuso YYYY-MM-DD
+  const getTodayDateString = () => {
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, '0');
+    const day = String(today.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
+  useEffect(() => {
+    async function loadDashboardPontoData() {
+      setLoadingPonto(true);
+      const todayStr = getTodayDateString();
+
+      try {
+        // 1. Buscar total de colaboradores cadastrados
+        const { count: empCount, error: empErr } = await supabase
+          .from('Employees')
+          .select('*', { count: 'exact', head: true });
+
+        if (!empErr && empCount !== null) {
+          setTotalEmployees(empCount);
+        }
+
+        // 2. Buscar registros de ponto de hoje
+        const { data: todayRecords, error: recErr } = await supabase
+          .from('time_records')
+          .select('employee_id')
+          .eq('record_date', todayStr);
+
+        if (!recErr && todayRecords) {
+          // Extrai o número de funcionários únicos que bateram ponto hoje
+          const uniqueEmployees = new Set(todayRecords.map(r => r.employee_id));
+          setPresentEmployeesCount(uniqueEmployees.size);
+        }
+
+        // 3. Buscar solicitações / justificativas pendentes criadas hoje
+        const { count: reqCount, error: reqErr } = await supabase
+          .from('time_requests')
+          .select('*', { count: 'exact', head: true })
+          .eq('status', 'Pendente')
+          .gte('created_at', `${todayStr}T00:00:00`);
+
+        if (!reqErr && reqCount !== null) {
+          setPendingRequestsCount(reqCount);
+        }
+      } catch (err) {
+        console.error('Erro ao carregar dados do ponto no dashboard:', err);
+      } finally {
+        setLoadingPonto(false);
+      }
+    }
+
+    loadDashboardPontoData();
+  }, []);
+
   const modules = [
     { title: 'Ponto eletrônico', icon: Clock, path: '/admin/ponto' },
     { title: 'Usuários', icon: Users, path: '/admin/colaboradores' },
@@ -50,7 +112,6 @@ export default function Dashboard() {
     },
   ];
 
-  // Imagens dos banners correspondentes a cada modal
   const modalImages = {
     comunicacao: 'https://images.unsplash.com/photo-1577563908411-5077b6dc7624?q=80&w=1000&auto=format&fit=crop',
     assistente: 'https://images.unsplash.com/photo-1486312338219-ce68d2c6f44d?q=80&w=1000&auto=format&fit=crop',
@@ -59,10 +120,8 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-screen bg-slate-100/70 text-slate-800 pb-12 relative">
-      {/* Navbar Padronizada */}
       <Navbar selectedCompany={selectedCompany} />
 
-      {/* Conteúdo Principal */}
       <main className="max-w-7xl mx-auto px-6 py-8 space-y-8">
 
         {/* Grid de Cards de Módulos */}
@@ -115,14 +174,12 @@ export default function Dashboard() {
 
         {/* PAINEL GERAL (4 CARDS) */}
         <div className="space-y-6">
-          {/* Título com traço e linha estendida estilo Coalize */}
           <div className="flex items-center gap-2">
             <div className="w-3 h-[2px] bg-slate-400"></div>
             <h3 className="text-xs font-bold text-slate-700 uppercase tracking-wider">Painel</h3>
             <div className="flex-1 h-[1px] bg-slate-300/80"></div>
           </div>
 
-          {/* Linha 1: Ponto Eletrônico + Hora Extra */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             
             {/* Card Ponto Eletrônico */}
@@ -134,11 +191,15 @@ export default function Dashboard() {
                 <div className="space-y-3">
                   <div className="flex items-center justify-between p-3 rounded-md bg-slate-50 text-xs">
                     <span className="font-semibold text-slate-600">Presença Registrada</span>
-                    <span className="font-bold text-amber-600 bg-amber-50 px-2 py-1 rounded-md">1 / 2 Funcionários</span>
+                    <span className="font-bold text-amber-600 bg-amber-50 px-2 py-1 rounded-md">
+                      {loadingPonto ? 'Carregando...' : `${presentEmployeesCount} / ${totalEmployees} Funcionários`}
+                    </span>
                   </div>
                   <div className="flex items-center justify-between p-3 rounded-md bg-slate-50 text-xs">
                     <span className="font-semibold text-slate-600">Atrasos / Justificativas</span>
-                    <span className="font-bold text-amber-600 bg-amber-50 px-2 py-1 rounded-md">1 Pendente</span>
+                    <span className="font-bold text-amber-600 bg-amber-50 px-2 py-1 rounded-md">
+                      {loadingPonto ? 'Carregando...' : `${pendingRequestsCount} Pendente${pendingRequestsCount !== 1 ? 's' : ''}`}
+                    </span>
                   </div>
                 </div>
               </div>
@@ -175,7 +236,6 @@ export default function Dashboard() {
 
           </div>
 
-          {/* Linha 2: Admissão + Saldo de Férias */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             
             {/* Card Admissão */}
@@ -251,7 +311,6 @@ export default function Dashboard() {
       {activeModal && (
         <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full overflow-hidden flex flex-col md:flex-row relative animate-in fade-in zoom-in duration-200">
-            {/* Botão Fechar */}
             <button
               onClick={() => setActiveModal(null)}
               className="absolute top-3 right-3 text-slate-400 hover:text-slate-600 bg-white/80 hover:bg-white rounded-full p-1.5 transition z-10 shadow-sm"
@@ -259,7 +318,6 @@ export default function Dashboard() {
               <X size={18} />
             </button>
 
-            {/* Imagem do Modal */}
             <div className="md:w-1/2 h-56 md:h-auto relative bg-slate-100">
               <img
                 src={modalImages[activeModal]}
@@ -268,7 +326,6 @@ export default function Dashboard() {
               />
             </div>
 
-            {/* Conteúdo do Modal */}
             <div className="md:w-1/2 p-8 flex flex-col justify-center text-left space-y-4">
               <h3 className="text-lg font-bold text-slate-800 leading-snug">
                 Período de teste encerrado

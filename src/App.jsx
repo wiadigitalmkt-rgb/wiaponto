@@ -31,8 +31,11 @@ import Admissao from './pages/admin/Admissao';
 // Imports das Páginas Admin Criadas
 import Contratos from './pages/admin/Contratos';
 import Banco from './pages/admin/Banco';
-import Documentos from './pages/admin/Documentos';
+import AdminDocumentos from './pages/admin/Documentos';
 import Ajuda from './pages/admin/Ajuda';
+
+// Import da Página de Documentos do Colaborador
+import Documentos from './pages/Documentos';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -76,6 +79,7 @@ const AuthenticatedApp = () => {
         <Route path="/" element={<PunchClock />} />
         <Route path="/ponto" element={<PunchClock />} />
         <Route path="/espelho" element={<TimeClockMirror />} />
+        <Route path="/documentos" element={<Documentos />} />
 
         {/* Rotas Legadas (que usavam Layout antigo) */}
         <Route element={<Layout />}>
@@ -96,7 +100,7 @@ const AuthenticatedApp = () => {
         <Route path="/admin/admissao" element={<Admissao />} />
         <Route path="/admin/contratos" element={<Contratos />} />
         <Route path="/admin/banco-horas" element={<Banco />} />
-        <Route path="/admin/documentos" element={<Documentos />} />
+        <Route path="/admin/documentos" element={<AdminDocumentos />} />
         <Route path="/admin/ajuda" element={<Ajuda />} />
 
       </Route>

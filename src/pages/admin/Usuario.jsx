@@ -116,7 +116,7 @@ export default function Usuario() {
             estado: emp.state || '',
             idPonto: emp.point_id || '',
             login: emp.cpf ? emp.cpf.replace(/\D/g, '') : '',
-            tipoAcesso: emp.role === 'gestor' || emp.role === 'admin' ? 'Gestor' : 'Colaborador',
+            tipoAcesso: emp.role === 'gestor' || emp.role === 'admin' || emp.access_type === 'Gestor' ? 'Gestor' : 'Colaborador',
             statusUsuario: emp.status || 'Ativo'
           });
         }
@@ -189,6 +189,29 @@ export default function Usuario() {
     } catch (err) {
       console.error(err);
       alert('Erro ao salvar alterações.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // Salvar especificamente o Tipo de Acesso
+  const handleSaveAccessType = async () => {
+    if (!supabase || !userId) return;
+    setSaving(true);
+    try {
+      const isGestor = usuarioData.tipoAcesso === 'Gestor';
+      const payload = {
+        access_type: usuarioData.tipoAcesso,
+        role: isGestor ? 'gestor' : 'colaborador'
+      };
+
+      const { error } = await supabase.from('Employees').update(payload).eq('id', userId);
+      if (error) throw error;
+
+      alert(`Tipo de acesso salvo como ${usuarioData.tipoAcesso} com sucesso!`);
+    } catch (err) {
+      console.error(err);
+      alert('Erro ao salvar o tipo de acesso.');
     } finally {
       setSaving(false);
     }
@@ -288,21 +311,6 @@ export default function Usuario() {
     if (data) {
       setDependents([...dependents, ...data]);
       setShowDependentModal(false);
-    }
-  };
-
-  // 8. Resetar Senha para o Padrao (CPF sem pontuação)
-  const handleResetPassword = async () => {
-    if (!userId) return;
-    const defaultPassword = usuarioData.cpf.replace(/\D/g, '');
-    const { error } = await supabase.from('Employees').update({
-      password_hash: defaultPassword
-    }).eq('id', userId);
-
-    if (!error) {
-      alert(`Senha resetada com sucesso para o padrão (CPF): ${defaultPassword}`);
-    } else {
-      alert('Erro ao resetar senha.');
     }
   };
 
@@ -784,29 +792,27 @@ export default function Usuario() {
                     </div>
                   </div>
 
-                  <div>
-                    <label className="block text-slate-700 font-semibold mb-2">Tipo de acesso</label>
-                    <select
-                      name="tipoAcesso"
-                      value={usuarioData.tipoAcesso}
-                      onChange={handleInputChange}
-                      className="w-full md:w-1/2 border rounded p-2 text-slate-800 focus:outline-none focus:border-[#ff8b00]"
-                    >
-                      <option value="Colaborador">Colaborador</option>
-                      <option value="Gestor">Gestor</option>
-                    </select>
-                  </div>
-
-                  <hr className="border-slate-100" />
-
-                  <div className="flex justify-between items-center">
-                    <div>
-                      <h4 className="font-semibold text-slate-800">Senha</h4>
-                      <p className="text-slate-500">Reconfigurar senha do usuário para o padrão inicial (CPF do usuário)</p>
+                  <div className="space-y-4">
+                    <label className="block text-slate-700 font-semibold">Tipo de acesso</label>
+                    <div className="flex items-center gap-3">
+                      <select
+                        name="tipoAcesso"
+                        value={usuarioData.tipoAcesso}
+                        onChange={handleInputChange}
+                        className="w-full md:w-1/2 border rounded p-2 text-slate-800 focus:outline-none focus:border-[#ff8b00]"
+                      >
+                        <option value="Colaborador">Colaborador</option>
+                        <option value="Gestor">Gestor</option>
+                      </select>
+                      <button
+                        type="button"
+                        onClick={handleSaveAccessType}
+                        disabled={saving}
+                        className="bg-[#ff8b00] hover:bg-[#e07a00] text-white font-medium px-5 py-2 rounded text-xs transition-colors shrink-0"
+                      >
+                        {saving ? 'Salvando...' : 'Salvar tipo de acesso'}
+                      </button>
                     </div>
-                    <button onClick={handleResetPassword} className="bg-[#ff8b00] hover:bg-[#e07a00] text-white px-4 py-2 rounded font-medium transition-colors">
-                      Resetar senha
-                    </button>
                   </div>
                 </div>
               )}

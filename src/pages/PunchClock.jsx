@@ -52,6 +52,51 @@ export default function PunchClock() {
   const [signatureName, setSignatureName] = useState('Joquebede de Oliveira');
   const [selectedSignatureStyle, setSelectedSignatureStyle] = useState('');
 
+  // Função para pegar a data local (AAAA-MM-DD) sem problemas de fuso horário/UTC
+  const getLocalDateString = (d = new Date()) => {
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
+  // Carrega a última batida do Supabase ao iniciar
+  const loadTodayPunch = async () => {
+    if (!supabase) return;
+    try {
+      const todayStr = getLocalDateString();
+      
+      const { data: emp } = await supabase
+        .from('Employees')
+        .select('id')
+        .eq('email', profileData.email)
+        .maybeSingle();
+
+      if (emp?.id) {
+        const { data: record } = await supabase
+          .from('time_records')
+          .select('*')
+          .eq('employee_id', emp.id)
+          .eq('record_date', todayStr)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (record) {
+          const lastTime = (record.saida && record.saida !== '-') ? record.saida : record.entrada;
+          const [yr, mo, dy] = todayStr.split('-');
+          setLastPunch(`${dy}/${mo}/${yr} às ${lastTime}h`);
+        }
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  useEffect(() => {
+    loadTodayPunch();
+  }, [profileData.email]);
+
   // Atualização em tempo real do relógio
   useEffect(() => {
     updateDateTime();
@@ -102,7 +147,8 @@ export default function PunchClock() {
     setLoading(true);
     try {
       const now = new Date();
-      const recordDate = now.toISOString().split('T')[0];
+      // Correção do fuso usando data local
+      const recordDate = getLocalDateString(now);
       const timeFormatted = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
       const fullName = `${profileData.nome} ${profileData.sobrenome}`.trim();
 

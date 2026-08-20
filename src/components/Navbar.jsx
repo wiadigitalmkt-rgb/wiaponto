@@ -17,8 +17,11 @@ export default function Navbar({ selectedCompany = 'PontoMax' }) {
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
 
+  // Identificação do perfil do usuário
+  const userRole = user?.role || user?.user_metadata?.role || 'employee';
+  const isAdmin = userRole === 'admin' || userRole === 'Administrador';
+
   // Puxa as empresas vinculadas ao e-mail do usuário autenticado. 
-  // Caso não existam empresas adicionais no objeto user, exibe apenas a empresa padrão do usuário.
   const userCompanies = user?.companies || [user?.companyName || selectedCompany];
 
   const filteredCompanies = userCompanies.filter((company) =>
@@ -43,7 +46,7 @@ export default function Navbar({ selectedCompany = 'PontoMax' }) {
     <header className="sticky top-0 z-50 bg-[#1a2c6a] text-white h-12 shadow-md w-full shrink-0 flex items-center justify-between px-6 border-b border-[#2a3c7e] select-none">
       {/* Lado Esquerdo */}
       <div className="flex items-center gap-8">
-        <Link to="/admin" className="flex items-center gap-2">
+        <Link to={isAdmin ? "/admin" : "/espelho"} className="flex items-center gap-2">
           <img 
             src={logoImg} 
             alt="WiaPonto Logo" 
@@ -52,72 +55,88 @@ export default function Navbar({ selectedCompany = 'PontoMax' }) {
         </Link>
 
         <nav className="hidden md:flex items-center gap-6 text-sm font-medium text-slate-200">
-          {/* Adicionado modal={false} para evitar alteração do layout/padding na body */}
-          <DropdownMenu modal={false}>
-            <DropdownMenuTrigger className="hover:text-white flex items-center gap-1 transition focus:outline-none">
-              Atalhos <ChevronDown size={14} className="opacity-80" />
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="bg-white text-slate-800">  
-              <DropdownMenuItem onClick={() => navigate('/admin/ponto')}>
-                Ponto Eletrônico
-              </DropdownMenuItem> 
-              <DropdownMenuItem onClick={() => navigate('/admin/colaboradores')}>
-                Usuários
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => navigate('/admin/admissao')}>
-                Admissão
-              </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => navigate('/admin/contratos')}>
-                Contratos
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => navigate('/admin/banco-horas')}>
-                Banco de Horas
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => navigate('/admin/documentos')}>
-                Distribuição de docs
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => navigate('/admin/ajuda')}>
-                Central de ajuda
-              </DropdownMenuItem>     
-            </DropdownMenuContent>
-          </DropdownMenu>
+          {isAdmin ? (
+            /* MENU COMPLETO - VISÃO ADMINISTRADOR */
+            <>
+              <DropdownMenu modal={false}>
+                <DropdownMenuTrigger className="hover:text-white flex items-center gap-1 transition focus:outline-none">
+                  Atalhos <ChevronDown size={14} className="opacity-80" />
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" className="bg-white text-slate-800">  
+                  <DropdownMenuItem onClick={() => navigate('/admin/ponto')}>
+                    Ponto Eletrônico
+                  </DropdownMenuItem> 
+                  <DropdownMenuItem onClick={() => navigate('/admin/colaboradores')}>
+                    Usuários
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => navigate('/admin/admissao')}>
+                    Admissão
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => navigate('/admin/contratos')}>
+                    Contratos
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => navigate('/admin/banco-horas')}>
+                    Banco de Horas
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => navigate('/admin/documentos')}>
+                    Distribuição de docs
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => navigate('/ajuda')}>
+                    Central de ajuda
+                  </DropdownMenuItem>     
+                </DropdownMenuContent>
+              </DropdownMenu>
 
-          <DropdownMenu modal={false}>
-            <DropdownMenuTrigger className="hover:text-white flex items-center gap-1 transition focus:outline-none">
-              Relatórios <ChevronDown size={14} className="opacity-80" />
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="bg-white text-slate-800">
-              <DropdownMenuItem>Espelho de Ponto</DropdownMenuItem>
-              <DropdownMenuItem>Horas Extras</DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+              <DropdownMenu modal={false}>
+                <DropdownMenuTrigger className="hover:text-white flex items-center gap-1 transition focus:outline-none">
+                  Relatórios <ChevronDown size={14} className="opacity-80" />
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" className="bg-[#ffffff] text-slate-800">
+                  <DropdownMenuItem>Espelho de Ponto</DropdownMenuItem>
+                  <DropdownMenuItem>Horas Extras</DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
 
-          <DropdownMenu modal={false}>
-            <DropdownMenuTrigger className="hover:text-white flex items-center gap-1 transition focus:outline-none">
-              Configurações <ChevronDown size={14} className="opacity-80" />
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="bg-white text-slate-800">
-              <DropdownMenuItem>Empresa</DropdownMenuItem>
-              <DropdownMenuItem>Colaboradores</DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+              <DropdownMenu modal={false}>
+                <DropdownMenuTrigger className="hover:text-white flex items-center gap-1 transition focus:outline-none">
+                  Configurações <ChevronDown size={14} className="opacity-80" />
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" className="bg-white text-slate-800">
+                  <DropdownMenuItem>Empresa</DropdownMenuItem>
+                  <DropdownMenuItem>Colaboradores</DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
 
-          <Link to="#" className="hover:text-white transition">
-            Solicitações
-          </Link>
+              <Link to="#" className="hover:text-white transition">
+                Solicitações
+              </Link>
+            </>
+          ) : (
+            /* MENU RESTRITO - VISÃO COLABORADOR */
+            <>
+              <Link to="/documentos" className="hover:text-white transition">
+                Documentos
+              </Link>
+              <Link to="/espelho" className="hover:text-white transition">
+                Espelho de Ponto
+              </Link>
+              <Link to="/ajuda" className="hover:text-white transition">
+                Ajuda
+              </Link>
+            </>
+          )}
         </nav>
       </div>
 
       {/* Lado Direito */}
       <div className="flex items-center gap-4 shrink-0">
-        {/* Botão de Empresa no estilo Coalize com Busca */}
+        {/* Botão de Empresa */}
         <DropdownMenu modal={false}>
           <DropdownMenuTrigger className="hidden sm:flex items-center justify-between gap-6 border border-white/40 bg-transparent px-4 py-1.5 rounded-md text-xs font-semibold text-white hover:border-white/70 transition focus:outline-none cursor-pointer">
             <span className="truncate">{selectedCompany}</span>
             <ChevronDown size={13} className="text-white/80 shrink-0" />
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="bg-white p-0 text-slate-800 w-60 rounded-md overflow-hidden shadow-lg border-none">
-            {/* Campo de Busca */}
             <div className="flex items-center px-3 py-2 border-b border-slate-200 bg-white">
               <Search size={16} className="text-slate-400 mr-2 shrink-0" />
               <input
@@ -130,7 +149,6 @@ export default function Navbar({ selectedCompany = 'PontoMax' }) {
               />
             </div>
 
-            {/* Lista de Empresas filtradas pelo e-mail do usuário */}
             <div className="max-h-48 overflow-y-auto">
               {filteredCompanies.map((company) => {
                 const isSelected = company === selectedCompany;
@@ -164,7 +182,7 @@ export default function Navbar({ selectedCompany = 'PontoMax' }) {
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="bg-white text-slate-800 w-48">
             <div className="px-3 py-2 border-b border-slate-100 text-xs">
-              <p className="font-semibold truncate">{user?.email || 'admin@ponto.com'}</p>
+              <p className="font-semibold truncate">{user?.email || 'usuario@ponto.com'}</p>
             </div>
             <DropdownMenuItem
               onClick={handleSignOut}

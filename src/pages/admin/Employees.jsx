@@ -5,13 +5,8 @@ import { Link, useNavigate } from 'react-router-dom';
 import { 
   Search, 
   ChevronDown, 
-  ChevronUp,
-  MessageSquare, 
   ChevronRight,
-  UserCheck,
-  KeyRound,
   X,
-  Calendar,
   Loader2,
   Mail,
   Lock
@@ -86,7 +81,7 @@ export default function Employees() {
       setUsersData(formatted);
     } catch (err) {
       console.error('Erro ao carregar colaboradores:', err.message);
-    } fontally {
+    } finally {
       setLoading(false);
     }
   };
@@ -116,7 +111,7 @@ export default function Employees() {
           first_name: formData.primeiroNome,
           last_name: formData.sobrenome,
           email: formData.email.toLowerCase().trim(),
-          password_hash: formData.senha, // Registra a senha de acesso inicial
+          password_hash: formData.senha,
           cpf: formData.cpf,
           admission_date: formData.dataAdmissao || null,
           role: formData.tipoAcesso === 'Gestor' ? 'gestor' : 'colaborador',

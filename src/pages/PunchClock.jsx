@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import Navbar from '@/components/Navbar';
 import { supabase } from '@/lib/supabase';
 import { 
   Scan, Calendar, Clock, ChevronDown, User, LogOut, 

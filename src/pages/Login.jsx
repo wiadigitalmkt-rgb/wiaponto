@@ -9,7 +9,7 @@ export default function Login() {
   const navigate = useNavigate();
   const { refreshSession } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
-  const [userInput, setUserInput] = useState(''); // Alterado para aceitar CPF ou E-mail sem validação forçada do navegador
+  const [userInput, setUserInput] = useState('');
   const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -21,11 +21,24 @@ export default function Login() {
     setErrorMsg('');
 
     try {
-      // Trata o texto digitado limpando pontuações caso seja digitado CPF com máscara
       const rawInput = userInput.trim();
       const cleanCPF = rawInput.replace(/\D/g, '');
 
-      // Busca na tabela pelo CPF limpo OU pelo e-mail exatamente igual ao digitado
+      // Tenta autenticação nativa do Supabase Auth se for e-mail
+      if (rawInput.includes('@')) {
+        const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+          email: rawInput,
+          password: password,
+        });
+
+        if (!authError && authData?.user) {
+          refreshSession();
+          navigate('/ponto');
+          return;
+        }
+      }
+
+      // Validação alternativa via tabela Employees (CPF ou E-mail)
       let query = supabase.from('Employees').select('*');
 
       if (cleanCPF.length > 0) {
@@ -36,9 +49,7 @@ export default function Login() {
 
       const { data: employees, error } = await query;
 
-      if (error) {
-        throw error;
-      }
+      if (error) throw error;
 
       if (!employees || employees.length === 0) {
         setErrorMsg('Usuário ou senha incorretos.');
@@ -48,14 +59,12 @@ export default function Login() {
 
       const user = employees[0];
 
-      // Validação da Senha
       if (user.password_hash !== password) {
         setErrorMsg('Usuário ou senha incorretos.');
         setLoading(false);
         return;
       }
 
-      // Salva a sessão localmente
       const sessionData = {
         id: user.id,
         full_name: user.full_name,
@@ -69,11 +78,9 @@ export default function Login() {
         sessionStorage.setItem('userSession', JSON.stringify(sessionData));
       }
 
-      // Atualiza o estado global do AuthContext antes do redirecionamento
       refreshSession();
 
-      // Redirecionamento por Papel (Role)
-      if (user.role === 'gestor') {
+      if (user.role === 'gestor' || user.role === 'admin') {
         navigate('/admin');
       } else {
         navigate('/ponto');
@@ -86,18 +93,18 @@ export default function Login() {
     }
   };
 
-  const handleGoogleLogin = () => {
-    console.log('Login com Google');
+  const handleGoogleLogin = async () => {
+    try {
+      await supabase.auth.signInWithOAuth({ provider: 'google' });
+    } catch (err) {
+      console.error('Erro ao conectar com Google:', err);
+    }
   };
 
   return (
     <div className="h-screen w-screen flex bg-white overflow-hidden font-['Inter',-apple-system,BlinkMacSystemFont,'Segoe_UI',Roboto,sans-serif]">
-      
-      {/* LADO ESQUERDO - Formulário com a Fonte do Print da Direita */}
       <div className="w-1/2 h-full flex flex-col justify-center items-center px-8 sm:px-12 md:px-16 lg:px-24">
         <div className="max-w-md w-full space-y-6">
-          
-          {/* Cabeçalho do Form */}
           <div className="space-y-1.5">
             <h1 className="text-3xl font-bold text-[#1e293b] tracking-tight">
               Bem-vindo!
@@ -107,17 +114,13 @@ export default function Login() {
             </p>
           </div>
 
-          {/* Alerta visual de erro */}
           {errorMsg && (
             <div className="p-3 rounded-md bg-red-50 border border-red-200 text-red-600 text-xs font-medium">
               {errorMsg}
             </div>
           )}
 
-          {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-4" noValidate>
-            
-            {/* Campo Usuário / CPF / E-mail */}
             <div className="space-y-1.5">
               <label className="text-xs font-semibold text-slate-800">
                 Usuário*
@@ -130,12 +133,11 @@ export default function Login() {
                 required
                 value={userInput}
                 onChange={(e) => setUserInput(e.target.value)}
-                placeholder="Login"
+                placeholder="E-mail ou CPF"
                 className="w-full px-3.5 py-2.5 rounded-md border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#00a887] focus:border-transparent transition-all text-xs text-slate-700 bg-white placeholder:text-slate-400 font-normal"
               />
             </div>
 
-            {/* Campo Senha */}
             <div className="space-y-1.5">
               <label className="text-xs font-semibold text-slate-800">
                 Senha*
@@ -159,7 +161,6 @@ export default function Login() {
               </div>
             </div>
 
-            {/* Continuar logado e Esqueci minha senha */}
             <div className="flex items-center justify-between text-xs pt-1">
               <label className="flex items-center gap-2 cursor-pointer text-slate-700 font-normal">
                 <input
@@ -172,14 +173,13 @@ export default function Login() {
               </label>
 
               <a
-                href="/recuperar-senha"
+                href="/forgot-password"
                 className="font-normal text-slate-700 hover:text-slate-900"
               >
                 Esqueci a minha senha
               </a>
             </div>
 
-            {/* Botão Entrar */}
             <button
               type="submit"
               disabled={loading}
@@ -190,7 +190,6 @@ export default function Login() {
             </button>
           </form>
 
-          {/* Divisor "OU" */}
           <div className="relative flex items-center justify-center py-2">
             <div className="border-t border-slate-200 w-full" />
             <span className="bg-white px-3 text-[11px] font-normal text-slate-400 uppercase tracking-widest absolute">
@@ -198,7 +197,6 @@ export default function Login() {
             </span>
           </div>
 
-          {/* Botão Google */}
           <button
             type="button"
             onClick={handleGoogleLogin}
@@ -224,39 +222,26 @@ export default function Login() {
             </svg>
             Continuar com Google
           </button>
-
         </div>
       </div>
 
-      {/* LADO DIREITO - Limpo de botões e destaques excedentes */}
       <div className="w-1/2 h-full relative overflow-hidden bg-black flex flex-col justify-between p-12 lg:p-16">
-        
-        {/* Imagem de Fundo de Alta Resolução */}
-        <div 
+        <div
           className="absolute inset-0 bg-cover bg-center bg-no-repeat"
-          style={{ 
-            backgroundImage: `url(${bgLoginImg})` 
-          }}
+          style={{ backgroundImage: `url(${bgLoginImg})` }}
         />
-
-        {/* Overlay Escuro para dar contraste ao texto */}
         <div className="absolute inset-0 bg-black/30" />
-
-        {/* Bloco inferior com o Título e Subtítulo */}
         <div className="relative z-10 space-y-6 mt-auto">
           <div className="max-w-lg space-y-4">
             <h2 className="text-3xl md:text-4xl font-extrabold text-white tracking-tight leading-tight">
               Facilite a sua rotina!
             </h2>
-
             <p className="text-slate-100 font-medium text-sm md:text-base leading-relaxed">
-              Registre sua jornada de trabalho de forma rápida, segura e sem complicações!.
+              Registre sua jornada de trabalho de forma rápida, segura e sem complicações!
             </p>
           </div>
         </div>
-
       </div>
-
     </div>
   );
 }

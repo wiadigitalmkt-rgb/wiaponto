@@ -23,67 +23,102 @@ export default function Login() {
     try {
       const rawInput = userInput.trim();
       const cleanCPF = rawInput.replace(/\D/g, '');
+      let loginEmail = rawInput;
 
-      // Tenta autenticação nativa do Supabase Auth se for e-mail
-      if (rawInput.includes('@')) {
-        const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
-          email: rawInput,
-          password: password,
-        });
+      // Se o usuário digitou CPF em vez de E-mail, busca o e-mail cadastrado na tabela Employees
+      if (!rawInput.includes('@') && cleanCPF.length > 0) {
+        const { data: empData } = await supabase
+          .from('Employees')
+          .select('email, password_hash, role, id, full_name, cpf')
+          .or(`cpf.eq.${cleanCPF},cpf.eq.${rawInput}`)
+          .maybeSingle();
 
-        if (!authError && authData?.user) {
-          refreshSession();
-          navigate('/ponto');
-          return;
+        if (empData?.email) {
+          loginEmail = empData.email;
+        } else if (empData) {
+          // Fallback se o colaborador não tiver e-mail cadastrado no Supabase Auth
+          if (empData.password_hash === password) {
+            const sessionData = {
+              id: empData.id,
+              full_name: empData.full_name,
+              cpf: empData.cpf,
+              role: empData.role || 'colaborador',
+            };
+            if (rememberMe) localStorage.setItem('userSession', JSON.stringify(sessionData));
+            else sessionStorage.setItem('userSession', JSON.stringify(sessionData));
+
+            refreshSession();
+            navigate(empData.role === 'gestor' || empData.role === 'admin' ? '/admin' : '/ponto');
+            return;
+          } else {
+            setErrorMsg('Usuário ou senha incorretos.');
+            setLoading(false);
+            return;
+          }
         }
       }
 
-      // Validação alternativa via tabela Employees (CPF ou E-mail)
-      let query = supabase.from('Employees').select('*');
+      // 1. Tenta autenticação nativa via Supabase Auth com o e-mail identificado
+      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+        email: loginEmail,
+        password: password,
+      });
 
+      if (!authError && authData?.user) {
+        // Atualiza a coluna password_hash da tabela Employees para manter sincronizado
+        await supabase
+          .from('Employees')
+          .update({ password_hash: password })
+          .eq('email', loginEmail);
+
+        // Busca os dados de perfil
+        const { data: emp } = await supabase
+          .from('Employees')
+          .select('*')
+          .eq('email', loginEmail)
+          .maybeSingle();
+
+        const sessionData = {
+          id: emp?.id || authData.user.id,
+          full_name: emp?.full_name || authData.user.email,
+          cpf: emp?.cpf || '',
+          role: emp?.role || 'colaborador',
+        };
+
+        if (rememberMe) localStorage.setItem('userSession', JSON.stringify(sessionData));
+        else sessionStorage.setItem('userSession', JSON.stringify(sessionData));
+
+        refreshSession();
+        navigate(sessionData.role === 'gestor' || sessionData.role === 'admin' ? '/admin' : '/ponto');
+        return;
+      }
+
+      // 2. Validação Fallback caso o Supabase Auth falhe
+      let query = supabase.from('Employees').select('*');
       if (cleanCPF.length > 0) {
         query = query.or(`cpf.eq.${cleanCPF},email.eq.${rawInput}`);
       } else {
         query = query.eq('email', rawInput);
       }
 
-      const { data: employees, error } = await query;
+      const { data: employees } = await query;
+      const user = employees?.[0];
 
-      if (error) throw error;
+      if (user && user.password_hash === password) {
+        const sessionData = {
+          id: user.id,
+          full_name: user.full_name,
+          cpf: user.cpf,
+          role: user.role || 'colaborador',
+        };
 
-      if (!employees || employees.length === 0) {
-        setErrorMsg('Usuário ou senha incorretos.');
-        setLoading(false);
-        return;
-      }
+        if (rememberMe) localStorage.setItem('userSession', JSON.stringify(sessionData));
+        else sessionStorage.setItem('userSession', JSON.stringify(sessionData));
 
-      const user = employees[0];
-
-      if (user.password_hash !== password) {
-        setErrorMsg('Usuário ou senha incorretos.');
-        setLoading(false);
-        return;
-      }
-
-      const sessionData = {
-        id: user.id,
-        full_name: user.full_name,
-        cpf: user.cpf,
-        role: user.role || 'colaborador',
-      };
-
-      if (rememberMe) {
-        localStorage.setItem('userSession', JSON.stringify(sessionData));
+        refreshSession();
+        navigate(user.role === 'gestor' || user.role === 'admin' ? '/admin' : '/ponto');
       } else {
-        sessionStorage.setItem('userSession', JSON.stringify(sessionData));
-      }
-
-      refreshSession();
-
-      if (user.role === 'gestor' || user.role === 'admin') {
-        navigate('/admin');
-      } else {
-        navigate('/ponto');
+        setErrorMsg('Usuário ou senha incorretos.');
       }
     } catch (err) {
       console.error('Erro na autenticação:', err);

@@ -100,7 +100,7 @@ export default function Ajuda() {
       <Navbar selectedCompany="Empresa Teste" />
 
       {/* BANNER SUPERIOR TURQUESA */}
-      <div className="bg-[#1de9b6] bg-opacity-90 py-16 px-4 relative overflow-hidden flex flex-col items-center justify-center text-center">
+      <div className="bg-[#fc9314] bg-opacity-90 py-16 px-4 relative overflow-hidden flex flex-col items-center justify-center text-center">
         <div className="absolute inset-0 opacity-15 pointer-events-none flex items-center justify-center">
           <div className="w-[600px] h-[600px] border-[40px] border-white rounded-full"></div>
         </div>

@@ -4,7 +4,7 @@ import Navbar from '@/components/Navbar';
 import { supabase } from '@/lib/supabase';
 import { 
   Scan, Calendar, Clock, ChevronDown, User, LogOut, 
-  Eye, EyeOff, Upload, CheckCircle2, MapPin, Check
+  Eye, EyeOff, Upload, CheckCircle2, MapPin, Check, FileText
 } from 'lucide-react';
 
 export default function PunchClock() {
@@ -299,13 +299,21 @@ export default function PunchClock() {
               </div>
             </div>
 
-            <div className="p-6">
+            <div className="p-6 space-y-3">
               <button
-                onClick={() => navigate('/admin/ponto')}
-                className="w-full border border-[#fc9314] text-[#ff8b00] hover:bg-teal-50/50 font-bold text-xs py-2.5 rounded-md transition duration-150 flex items-center justify-center gap-2"
+                onClick={() => navigate('/espelho')}
+                className="w-full border border-[#fc9314] text-[#ff8b00] hover:bg-orange-50/50 font-bold text-xs py-2.5 rounded-md transition duration-150 flex items-center justify-center gap-2 cursor-pointer"
               >
                 <Calendar size={14} />
                 <span>Ver histórico de pontos</span>
+              </button>
+
+              <button
+                onClick={() => navigate('/documentos')}
+                className="w-full border border-slate-300 text-slate-700 hover:bg-slate-100 font-bold text-xs py-2.5 rounded-md transition duration-150 flex items-center justify-center gap-2 cursor-pointer"
+              >
+                <FileText size={14} className="text-slate-500" />
+                <span>Ver documentos</span>
               </button>
             </div>
           </div>

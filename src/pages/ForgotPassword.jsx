@@ -16,8 +16,8 @@ export default function ForgotPassword() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+  const [emailSent, setEmailSent] = useState(false);
 
-  // Passo 1: Busca o cadastro real do usuário no Supabase
   const handleRequestReset = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -27,13 +27,25 @@ export default function ForgotPassword() {
       const rawInput = userInput.trim();
       const cleanCPF = rawInput.replace(/\D/g, '');
 
+      // Se for inserido um e-mail direto, dispara o link nativo do Supabase Auth
+      if (rawInput.includes('@')) {
+        const { error } = await supabase.auth.resetPasswordForEmail(rawInput, {
+          redirectTo: `${window.location.origin}/reset-password`,
+        });
+
+        if (error) throw error;
+
+        setEmailSent(true);
+        setLoading(false);
+        return;
+      }
+
+      // Caso seja informado CPF, busca na tabela de Employees
       let query = supabase.from('Employees').select('*');
 
       if (cleanCPF.length > 0) {
-        const formattedCPF = cleanCPF.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4");
-        query = query.or(`cpf.eq.${cleanCPF},cpf.eq.${formattedCPF},email.eq.${rawInput}`);
-      } else {
-        query = query.eq('email', rawInput);
+        const formattedCPF = cleanCPF.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
+        query = query.or(`cpf.eq.${cleanCPF},cpf.eq.${formattedCPF}`);
       }
 
       const { data: employees, error } = await query;
@@ -41,7 +53,7 @@ export default function ForgotPassword() {
       if (error) throw error;
 
       if (!employees || employees.length === 0) {
-        setErrorMsg('Usuário não encontrado. Verifique o CPF informado.');
+        setErrorMsg('Usuário não encontrado. Verifique os dados informados.');
         setLoading(false);
         return;
       }
@@ -49,13 +61,19 @@ export default function ForgotPassword() {
       const user = employees[0];
       setEmployee(user);
 
-      // Código temporário de validação
+      // Dispara e-mail para o e-mail cadastrado no perfil do colaborador
+      if (user.email) {
+        await supabase.auth.resetPasswordForEmail(user.email, {
+          redirectTo: `${window.location.origin}/reset-password`,
+        });
+      }
+
       const code = Math.floor(100000 + Math.random() * 900000).toString();
       setGeneratedToken(code);
 
       const expiresAt = new Date(Date.now() + 15 * 60 * 1000).toISOString();
 
-      const { error: resetError } = await supabase.from('password_resets').insert([
+      await supabase.from('password_resets').insert([
         {
           employee_id: user.id,
           token: code,
@@ -64,18 +82,15 @@ export default function ForgotPassword() {
         },
       ]);
 
-      if (resetError) throw resetError;
-
       setStep(2);
     } catch (err) {
       console.error('Erro ao solicitar redefinição:', err);
-      setErrorMsg('Falha ao processar solicitação. Tente novamente.');
+      setErrorMsg(err.message || 'Falha ao processar solicitação. Tente novamente.');
     } finally {
       setLoading(false);
     }
   };
 
-  // Passo 2: Atualização real da senha no banco
   const handleResetPassword = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -113,7 +128,6 @@ export default function ForgotPassword() {
 
       const resetRecord = resetRecords[0];
 
-      // Atualização no banco
       const { error: updateError } = await supabase
         .from('Employees')
         .update({ password_hash: newPassword })
@@ -150,9 +164,13 @@ export default function ForgotPassword() {
               Recuperar Senha
             </h1>
             <p className="text-sm font-normal text-slate-500">
-              {step === 1 && 'Informe seu CPF para alterar sua senha'}
-              {step === 2 && 'Insira o código de verificação e digite sua nova senha'}
-              {step === 3 && 'Sua senha foi redefinida com sucesso!'}
+              {emailSent
+                ? 'Link de recuperação enviado com sucesso!'
+                : step === 1
+                ? 'Informe seu CPF ou E-mail para redefinir sua senha'
+                : step === 2
+                ? 'Insira o código de verificação e digite sua nova senha'
+                : 'Sua senha foi redefinida com sucesso!'}
             </p>
           </div>
 
@@ -162,130 +180,149 @@ export default function ForgotPassword() {
             </div>
           )}
 
-          {step === 1 && (
-            <form onSubmit={handleRequestReset} className="space-y-4">
-              <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-slate-800">
-                  CPF ou E-mail*
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={userInput}
-                  onChange={(e) => setUserInput(e.target.value)}
-                  placeholder="Digite seu CPF ou E-mail"
-                  className="w-full px-3.5 py-2.5 rounded-md border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#00a887] transition-all text-xs text-slate-700 bg-white placeholder:text-slate-400"
-                />
-              </div>
-
-              <button
-                type="submit"
-                disabled={loading}
-                className="w-full py-2.5 px-6 rounded-md bg-[#00a887] hover:bg-[#008f73] text-white font-semibold text-sm flex items-center justify-center gap-2 transition-all shadow-sm active:scale-[0.99] cursor-pointer disabled:opacity-50"
-              >
-                {loading ? 'Buscando...' : 'Avançar'}
-                {!loading && <ArrowRight size={16} />}
-              </button>
-            </form>
-          )}
-
-          {step === 2 && (
-            <form onSubmit={handleResetPassword} className="space-y-4">
-              <div className="p-3 bg-teal-50 border border-teal-200 rounded-md text-xs text-teal-800">
-                <p className="font-semibold flex items-center gap-1.5">
-                  <KeyRound size={14} /> Seu código de verificação:
-                </p>
-                <p className="text-lg font-bold tracking-widest mt-1 text-[#00a887]">
-                  {generatedToken}
-                </p>
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-slate-800">
-                  Código de Verificação*
-                </label>
-                <input
-                  type="text"
-                  required
-                  maxLength={6}
-                  value={tokenInput}
-                  onChange={(e) => setTokenInput(e.target.value)}
-                  placeholder="000000"
-                  className="w-full px-3.5 py-2.5 rounded-md border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#00a887] transition-all text-xs text-slate-700 bg-white tracking-widest"
-                />
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-slate-800">
-                  Nova Senha*
-                </label>
-                <div className="relative">
-                  <input
-                    type={showPassword ? 'text' : 'password'}
-                    required
-                    value={newPassword}
-                    onChange={(e) => setNewPassword(e.target.value)}
-                    placeholder="Digite a nova senha"
-                    className="w-full px-3.5 py-2.5 rounded-md border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#00a887] transition-all text-xs text-slate-700 pr-10 bg-white"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 focus:outline-none"
-                  >
-                    {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                  </button>
-                </div>
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-slate-800">
-                  Confirmar Nova Senha*
-                </label>
-                <input
-                  type={showPassword ? 'text' : 'password'}
-                  required
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  placeholder="Confirme a nova senha"
-                  className="w-full px-3.5 py-2.5 rounded-md border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#00a887] transition-all text-xs text-slate-700 bg-white"
-                />
-              </div>
-
-              <button
-                type="submit"
-                disabled={loading}
-                className="w-full py-2.5 px-6 rounded-md bg-[#00a887] hover:bg-[#008f73] text-white font-semibold text-sm flex items-center justify-center gap-2 transition-all shadow-sm active:scale-[0.99] cursor-pointer disabled:opacity-50"
-              >
-                {loading ? 'Atualizando...' : 'Redefinir Senha'}
-                {!loading && <ArrowRight size={16} />}
-              </button>
-            </form>
-          )}
-
-          {step === 3 && (
+          {emailSent ? (
             <div className="space-y-6 text-center py-4">
               <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-teal-100 text-[#00a887]">
                 <CheckCircle size={36} />
               </div>
-
               <p className="text-sm text-slate-600">
-                Sua senha foi alterada com sucesso! Você já pode acessar a plataforma utilizando suas novas credenciais.
+                Enviamos um e-mail com as instruções para redefinição de senha. Por favor, verifique sua caixa de entrada e a pasta de spam.
               </p>
-
               <button
                 onClick={() => navigate('/login')}
                 className="w-full py-2.5 px-6 rounded-md bg-[#00a887] hover:bg-[#008f73] text-white font-semibold text-sm transition-all shadow-sm cursor-pointer"
               >
-                Ir para a tela de Login
+                Ir para o Login
               </button>
             </div>
+          ) : (
+            <>
+              {step === 1 && (
+                <form onSubmit={handleRequestReset} className="space-y-4">
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-semibold text-slate-800">
+                      CPF ou E-mail*
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={userInput}
+                      onChange={(e) => setUserInput(e.target.value)}
+                      placeholder="Digite seu CPF ou E-mail"
+                      className="w-full px-3.5 py-2.5 rounded-md border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#00a887] transition-all text-xs text-slate-700 bg-white placeholder:text-slate-400"
+                    />
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    className="w-full py-2.5 px-6 rounded-md bg-[#00a887] hover:bg-[#008f73] text-white font-semibold text-sm flex items-center justify-center gap-2 transition-all shadow-sm active:scale-[0.99] cursor-pointer disabled:opacity-50"
+                  >
+                    {loading ? 'Enviando...' : 'Avançar'}
+                    {!loading && <ArrowRight size={16} />}
+                  </button>
+                </form>
+              )}
+
+              {step === 2 && (
+                <form onSubmit={handleResetPassword} className="space-y-4">
+                  <div className="p-3 bg-teal-50 border border-teal-200 rounded-md text-xs text-teal-800">
+                    <p className="font-semibold flex items-center gap-1.5">
+                      <KeyRound size={14} /> Seu código de verificação:
+                    </p>
+                    <p className="text-lg font-bold tracking-widest mt-1 text-[#00a887]">
+                      {generatedToken}
+                    </p>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-semibold text-slate-800">
+                      Código de Verificação*
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      maxLength={6}
+                      value={tokenInput}
+                      onChange={(e) => setTokenInput(e.target.value)}
+                      placeholder="000000"
+                      className="w-full px-3.5 py-2.5 rounded-md border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#00a887] transition-all text-xs text-slate-700 bg-white tracking-widest"
+                    />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-semibold text-slate-800">
+                      Nova Senha*
+                    </label>
+                    <div className="relative">
+                      <input
+                        type={showPassword ? 'text' : 'password'}
+                        required
+                        value={newPassword}
+                        onChange={(e) => setNewPassword(e.target.value)}
+                        placeholder="Digite a nova senha"
+                        className="w-full px-3.5 py-2.5 rounded-md border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#00a887] transition-all text-xs text-slate-700 pr-10 bg-white"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 focus:outline-none"
+                      >
+                        {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-semibold text-slate-800">
+                      Confirmar Nova Senha*
+                    </label>
+                    <input
+                      type={showPassword ? 'text' : 'password'}
+                      required
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      placeholder="Confirme a nova senha"
+                      className="w-full px-3.5 py-2.5 rounded-md border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#00a887] transition-all text-xs text-slate-700 bg-white"
+                    />
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    className="w-full py-2.5 px-6 rounded-md bg-[#00a887] hover:bg-[#008f73] text-white font-semibold text-sm flex items-center justify-center gap-2 transition-all shadow-sm active:scale-[0.99] cursor-pointer disabled:opacity-50"
+                  >
+                    {loading ? 'Atualizando...' : 'Redefinir Senha'}
+                    {!loading && <ArrowRight size={16} />}
+                  </button>
+                </form>
+              )}
+
+              {step === 3 && (
+                <div className="space-y-6 text-center py-4">
+                  <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-teal-100 text-[#00a887]">
+                    <CheckCircle size={36} />
+                  </div>
+
+                  <p className="text-sm text-slate-600">
+                    Sua senha foi alterada com sucesso! Você já pode acessar a plataforma utilizando suas novas credenciais.
+                  </p>
+
+                  <button
+                    onClick={() => navigate('/login')}
+                    className="w-full py-2.5 px-6 rounded-md bg-[#00a887] hover:bg-[#008f73] text-white font-semibold text-sm transition-all shadow-sm cursor-pointer"
+                  >
+                    Ir para a tela de Login
+                  </button>
+                </div>
+              )}
+            </>
           )}
         </div>
       </div>
 
       <div className="w-1/2 h-full relative overflow-hidden bg-black flex flex-col justify-between p-12 lg:p-16">
-        <div 
+        <div
           className="absolute inset-0 bg-cover bg-center bg-no-repeat"
           style={{ backgroundImage: `url(${bgLoginImg})` }}
         />

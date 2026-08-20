@@ -10,13 +10,9 @@ import {
   Users,
   KeyRound,
   ArrowLeft,
-  ExternalLink,
   Settings,
   Upload,
-  Search,
-  Plus,
-  Trash2,
-  X
+  Plus
 } from 'lucide-react';
 
 export default function Usuario() {
@@ -26,7 +22,7 @@ export default function Usuario() {
   const [activeTab, setActiveTab] = useState('informacoes');
   const [profileSubTab, setProfileSubTab] = useState('dados');
   const [jornadaSubTab, setJornadaSubTab] = useState('informacoes');
-  const [loading, setLoading] = useState(false);
+  const [, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
 
   const fileInputRef = useRef(null);
@@ -221,7 +217,7 @@ export default function Usuario() {
 
     for (const file of files) {
       const filePath = `${userId}/${Date.now()}_${file.name}`;
-      const { data: uploadData, error: uploadErr } = await supabase.storage
+      const { error: uploadErr } = await supabase.storage
         .from('employee-files')
         .upload(filePath, file);
 

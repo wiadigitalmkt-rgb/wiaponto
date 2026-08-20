@@ -42,6 +42,7 @@ export default function Login() {
               id: empData.id,
               full_name: empData.full_name,
               cpf: empData.cpf,
+              email: empData.email || '',
               role: empData.role || 'colaborador',
             };
             if (rememberMe) localStorage.setItem('userSession', JSON.stringify(sessionData));
@@ -82,6 +83,7 @@ export default function Login() {
           id: emp?.id || authData.user.id,
           full_name: emp?.full_name || authData.user.email,
           cpf: emp?.cpf || '',
+          email: emp?.email || authData.user.email || loginEmail,
           role: emp?.role || 'colaborador',
         };
 
@@ -109,6 +111,7 @@ export default function Login() {
           id: user.id,
           full_name: user.full_name,
           cpf: user.cpf,
+          email: user.email || '',
           role: user.role || 'colaborador',
         };
 

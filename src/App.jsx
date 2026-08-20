@@ -32,7 +32,6 @@ import Admissao from './pages/admin/Admissao';
 import Contratos from './pages/admin/Contratos';
 import Banco from './pages/admin/Banco';
 import AdminDocumentos from './pages/admin/Documentos';
-import Ajuda from './pages/admin/Ajuda';
 
 // Import da Página de Documentos do Colaborador (caminho em minúsculo para bater com a estrutura de pastas)
 import Documentos from './pages/documentos';
@@ -80,6 +79,7 @@ const AuthenticatedApp = () => {
         <Route path="/ponto" element={<PunchClock />} />
         <Route path="/espelho" element={<TimeClockMirror />} />
         <Route path="/documentos" element={<Documentos />} />
+        <Route path="/ajuda" element={<Ajuda />} />
 
         {/* Rotas Legadas (que usavam Layout antigo) */}
         <Route element={<Layout />}>
@@ -101,7 +101,6 @@ const AuthenticatedApp = () => {
         <Route path="/admin/contratos" element={<Contratos />} />
         <Route path="/admin/banco-horas" element={<Banco />} />
         <Route path="/admin/documentos" element={<AdminDocumentos />} />
-        <Route path="/admin/ajuda" element={<Ajuda />} />
 
       </Route>
 

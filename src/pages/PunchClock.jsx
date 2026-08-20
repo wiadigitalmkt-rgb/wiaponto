@@ -16,10 +16,10 @@ export default function PunchClock() {
 
   // Estados gerais do Ponto
   const [loading, setLoading] = useState(false);
-  const [lastPunch, setLastPunch] = useState('06/08/2026 às 23:12h');
+  const [lastPunch, setLastPunch] = useState('Nenhum registro hoje');
   const [stats, setStats] = useState({
-    diasTrabalhados: 2,
-    horasNoMes: '16:00',
+    diasTrabalhados: 0,
+    horasNoMes: '00:00',
     bancoDeHoras: '00:00',
   });
   const [pendingPunches, setPendingPunches] = useState([]);
@@ -96,17 +96,64 @@ export default function PunchClock() {
     setCurrentView('map');
   };
 
-  // Confirma o Ponto na tela do Mapa
+  // Confirma o Ponto na tela do Mapa e atualiza no Supabase para refletir no Admin e Dashboard
   const handleConfirmPunch = async () => {
     setLoading(true);
     try {
+      const now = new Date();
+      const recordDate = now.toISOString().split('T')[0];
+      const timeFormatted = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+      const fullName = `${profileData.nome} ${profileData.sobrenome}`.trim();
+
       if (supabase) {
-        await supabase.from('time_entries').insert([
-          { timestamp: new Date().toISOString(), type: 'entry_exit' },
-        ]);
+        // Busca colaborador existente pelo e-mail ou cria
+        let { data: emp } = await supabase
+          .from('Employees')
+          .select('id')
+          .eq('email', profileData.email)
+          .maybeSingle();
+
+        if (!emp) {
+          const { data: newEmp } = await supabase
+            .from('Employees')
+            .insert([{ full_name: fullName, email: profileData.email, role: 'colaborador' }])
+            .select('id')
+            .single();
+          emp = newEmp;
+        }
+
+        if (emp?.id) {
+          // Verifica se já existe batida sem saída hoje para fechar ou abrir novo intervalo
+          const { data: openRecord } = await supabase
+            .from('time_records')
+            .select('*')
+            .eq('employee_id', emp.id)
+            .eq('record_date', recordDate)
+            .or('saida.eq.-,saida.is.null')
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+
+          if (openRecord) {
+            await supabase
+              .from('time_records')
+              .update({ saida: timeFormatted })
+              .eq('id', openRecord.id);
+          } else {
+            await supabase.from('time_records').insert([
+              {
+                employee_id: emp.id,
+                record_date: recordDate,
+                entrada: timeFormatted,
+                saida: '-',
+                is_night: false,
+                obs: 'Ponto Web'
+              }
+            ]);
+          }
+        }
       }
 
-      const now = new Date();
       const dateStr = now.toLocaleDateString('pt-BR');
       const hours = String(now.getHours()).padStart(2, '0');
       const minutes = String(now.getMinutes()).padStart(2, '0');
@@ -126,13 +173,11 @@ export default function PunchClock() {
     }
   };
 
-  // Logout
   const handleLogout = async () => {
     if (supabase) await supabase.auth.signOut();
     navigate('/login');
   };
 
-  // Upload de foto do perfil
   const handleAvatarChange = (e) => {
     const file = e.target.files[0];
     if (file) {
@@ -143,8 +188,6 @@ export default function PunchClock() {
 
   return (
     <div className="min-h-screen bg-[#eef2f5] flex flex-col font-sans text-slate-700">
-      
-      {/* INJEÇÃO DAS FONTES CURSIVAS PARA AS ASSINATURAS */}
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Caveat:wght@600&family=Dancing+Script:wght@600&family=Great+Vibes&family=Pacifico&family=Sacramento&display=swap');
         .font-sig-1 { font-family: 'Dancing Script', cursive; }
@@ -156,7 +199,6 @@ export default function PunchClock() {
 
       {/* NAVBAR DO COLABORADOR */}
       <header className="bg-[#1e293b] text-white px-6 py-3 flex justify-between items-center shadow-md relative z-50">
-        {/* LOGO */}
         <div 
           onClick={() => setCurrentView('home')} 
           className="flex items-center gap-2 cursor-pointer"
@@ -167,14 +209,12 @@ export default function PunchClock() {
           <span className="font-bold text-lg tracking-tight">Coalize</span>
         </div>
 
-        {/* DIREITA: EMPRESA E BOTÃO USUÁRIO */}
         <div className="flex items-center gap-4">
           <div className="hidden sm:flex items-center gap-2 border border-slate-600 rounded px-3 py-1.5 text-xs text-slate-200">
             <span>{profileData.empresa}</span>
             <ChevronDown size={14} className="text-slate-400" />
           </div>
 
-          {/* BOTÃO DO USUÁRIO / DROPDOWN */}
           <div className="relative" ref={dropdownRef}>
             <button
               onClick={() => setIsMenuOpen(!isMenuOpen)}
@@ -191,7 +231,6 @@ export default function PunchClock() {
               <ChevronDown size={14} className="text-slate-300" />
             </button>
 
-            {/* DROPDOWN IGUAL AO PRINT */}
             {isMenuOpen && (
               <div className="absolute right-0 mt-2 w-56 bg-white rounded-md shadow-xl border border-slate-200 text-slate-800 py-3 z-50 animate-in fade-in zoom-in-95">
                 <div className="px-4 pb-3 mb-2 border-b border-slate-100 flex items-center gap-3">
@@ -292,34 +331,10 @@ export default function PunchClock() {
               </div>
             </div>
 
-            {pendingPunches.length > 0 && (
-              <div className="p-6 border-b border-slate-100 bg-slate-50/20">
-                <h3 className="text-xs font-bold text-slate-700 mb-3">
-                  Pontos pendentes <span className="text-slate-400 font-normal">({pendingPunches.length})</span>
-                </h3>
-                <div className="space-y-2">
-                  <div className="grid grid-cols-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">
-                    <span>DATA</span>
-                    <span>REGISTRO</span>
-                    <span>STATUS</span>
-                  </div>
-                  {pendingPunches.map((item, idx) => (
-                    <div key={idx} className="grid grid-cols-3 text-xs text-slate-700 py-1.5 border-t border-slate-100 items-center">
-                      <span className="font-medium">{item.date}</span>
-                      <span className="font-medium">{item.time}</span>
-                      <span className="text-[11px] text-slate-500">
-                        <strong className="bg-slate-200 text-slate-700 px-1.5 py-0.5 rounded mr-1">Enviando:</strong> 
-                        processo pode levar até 15 minutos para finalizar
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
             <div className="p-6">
+              {/* DESVINCULADO DE /espelho -> REDIRECIONA PARA /admin/ponto */}
               <button
-                onClick={() => navigate('/espelho')}
+                onClick={() => navigate('/admin/ponto')}
                 className="w-full border border-[#11998e] text-[#11998e] hover:bg-teal-50/50 font-bold text-xs py-2.5 rounded-md transition duration-150 flex items-center justify-center gap-2"
               >
                 <Calendar size={14} />
@@ -333,7 +348,6 @@ export default function PunchClock() {
       {/* VIEW 2: SESSÃO PERFIL */}
       {currentView === 'profile' && (
         <main className="flex-1 max-w-4xl w-full mx-auto p-6 space-y-6">
-          {/* CARD 1: DETALHES */}
           <div className="bg-white rounded-md border border-slate-200/80 shadow-sm overflow-hidden">
             <div className="p-4 border-b border-slate-100">
               <h2 className="text-sm font-bold text-slate-800">Detalhes</h2>
@@ -341,7 +355,6 @@ export default function PunchClock() {
             </div>
 
             <div className="p-6 space-y-6">
-              {/* FOTO E EMPRESA */}
               <div className="flex items-center gap-6">
                 <div className="relative">
                   <div className="w-20 h-20 rounded-full bg-slate-100 text-slate-700 border border-slate-200 flex items-center justify-center font-bold text-xl overflow-hidden">
@@ -363,7 +376,6 @@ export default function PunchClock() {
                 </div>
               </div>
 
-              {/* INPUTS NOME, SOBRENOME, EMAIL */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
                   <label className="block text-xs font-semibold text-slate-600 mb-1">Nome*</label>
@@ -395,212 +407,22 @@ export default function PunchClock() {
                   />
                 </div>
               </div>
-
-              {/* VINCULAR GOOGLE */}
-              <div className="pt-4 border-t border-slate-100 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-                <div>
-                  <h3 className="text-xs font-bold text-slate-800">Conta Google</h3>
-                  <p className="text-xs text-slate-400">Vincule sua conta Google para entrar com 1 clique.</p>
-                </div>
-                <button 
-                  onClick={() => alert('Vincular conta Google...')}
-                  className="border border-slate-300 rounded px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 flex items-center gap-2"
-                >
-                  <span className="font-bold text-blue-500">G</span> Vincular conta Google
-                </button>
-              </div>
-            </div>
-          </div>
-
-          {/* CARD 2: ATUALIZAR SENHA */}
-          <div className="bg-white rounded-md border border-slate-200/80 shadow-sm overflow-hidden">
-            <div className="p-4 border-b border-slate-100">
-              <h2 className="text-sm font-bold text-slate-800">Atualizar senha</h2>
-              <p className="text-xs text-slate-400">Tenha certeza de que a sua conta possui uma senha longa e complexa para se manter seguro.</p>
-            </div>
-
-            <div className="p-6 space-y-4">
-              <div>
-                <label className="block text-xs font-semibold text-slate-600 mb-1">Senha atual*</label>
-                <div className="relative max-w-sm">
-                  <input
-                    type={showCurrentPass ? "text" : "password"}
-                    value={passwords.atual}
-                    onChange={(e) => setPasswords({ ...passwords, atual: e.target.value })}
-                    className="w-full border border-slate-200 rounded px-3 py-2 text-xs text-slate-800 focus:outline-none focus:border-teal-500 pr-9"
-                  />
-                  <button 
-                    type="button" 
-                    onClick={() => setShowCurrentPass(!showCurrentPass)}
-                    className="absolute right-2.5 top-2.5 text-slate-400 hover:text-slate-600"
-                  >
-                    {showCurrentPass ? <EyeOff size={14} /> : <Eye size={14} />}
-                  </button>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-600 mb-1">Nova senha*</label>
-                  <div className="relative">
-                    <input
-                      type={showNewPass ? "text" : "password"}
-                      value={passwords.nova}
-                      onChange={(e) => setPasswords({ ...passwords, nova: e.target.value })}
-                      className="w-full border border-slate-200 rounded px-3 py-2 text-xs text-slate-800 focus:outline-none focus:border-teal-500 pr-9"
-                    />
-                    <button 
-                      type="button" 
-                      onClick={() => setShowNewPass(!showNewPass)}
-                      className="absolute right-2.5 top-2.5 text-slate-400 hover:text-slate-600"
-                    >
-                      {showNewPass ? <EyeOff size={14} /> : <Eye size={14} />}
-                    </button>
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-slate-600 mb-1">Confirmação de senha*</label>
-                  <div className="relative">
-                    <input
-                      type={showConfirmPass ? "text" : "password"}
-                      value={passwords.confirmacao}
-                      onChange={(e) => setPasswords({ ...passwords, confirmacao: e.target.value })}
-                      className="w-full border border-slate-200 rounded px-3 py-2 text-xs text-slate-800 focus:outline-none focus:border-teal-500 pr-9"
-                    />
-                    <button 
-                      type="button" 
-                      onClick={() => setShowConfirmPass(!showConfirmPass)}
-                      className="absolute right-2.5 top-2.5 text-slate-400 hover:text-slate-600"
-                    >
-                      {showConfirmPass ? <EyeOff size={14} /> : <Eye size={14} />}
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex justify-end pt-2">
-                <button 
-                  onClick={() => alert('Senha atualizada com sucesso!')}
-                  className="bg-[#11998e] hover:bg-[#0f8a80] text-white font-bold text-xs px-5 py-2.5 rounded transition"
-                >
-                  Atualizar senha
-                </button>
-              </div>
-            </div>
-          </div>
-
-          {/* CARD 3: ASSINATURA DIGITAL (5 ESTILOS CURSIVOS) */}
-          <div className="bg-white rounded-md border border-slate-200/80 shadow-sm overflow-hidden">
-            <div className="p-4 border-b border-slate-100">
-              <h2 className="text-sm font-bold text-slate-800">Assinatura digital</h2>
-              <p className="text-xs text-slate-400">Configure para assinar documentos digitalmente dentro da Coalize.</p>
-            </div>
-
-            <div className="p-6 space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-600 mb-1">Nome na assinatura*</label>
-                  <input
-                    type="text"
-                    value={signatureName}
-                    onChange={(e) => setSignatureName(e.target.value)}
-                    className="w-full border border-slate-200 rounded px-3 py-2 text-xs text-slate-800 focus:outline-none focus:border-teal-500"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-slate-600 mb-1">Estilo</label>
-                  <select
-                    value={selectedSignatureStyle}
-                    onChange={(e) => setSelectedSignatureStyle(e.target.value)}
-                    className="w-full border border-slate-200 rounded px-3 py-2 text-xs text-slate-800 focus:outline-none focus:border-teal-500 bg-white"
-                  >
-                    <option value="">Selecione um estilo</option>
-                    <option value="font-sig-1">Estilo Cursivo 1 (Dancing Script)</option>
-                    <option value="font-sig-2">Estilo Cursivo 2 (Great Vibes)</option>
-                    <option value="font-sig-3">Estilo Cursivo 3 (Caveat)</option>
-                    <option value="font-sig-4">Estilo Cursivo 4 (Sacramento)</option>
-                    <option value="font-sig-5">Estilo Cursivo 5 (Pacifico)</option>
-                  </select>
-                </div>
-              </div>
-
-              {/* PREVISÃO DAS 5 ASSINATURAS CURSIVAS */}
-              <div className="p-4 bg-slate-50 border border-slate-200 rounded-md space-y-3">
-                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">Opções de Assinatura Emendada:</span>
-                
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div 
-                    onClick={() => setSelectedSignatureStyle('font-sig-1')}
-                    className={`p-3 bg-white border rounded cursor-pointer transition flex justify-between items-center ${selectedSignatureStyle === 'font-sig-1' ? 'border-teal-500 ring-1 ring-teal-500' : 'border-slate-200 hover:border-slate-300'}`}
-                  >
-                    <span className="font-sig-1 text-lg text-slate-800">{signatureName || 'Sua assinatura'}</span>
-                    {selectedSignatureStyle === 'font-sig-1' && <Check size={14} className="text-teal-600" />}
-                  </div>
-
-                  <div 
-                    onClick={() => setSelectedSignatureStyle('font-sig-2')}
-                    className={`p-3 bg-white border rounded cursor-pointer transition flex justify-between items-center ${selectedSignatureStyle === 'font-sig-2' ? 'border-teal-500 ring-1 ring-teal-500' : 'border-slate-200 hover:border-slate-300'}`}
-                  >
-                    <span className="font-sig-2 text-xl text-slate-800">{signatureName || 'Sua assinatura'}</span>
-                    {selectedSignatureStyle === 'font-sig-2' && <Check size={14} className="text-teal-600" />}
-                  </div>
-
-                  <div 
-                    onClick={() => setSelectedSignatureStyle('font-sig-3')}
-                    className={`p-3 bg-white border rounded cursor-pointer transition flex justify-between items-center ${selectedSignatureStyle === 'font-sig-3' ? 'border-teal-500 ring-1 ring-teal-500' : 'border-slate-200 hover:border-slate-300'}`}
-                  >
-                    <span className="font-sig-3 text-2xl text-slate-800">{signatureName || 'Sua assinatura'}</span>
-                    {selectedSignatureStyle === 'font-sig-3' && <Check size={14} className="text-teal-600" />}
-                  </div>
-
-                  <div 
-                    onClick={() => setSelectedSignatureStyle('font-sig-4')}
-                    className={`p-3 bg-white border rounded cursor-pointer transition flex justify-between items-center ${selectedSignatureStyle === 'font-sig-4' ? 'border-teal-500 ring-1 ring-teal-500' : 'border-slate-200 hover:border-slate-300'}`}
-                  >
-                    <span className="font-sig-4 text-2xl text-slate-800">{signatureName || 'Sua assinatura'}</span>
-                    {selectedSignatureStyle === 'font-sig-4' && <Check size={14} className="text-teal-600" />}
-                  </div>
-
-                  <div 
-                    onClick={() => setSelectedSignatureStyle('font-sig-5')}
-                    className={`p-3 bg-white border rounded cursor-pointer transition sm:col-span-2 flex justify-between items-center ${selectedSignatureStyle === 'font-sig-5' ? 'border-teal-500 ring-1 ring-teal-500' : 'border-slate-200 hover:border-slate-300'}`}
-                  >
-                    <span className="font-sig-5 text-base text-slate-800">{signatureName || 'Sua assinatura'}</span>
-                    {selectedSignatureStyle === 'font-sig-5' && <Check size={14} className="text-teal-600" />}
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex justify-end pt-2">
-                <button 
-                  onClick={() => alert('Assinatura salva com sucesso!')}
-                  className="bg-[#11998e] hover:bg-[#0f8a80] text-white font-bold text-xs px-5 py-2.5 rounded transition"
-                >
-                  Salvar assinatura
-                </button>
-              </div>
             </div>
           </div>
         </main>
       )}
 
-      {/* VIEW 3: TELA DO MAPA DE LOCALIZAÇÃO DO BATER PONTO */}
+      {/* VIEW 3: MAPA E CONFIRMAÇÃO DE PONTO */}
       {currentView === 'map' && (
         <div className="relative flex-1 w-full bg-slate-200 overflow-hidden min-h-[calc(100vh-60px)]">
-          {/* SIMULAÇÃO DE MAPA EM BACKGROUND */}
-          <div className="absolute inset-0 bg-[#d4dadc] opacity-80 bg-[radial-gradient(#a3b1b6_1px,transparent_1px)] [background-size:16px_16px] flex items-center justify-center">
+          <div className="absolute inset-0 bg-[#d4dadc] opacity-80 flex items-center justify-center">
             <div className="relative flex items-center justify-center">
-              <div className="w-48 h-48 bg-teal-500/20 rounded-full animate-ping absolute"></div>
-              <div className="w-32 h-32 bg-teal-500/30 rounded-full border border-teal-500/50 absolute"></div>
               <div className="p-3 bg-teal-600 text-white rounded-full shadow-2xl relative z-10 animate-bounce">
                 <MapPin size={28} />
               </div>
             </div>
           </div>
 
-          {/* MODAL SOBREPOSTO NO MAPA */}
           <div className="absolute inset-0 bg-black/40 flex items-center justify-center p-4 z-20">
             {!mapSuccess ? (
               <div className="bg-white rounded-lg shadow-2xl max-w-sm w-full p-6 text-center space-y-5 animate-in zoom-in-95">
@@ -648,7 +470,6 @@ export default function PunchClock() {
                 </div>
               </div>
             ) : (
-              /* MODAL DE SUCESSO APÓS CONFIRMAR */
               <div className="bg-white rounded-lg shadow-2xl max-w-sm w-full p-8 text-center space-y-5 animate-in zoom-in-95">
                 <div className="w-14 h-14 rounded-full bg-teal-500 text-white mx-auto flex items-center justify-center shadow-md">
                   <Check size={32} />
@@ -668,7 +489,6 @@ export default function PunchClock() {
         </div>
       )}
 
-      {/* FOOTER PADRÃO */}
       <footer className="py-4 text-center text-[11px] text-slate-400 border-t border-slate-200/60 bg-slate-50 mt-auto">
         © 2026 Coalize® - Todos os direitos reservados.
       </footer>

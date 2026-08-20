@@ -34,8 +34,8 @@ import Banco from './pages/admin/Banco';
 import AdminDocumentos from './pages/admin/Documentos';
 import Ajuda from './pages/admin/Ajuda';
 
-// Import da Página de Documentos do Colaborador
-import Documentos from './pages/Documentos';
+// Import da Página de Documentos do Colaborador (caminho em minúsculo para bater com a estrutura de pastas)
+import Documentos from './pages/documentos';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();

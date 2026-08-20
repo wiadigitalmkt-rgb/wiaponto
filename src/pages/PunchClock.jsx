@@ -213,7 +213,7 @@ export default function PunchClock() {
           <div className="bg-white rounded-lg border border-slate-200/80 shadow-sm w-full max-w-2xl overflow-hidden">
             <div className="p-6 border-b border-slate-100 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
               <div className="flex items-start gap-3">
-                <div className="p-2 bg-slate-50 text-emerald-600 rounded-md">
+                <div className="p-2 bg-slate-50 text-[#ff8b00] rounded-md">
                   <Scan size={24} />
                 </div>
                 <div>
@@ -338,7 +338,7 @@ export default function PunchClock() {
         <div className="relative flex-1 w-full bg-slate-200 overflow-hidden min-h-[calc(100vh-60px)]">
           <div className="absolute inset-0 bg-[#d4dadc] opacity-80 flex items-center justify-center">
             <div className="relative flex items-center justify-center">
-              <div className="p-3 bg-teal-600 text-white rounded-full shadow-2xl relative z-10 animate-bounce">
+              <div className="p-3 bg-[#ff8b00] text-white rounded-full shadow-2xl relative z-10 animate-bounce">
                 <MapPin size={28} />
               </div>
             </div>
@@ -347,7 +347,7 @@ export default function PunchClock() {
           <div className="absolute inset-0 bg-black/40 flex items-center justify-center p-4 z-20">
             {!mapSuccess ? (
               <div className="bg-white rounded-lg shadow-2xl max-w-sm w-full p-6 text-center space-y-5 animate-in zoom-in-95">
-                <div className="w-10 h-10 rounded-full bg-teal-50 text-teal-600 mx-auto flex items-center justify-center border border-teal-100">
+                <div className="w-10 h-10 rounded-full bg-orange-50 text-[#ff8b00] mx-auto flex items-center justify-center border border-orange-100">
                   <CheckCircle2 size={22} />
                 </div>
 
@@ -377,14 +377,14 @@ export default function PunchClock() {
                   <button
                     onClick={handleConfirmPunch}
                     disabled={loading}
-                    className="w-full bg-[#11998e] hover:bg-[#0f8a80] text-white font-bold text-xs py-3 rounded uppercase tracking-wider transition shadow-sm"
+                    className="w-full bg-[#ff8b00] hover:bg-[#e07a00] text-white font-bold text-xs py-3 rounded uppercase tracking-wider transition shadow-sm"
                   >
                     {loading ? 'CONFIRMANDO...' : 'CONFIRMAR PONTO'}
                   </button>
 
                   <button
                     onClick={() => setCurrentView('home')}
-                    className="w-full text-xs font-bold text-teal-600 hover:text-teal-700 py-1"
+                    className="w-full text-xs font-bold text-[#ff8b00] hover:text-[#e07a00] py-1"
                   >
                     Cancelar Ponto
                   </button>
@@ -392,7 +392,7 @@ export default function PunchClock() {
               </div>
             ) : (
               <div className="bg-white rounded-lg shadow-2xl max-w-sm w-full p-8 text-center space-y-5 animate-in zoom-in-95">
-                <div className="w-14 h-14 rounded-full bg-teal-500 text-white mx-auto flex items-center justify-center shadow-md">
+                <div className="w-14 h-14 rounded-full bg-[#ff8b00] text-white mx-auto flex items-center justify-center shadow-md">
                   <Check size={32} />
                 </div>
 
@@ -400,7 +400,7 @@ export default function PunchClock() {
 
                 <button
                   onClick={() => setCurrentView('home')}
-                  className="w-full border-2 border-teal-500 text-teal-600 hover:bg-teal-50 font-bold text-xs py-2.5 rounded transition uppercase tracking-wider"
+                  className="w-full border-2 border-[#ff8b00] text-[#ff8b00] hover:bg-orange-50 font-bold text-xs py-2.5 rounded transition uppercase tracking-wider"
                 >
                   OK
                 </button>

@@ -9,7 +9,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 
-// Import da imagem exatamente como está salva em src/assets/logowiaponto.png
+// Import da imagem exatamente como está salva em src/assets/LOGOWIANOVO.png
 import logoImg from '@/assets/LOGOWIANOVO.png';
 
 export default function Navbar({ selectedCompany = 'PontoMax' }) {
@@ -17,19 +17,40 @@ export default function Navbar({ selectedCompany = 'PontoMax' }) {
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
 
-  // Recupera os dados gravados no storage caso o user.email do contexto venha vazio
-  const storedUser = JSON.parse(
+  // Recupera a sessão armazenada no navegador (suporta objetos simples e aninhados)
+  const storedSession = JSON.parse(
     localStorage.getItem('userSession') || sessionStorage.getItem('userSession') || '{}'
   );
+  
+  // Normaliza os dados do usuário atual combinando Contexto e Storage
+  const currentUser = storedSession?.user || storedSession || user || {};
 
-  // Define o e-mail real do usuário (prioridade: AuthContext -> Storage local)
-  const userEmail = user?.email || storedUser?.email || '';
+  // Define o e-mail com prioridade: AuthContext -> Storage Direto -> Storage Aninhado
+  const userEmail = 
+    user?.email || 
+    storedSession?.email || 
+    storedSession?.user?.email || 
+    '';
+
+  // Define o nome completo do usuário para fallback
+  const userName = 
+    user?.user_metadata?.full_name || 
+    user?.full_name || 
+    currentUser?.full_name || 
+    currentUser?.name || 
+    '';
 
   // Identificação do perfil do usuário
-  const userRole = user?.role || user?.user_metadata?.role || storedUser?.role || 'employee';
+  const userRole = 
+    user?.role || 
+    user?.user_metadata?.role || 
+    currentUser?.role || 
+    currentUser?.access_type || 
+    'employee';
+
   const isAdmin = userRole === 'admin' || userRole === 'Administrador' || userRole === 'gestor';
 
-  // Puxa as empresas vinculadas ao e-mail do usuário autenticado. 
+  // Puxa as empresas vinculadas ao usuário autenticado 
   const userCompanies = user?.companies || [user?.companyName || selectedCompany];
 
   const filteredCompanies = userCompanies.filter((company) =>
@@ -48,13 +69,17 @@ export default function Navbar({ selectedCompany = 'PontoMax' }) {
   };
 
   const getUserInitials = () => {
-    if (userEmail) {
+    if (userName && userName.trim() !== '') {
+      const parts = userName.trim().split(' ');
+      if (parts.length > 1) {
+        return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
+      }
+      return userName.substring(0, 2).toUpperCase();
+    }
+    if (userEmail && userEmail.includes('@')) {
       return userEmail.substring(0, 2).toUpperCase();
     }
-    if (storedUser?.full_name) {
-      return storedUser.full_name.substring(0, 2).toUpperCase();
-    }
-    return 'AD';
+    return 'WI';
   };
 
   return (
@@ -195,9 +220,10 @@ export default function Navbar({ selectedCompany = 'PontoMax' }) {
               {getUserInitials()}
             </div>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="bg-white text-slate-800 w-48">
+          <DropdownMenuContent align="end" className="bg-white text-slate-800 w-52">
             <div className="px-3 py-2 border-b border-slate-100 text-xs">
-              <p className="font-semibold truncate">{userEmail || 'Usuário Sem E-mail'}</p>
+              {userName && <p className="font-bold text-slate-800 truncate">{userName}</p>}
+              <p className="text-slate-500 truncate">{userEmail || 'Usuário Sem E-mail'}</p>
             </div>
             <DropdownMenuItem
               onClick={handleSignOut}

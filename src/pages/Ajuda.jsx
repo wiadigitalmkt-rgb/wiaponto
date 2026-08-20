@@ -117,7 +117,7 @@ export default function Ajuda() {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Pesquisa"
-              className="w-full pl-11 pr-4 py-3 bg-white rounded-full text-xs text-slate-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-teal-500 transition-all placeholder:text-slate-400"
+              className="w-full pl-11 pr-4 py-3 bg-white rounded-full text-xs text-slate-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-[#ff8b00]-500 transition-all placeholder:text-slate-400"
             />
           </div>
         </div>
@@ -136,7 +136,7 @@ export default function Ajuda() {
                 className={`w-full py-4 px-6 border rounded-md text-xs font-semibold tracking-wide transition-colors text-center shadow-sm uppercase ${
                   isSelected
                     ? 'bg-[#ff8b00] text-white border-[#ff8b00]'
-                    : 'border-[#ff8b00] text-[#ff8b00] hover:bg-teal-50/50'
+                    : 'border-[#ff8b00] text-[#ff8b00] hover:bg-[#ff8b00]-50/50'
                 }`}
               >
                 {cat}

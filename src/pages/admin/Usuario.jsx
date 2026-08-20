@@ -32,34 +32,34 @@ export default function Usuario() {
   const fileInputRef = useRef(null);
 
   // Estados dos Dados Principais
-const [usuarioData, setUsuarioData] = useState({
-  primeiroNome: '',
-  sobrenome: '',
-  genero: '',
-  email: '',
-  telefone: '',
-  estadoCivil: '',
-  cpf: '',
-  rg: '',
-  pisPasep: '',
-  departamento: '',
-  dataNascimento: '',
-  cargo: '',
-  salario: '',
-  dataAdmissao: '',
-  tipoContrato: '',
-  cep: '',
-  rua: '',
-  numero: '',
-  bairro: '',
-  complemento: '',
-  estado: '',
-  cidade: '',
-  idPonto: '',
-  login: '',
-  tipoAcesso: 'Colaborador',
-  statusUsuario: 'Ativo'
-});
+  const [usuarioData, setUsuarioData] = useState({
+    primeiroNome: '',
+    sobrenome: '',
+    genero: '',
+    email: '',
+    telefone: '',
+    estadoCivil: '',
+    cpf: '',
+    rg: '',
+    pisPasep: '',
+    departamento: '',
+    dataNascimento: '',
+    cargo: '',
+    salario: '',
+    dataAdmissao: '',
+    tipoContrato: '',
+    cep: '',
+    rua: '',
+    numero: '',
+    bairro: '',
+    complemento: '',
+    estado: '',
+    cidade: '',
+    idPonto: '',
+    login: '',
+    tipoAcesso: 'Colaborador',
+    statusUsuario: 'Ativo'
+  });
 
   // Estados dos Recursos Específicos
   const [customFields, setCustomFields] = useState([]);
@@ -91,39 +91,39 @@ const [usuarioData, setUsuarioData] = useState({
 
   // Carregar dados iniciais do Supabase
   useEffect(() => {
-  if (userId && supabase) {
-    async function fetchData() {
-      setLoading(true);
+    if (userId && supabase) {
+      async function fetchData() {
+        setLoading(true);
 
-      // 1. Employee Info
-      const { data: emp } = await supabase.from('Employees').select('*').eq('id', userId).single();
-      if (emp) {
-        setUsuarioData({
-          primeiroNome: emp.first_name || emp.full_name?.split(' ')[0] || '',
-          sobrenome: emp.last_name || emp.full_name?.split(' ').slice(1).join(' ') || '',
-          genero: emp.gender || '',
-          email: emp.email || '',
-          telefone: emp.phone || '',
-          estadoCivil: emp.marital_status || '',
-          cpf: emp.cpf || '',
-          rg: emp.rg || '',
-          pisPasep: emp.pis_pasep || '',
-          cargo: emp.position || '',
-          salario: emp.salary || '',
-          dataAdmissao: emp.admission_date || '',
-          cep: emp.cep || '',
-          rua: emp.street || '',
-          numero: emp.number || '',
-          bairro: emp.neighborhood || '',
-          complemento: emp.complement || '',
-          cidade: emp.city || '',
-          estado: emp.state || '',
-          idPonto: emp.point_id || '',
-          login: emp.cpf ? emp.cpf.replace(/\D/g, '') : '',
-          tipoAcesso: emp.role === 'admin' ? 'Administrador' : (emp.access_type || 'Colaborador'),
-          statusUsuario: emp.status || 'Ativo'
-        });
-      }
+        // 1. Employee Info
+        const { data: emp } = await supabase.from('Employees').select('*').eq('id', userId).single();
+        if (emp) {
+          setUsuarioData({
+            primeiroNome: emp.first_name || emp.full_name?.split(' ')[0] || '',
+            sobrenome: emp.last_name || emp.full_name?.split(' ').slice(1).join(' ') || '',
+            genero: emp.gender || '',
+            email: emp.email || '',
+            telefone: emp.phone || '',
+            estadoCivil: emp.marital_status || '',
+            cpf: emp.cpf || '',
+            rg: emp.rg || '',
+            pisPasep: emp.pis_pasep || '',
+            cargo: emp.position || '',
+            salario: emp.salary || '',
+            dataAdmissao: emp.admission_date || '',
+            cep: emp.cep || '',
+            rua: emp.street || '',
+            numero: emp.number || '',
+            bairro: emp.neighborhood || '',
+            complemento: emp.complement || '',
+            cidade: emp.city || '',
+            estado: emp.state || '',
+            idPonto: emp.point_id || '',
+            login: emp.cpf ? emp.cpf.replace(/\D/g, '') : '',
+            tipoAcesso: emp.role === 'gestor' || emp.role === 'admin' ? 'Gestor' : 'Colaborador',
+            statusUsuario: emp.status || 'Ativo'
+          });
+        }
 
         // 2. Sub-tabelas
         const { data: fields } = await supabase.from('employee_custom_fields').select('*').eq('employee_id', userId);
@@ -184,6 +184,7 @@ const [usuarioData, setUsuarioData] = useState({
         state: usuarioData.estado,
         point_id: usuarioData.idPonto,
         access_type: usuarioData.tipoAcesso,
+        role: usuarioData.tipoAcesso === 'Gestor' ? 'gestor' : 'colaborador',
         status: usuarioData.statusUsuario
       };
 
@@ -795,11 +796,8 @@ const [usuarioData, setUsuarioData] = useState({
                       onChange={handleInputChange}
                       className="w-full md:w-1/2 border rounded p-2 text-slate-800 focus:outline-none focus:border-[#ff8b00]"
                     >
-                      <option value="Colaborador">Colaborador - Permissão simples aos módulos</option>
-                      <option value="Gerente Leitor">Gerente Leitor - Visualizar usuários das filiais</option>
-                      <option value="Gerente Editor">Gerente Editor - Gerenciar usuários das filiais</option>
-                      <option value="Administrador">Administrador - Permissão total</option>
-                      <option value="Dono da Conta">Dono da Conta - Permissão total + Gestão</option>
+                      <option value="Colaborador">Colaborador</option>
+                      <option value="Gestor">Gestor</option>
                     </select>
                   </div>
 

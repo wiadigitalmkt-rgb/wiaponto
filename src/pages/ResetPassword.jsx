@@ -1,53 +1,79 @@
 import React, { useState } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Lock, Loader2, AlertTriangle } from "lucide-react";
+import { Lock, Loader2, CheckCircle } from "lucide-react";
 import AuthLayout from "@/components/AuthLayout";
+import { supabase } from "@/lib/supabase";
 
 export default function ResetPassword() {
-  const [searchParams] = useSearchParams();
-  const resetToken = searchParams.get("token");
-
+  const navigate = useNavigate();
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [success, setSuccess] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
+
     if (newPassword !== confirmPassword) {
-      setError("Passwords do not match");
+      setError("As senhas não coincidem.");
       return;
     }
+
+    if (newPassword.length < 6) {
+      setError("A senha deve ter pelo menos 6 caracteres.");
+      return;
+    }
+
     setLoading(true);
+
     try {
-      await base44.auth.resetPassword({ resetToken, newPassword });
-      window.location.href = "/login";
+      // Atualiza a senha no Supabase Auth
+      const { data, error: updateError } = await supabase.auth.updateUser({
+        password: newPassword,
+      });
+
+      if (updateError) throw updateError;
+
+      // Atualiza também na tabela Employees se o usuário estiver na sessão
+      if (data?.user?.email) {
+        await supabase
+          .from("Employees")
+          .update({ password_hash: newPassword })
+          .eq("email", data.user.email);
+      }
+
+      setSuccess(true);
     } catch (err) {
-      setError(err.message || "Failed to reset password");
+      console.error("Erro ao redefinir senha:", err);
+      setError(err.message || "Falha ao redefinir a senha. O link pode ter expirado.");
     } finally {
       setLoading(false);
     }
   };
 
-  if (!resetToken) {
+  if (success) {
     return (
       <AuthLayout
-        icon={AlertTriangle}
-        title="Invalid reset link"
-        subtitle="This password reset link is missing or invalid"
-        footer={
-          <Link to="/forgot-password" className="text-primary font-medium hover:underline">
-            Request a new link
-          </Link>
-        }
+        icon={CheckCircle}
+        title="Senha redefinida!"
+        subtitle="Sua nova senha foi atualizada com sucesso."
       >
-        <p className="text-sm text-foreground text-center">
-          The link you used appears to be incomplete. Please request a new password reset email.
-        </p>
+        <div className="space-y-4 text-center">
+          <p className="text-sm text-muted-foreground">
+            Você já pode acessar sua conta utilizando as novas credenciais.
+          </p>
+          <Button
+            onClick={() => navigate("/login")}
+            className="w-full h-12 font-medium bg-[#00a887] hover:bg-[#008f73]"
+          >
+            Ir para o Login
+          </Button>
+        </div>
       </AuthLayout>
     );
   }
@@ -55,8 +81,8 @@ export default function ResetPassword() {
   return (
     <AuthLayout
       icon={Lock}
-      title="New password"
-      subtitle="Enter your new password below"
+      title="Nova senha"
+      subtitle="Digite sua nova senha abaixo para atualizar seu acesso"
     >
       {error && (
         <div className="mb-4 p-3 rounded-lg bg-destructive/10 text-destructive text-sm">
@@ -65,7 +91,7 @@ export default function ResetPassword() {
       )}
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="space-y-2">
-          <Label htmlFor="password">New Password</Label>
+          <Label htmlFor="password">Nova Senha</Label>
           <div className="relative">
             <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" aria-hidden="true" />
             <Input
@@ -82,7 +108,7 @@ export default function ResetPassword() {
           </div>
         </div>
         <div className="space-y-2">
-          <Label htmlFor="confirm">Confirm Password</Label>
+          <Label htmlFor="confirm">Confirmar Nova Senha</Label>
           <div className="relative">
             <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" aria-hidden="true" />
             <Input
@@ -97,14 +123,14 @@ export default function ResetPassword() {
             />
           </div>
         </div>
-        <Button type="submit" className="w-full h-12 font-medium" disabled={loading}>
+        <Button type="submit" className="w-full h-12 font-medium bg-[#00a887] hover:bg-[#008f73]" disabled={loading}>
           {loading ? (
             <>
               <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-              Resetting...
+              Atualizando...
             </>
           ) : (
-            "Reset password"
+            "Redefinir senha"
           )}
         </Button>
       </form>

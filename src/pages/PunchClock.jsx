@@ -232,7 +232,7 @@ export default function PunchClock() {
               <button
                 onClick={handleOpenMap}
                 disabled={loading}
-                className="w-full bg-[#11998e] hover:bg-[#0f8a80] text-white font-bold text-xs py-3.5 rounded-md transition duration-150 shadow-sm tracking-wide disabled:opacity-50"
+                className="w-full bg-[#fc9314] hover:bg-[#ff8b00] text-white font-bold text-xs py-3.5 rounded-md transition duration-150 shadow-sm tracking-wide disabled:opacity-50"
               >
                 Bater ponto
               </button>
@@ -285,7 +285,7 @@ export default function PunchClock() {
                       profileData.initials
                     )}
                   </div>
-                  <label className="absolute bottom-0 right-0 p-1.5 bg-[#11998e] text-white rounded-full cursor-pointer hover:bg-[#0f8a80] transition shadow">
+                  <label className="absolute bottom-0 right-0 p-1.5 bg-[#fc9314] text-white rounded-full cursor-pointer hover:bg-[#ff8b00] transition shadow">
                     <Upload size={12} />
                     <input type="file" accept="image/*" onChange={handleAvatarChange} className="hidden" />
                   </label>

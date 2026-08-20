@@ -19,66 +19,40 @@ export default function Dashboard() {
   const [selectedCompany, setSelectedCompany] = useState('Sua Empresa');
   const [activeModal, setActiveModal] = useState(null);
 
-  // Estados dinâmicos do Card Ponto Eletrônico
-  const [totalEmployees, setTotalEmployees] = useState(0);
-  const [presentEmployeesCount, setPresentEmployeesCount] = useState(0);
-  const [pendingRequestsCount, setPendingRequestsCount] = useState(0);
-  const [loadingPonto, setLoadingPonto] = useState(true);
-
-  // Função para pegar a data de hoje no fuso YYYY-MM-DD
-  const getTodayDateString = () => {
-    const today = new Date();
-    const year = today.getFullYear();
-    const month = String(today.getMonth() + 1).padStart(2, '0');
-    const day = String(today.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
-  };
+  // Estados dinâmicos do Ponto Eletrônico Hoje
+  const [pontoHoje, setPontoHoje] = useState({
+    presentes: 0,
+    totalColaboradores: 0,
+    pendentesJustificativa: 0
+  });
 
   useEffect(() => {
-    async function loadDashboardPontoData() {
-      setLoadingPonto(true);
-      const todayStr = getTodayDateString();
+    async function loadTodayStats() {
+      if (!supabase) return;
 
-      try {
-        // 1. Buscar total de colaboradores cadastrados
-        const { count: empCount, error: empErr } = await supabase
-          .from('Employees')
-          .select('*', { count: 'exact', head: true });
+      const todayStr = new Date().toISOString().split('T')[0];
 
-        if (!empErr && empCount !== null) {
-          setTotalEmployees(empCount);
-        }
+      // Busca total de funcionários
+      const { count: totalEmp } = await supabase
+        .from('Employees')
+        .select('*', { count: 'exact', head: true });
 
-        // 2. Buscar registros de ponto de hoje
-        const { data: todayRecords, error: recErr } = await supabase
-          .from('time_records')
-          .select('employee_id')
-          .eq('record_date', todayStr);
+      // Busca registros de ponto do dia
+      const { data: todayRecords } = await supabase
+        .from('time_records')
+        .select('employee_id')
+        .eq('record_date', todayStr);
 
-        if (!recErr && todayRecords) {
-          // Extrai o número de funcionários únicos que bateram ponto hoje
-          const uniqueEmployees = new Set(todayRecords.map(r => r.employee_id));
-          setPresentEmployeesCount(uniqueEmployees.size);
-        }
+      const uniqueEmployeesToday = new Set(todayRecords?.map(r => r.employee_id)).size;
 
-        // 3. Buscar solicitações / justificativas pendentes criadas hoje
-        const { count: reqCount, error: reqErr } = await supabase
-          .from('time_requests')
-          .select('*', { count: 'exact', head: true })
-          .eq('status', 'Pendente')
-          .gte('created_at', `${todayStr}T00:00:00`);
-
-        if (!reqErr && reqCount !== null) {
-          setPendingRequestsCount(reqCount);
-        }
-      } catch (err) {
-        console.error('Erro ao carregar dados do ponto no dashboard:', err);
-      } finally {
-        setLoadingPonto(false);
-      }
+      setPontoHoje({
+        presentes: uniqueEmployeesToday,
+        totalColaboradores: totalEmp || 0,
+        pendentesJustificativa: 0
+      });
     }
 
-    loadDashboardPontoData();
+    loadTodayStats();
   }, []);
 
   const modules = [
@@ -123,8 +97,6 @@ export default function Dashboard() {
       <Navbar selectedCompany={selectedCompany} />
 
       <main className="max-w-7xl mx-auto px-6 py-8 space-y-8">
-
-        {/* Grid de Cards de Módulos */}
         <div>
           <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-4">Módulos de Gestão</h3>
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
@@ -182,7 +154,7 @@ export default function Dashboard() {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             
-            {/* Card Ponto Eletrônico */}
+            {/* CARD PONTO ELETRÔNICO HOJE */}
             <div className="bg-white rounded-lg border border-slate-200/80 shadow-sm flex flex-col justify-between overflow-hidden">
               <div className="p-6 pb-0">
                 <div className="flex items-center justify-between mb-4">
@@ -192,13 +164,13 @@ export default function Dashboard() {
                   <div className="flex items-center justify-between p-3 rounded-md bg-slate-50 text-xs">
                     <span className="font-semibold text-slate-600">Presença Registrada</span>
                     <span className="font-bold text-amber-600 bg-amber-50 px-2 py-1 rounded-md">
-                      {loadingPonto ? 'Carregando...' : `${presentEmployeesCount} / ${totalEmployees} Funcionários`}
+                      {pontoHoje.presentes} / {pontoHoje.totalColaboradores} Funcionários
                     </span>
                   </div>
                   <div className="flex items-center justify-between p-3 rounded-md bg-slate-50 text-xs">
                     <span className="font-semibold text-slate-600">Atrasos / Justificativas</span>
                     <span className="font-bold text-amber-600 bg-amber-50 px-2 py-1 rounded-md">
-                      {loadingPonto ? 'Carregando...' : `${pendingRequestsCount} Pendente${pendingRequestsCount !== 1 ? 's' : ''}`}
+                      {pontoHoje.pendentesJustificativa} Pendentes
                     </span>
                   </div>
                 </div>
@@ -236,117 +208,8 @@ export default function Dashboard() {
 
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            
-            {/* Card Admissão */}
-            <div className="bg-white rounded-lg border border-slate-200/80 shadow-sm flex flex-col justify-between overflow-hidden">
-              <div className="p-6">
-                <h4 className="font-bold text-[#1a2c6a] text-base mb-6">Admissão</h4>
-                
-                <div className="flex flex-col items-center justify-center text-center py-4">
-                  <div className="w-20 h-28 bg-[#1a2c6a] rounded-md shadow-md border-2 border-slate-300 flex flex-col items-center justify-between p-2 mb-4 text-white">
-                    <div className="w-6 h-6 rounded-full border border-amber-300 flex items-center justify-center text-[8px] font-bold text-amber-300">
-                      ★
-                    </div>
-                    <div className="text-[7px] tracking-wider uppercase text-center font-bold">
-                      Carteira de<br/>Trabalho
-                    </div>
-                    <div className="w-full h-1 bg-amber-300/40 rounded"></div>
-                  </div>
-                  <p className="text-xs font-semibold text-slate-500">Nenhuma admissão em andamento.</p>
-                </div>
-              </div>
-
-              <div className="p-4 border-t border-slate-100 bg-slate-50/50">
-                <button className="text-xs font-bold text-[#ff8b00] hover:underline">
-                  Ver admissões
-                </button>
-              </div>
-            </div>
-
-            {/* Card Saldo de Férias */}
-            <div className="bg-white rounded-lg border border-slate-200/80 shadow-sm flex flex-col justify-between overflow-hidden">
-              <div className="p-6 pb-0">
-                <h4 className="font-bold text-[#1a2c6a] text-base mb-4">Saldo de Férias</h4>
-                
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left text-xs">
-                    <thead>
-                      <tr className="border-b border-slate-200 text-[10px] font-bold text-slate-500 uppercase tracking-wider">
-                        <th className="py-2 px-1">Usuário</th>
-                        <th className="py-2 px-1">Vencimento</th>
-                        <th className="py-2 px-1 text-right">Saldo</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
-                      <tr>
-                        <td className="py-3 px-1 font-bold text-[#1a2c6a]">WIA DIGITAL</td>
-                        <td className="py-3 px-1">31/07/2027</td>
-                        <td className="py-3 px-1 text-right font-bold">0</td>
-                      </tr>
-                      <tr>
-                        <td className="py-3 px-1 font-bold text-[#1a2c6a]">Joquebede de Oliveira</td>
-                        <td className="py-3 px-1">05/08/2027</td>
-                        <td className="py-3 px-1 text-right font-bold">0</td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-
-              <div className="p-4 border-t border-slate-100 mt-6 bg-slate-50/50">
-                <button className="text-xs font-bold text-[#ff8b00] hover:underline">
-                  Ver todos os saldos
-                </button>
-              </div>
-            </div>
-
-          </div>
-
         </div>
-
       </main>
-
-      {/* POPUP / MODAL: PERÍODO DE TESTE ENCERRADO */}
-      {activeModal && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full overflow-hidden flex flex-col md:flex-row relative animate-in fade-in zoom-in duration-200">
-            <button
-              onClick={() => setActiveModal(null)}
-              className="absolute top-3 right-3 text-slate-400 hover:text-slate-600 bg-white/80 hover:bg-white rounded-full p-1.5 transition z-10 shadow-sm"
-            >
-              <X size={18} />
-            </button>
-
-            <div className="md:w-1/2 h-56 md:h-auto relative bg-slate-100">
-              <img
-                src={modalImages[activeModal]}
-                alt="Banner do recurso"
-                className="w-full h-full object-cover"
-              />
-            </div>
-
-            <div className="md:w-1/2 p-8 flex flex-col justify-center text-left space-y-4">
-              <h3 className="text-lg font-bold text-slate-800 leading-snug">
-                Período de teste encerrado
-              </h3>
-
-              <p className="text-xs text-slate-500 leading-relaxed">
-                O período de teste deste recurso já terminou. Para ativar na sua empresa, entre em contato com o suporte comercial.
-              </p>
-
-              <div className="pt-2">
-                <button
-                  onClick={() => window.open('https://wa.me/5500000000000', '_blank')}
-                  className="w-full bg-[#ff7614] hover:bg-[#ff7614] text-white text-xs font-bold py-3 px-4 rounded-md transition shadow-md hover:shadow-lg text-center"
-                >
-                  Falar com o comercial
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

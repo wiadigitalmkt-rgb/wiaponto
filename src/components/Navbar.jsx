@@ -17,9 +17,17 @@ export default function Navbar({ selectedCompany = 'PontoMax' }) {
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
 
+  // Recupera os dados gravados no storage caso o user.email do contexto venha vazio
+  const storedUser = JSON.parse(
+    localStorage.getItem('userSession') || sessionStorage.getItem('userSession') || '{}'
+  );
+
+  // Define o e-mail real do usuário (prioridade: AuthContext -> Storage local)
+  const userEmail = user?.email || storedUser?.email || '';
+
   // Identificação do perfil do usuário
-  const userRole = user?.role || user?.user_metadata?.role || 'employee';
-  const isAdmin = userRole === 'admin' || userRole === 'Administrador';
+  const userRole = user?.role || user?.user_metadata?.role || storedUser?.role || 'employee';
+  const isAdmin = userRole === 'admin' || userRole === 'Administrador' || userRole === 'gestor';
 
   // Puxa as empresas vinculadas ao e-mail do usuário autenticado. 
   const userCompanies = user?.companies || [user?.companyName || selectedCompany];
@@ -31,6 +39,8 @@ export default function Navbar({ selectedCompany = 'PontoMax' }) {
   const handleSignOut = async () => {
     try {
       if (signOut) await signOut();
+      localStorage.removeItem('userSession');
+      sessionStorage.removeItem('userSession');
       navigate('/login');
     } catch (error) {
       console.error('Erro ao sair:', error);
@@ -38,8 +48,13 @@ export default function Navbar({ selectedCompany = 'PontoMax' }) {
   };
 
   const getUserInitials = () => {
-    if (!user || !user.email) return 'AD';
-    return user.email.substring(0, 2).toUpperCase();
+    if (userEmail) {
+      return userEmail.substring(0, 2).toUpperCase();
+    }
+    if (storedUser?.full_name) {
+      return storedUser.full_name.substring(0, 2).toUpperCase();
+    }
+    return 'AD';
   };
 
   return (
@@ -182,7 +197,7 @@ export default function Navbar({ selectedCompany = 'PontoMax' }) {
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="bg-white text-slate-800 w-48">
             <div className="px-3 py-2 border-b border-slate-100 text-xs">
-              <p className="font-semibold truncate">{user?.email || 'usuario@ponto.com'}</p>
+              <p className="font-semibold truncate">{userEmail || 'Usuário Sem E-mail'}</p>
             </div>
             <DropdownMenuItem
               onClick={handleSignOut}

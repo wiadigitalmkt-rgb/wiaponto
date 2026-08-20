@@ -135,8 +135,8 @@ export default function Ajuda() {
                 onClick={() => setSelectedCategory(isSelected ? null : cat)}
                 className={`w-full py-4 px-6 border rounded-md text-xs font-semibold tracking-wide transition-colors text-center shadow-sm uppercase ${
                   isSelected
-                    ? 'bg-[#26a69a] text-white border-[#26a69a]'
-                    : 'border-[#26a69a] text-[#00897b] hover:bg-teal-50/50'
+                    ? 'bg-[#ff8b00] text-white border-[#ff8b00]'
+                    : 'border-[#ff8b00] text-[#ff8b00] hover:bg-teal-50/50'
                 }`}
               >
                 {cat}
@@ -168,7 +168,7 @@ export default function Ajuda() {
               filteredArticles.map((item, index) => (
                 <div key={index} className="py-4 flex justify-between items-start">
                   <div className="space-y-1">
-                    <span className="text-[10px] font-bold tracking-wider text-[#00897b] uppercase">
+                    <span className="text-[10px] font-bold tracking-wider text-[#ff8b00] uppercase">
                       {item.category || 'GERAL'}
                     </span>
                     <h3 className="text-xs text-teal-600 font-medium hover:underline cursor-pointer">

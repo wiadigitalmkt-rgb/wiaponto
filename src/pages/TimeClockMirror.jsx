@@ -1,160 +1,923 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
 import Navbar from '@/components/Navbar';
 import { supabase } from '@/lib/supabase';
-import { ChevronRight, Clock, FileText, Calendar } from 'lucide-react';
+import { 
+  Clock, 
+  FileText, 
+  ChevronRight, 
+  ChevronDown,
+  Calendar,
+  ExternalLink,
+  MessageSquare,
+  Moon,
+  Monitor,
+  CheckCircle2,
+  X,
+  History,
+  Search
+} from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
-export default function TimeClockMirror() {
-  const navigate = useNavigate();
+// ============================================================================
+// FUNÇÕES UTILITÁRIAS DE CÁLCULO DE HORAS
+// ============================================================================
+
+const timeToMinutes = (timeStr) => {
+  if (!timeStr || timeStr === '-' || timeStr.trim() === '') return null;
+  const parts = timeStr.trim().split(':');
+  if (parts.length < 2) return null;
+  const h = parseInt(parts[0], 10);
+  const m = parseInt(parts[1], 10);
+  if (isNaN(h) || isNaN(m)) return null;
+  return h * 60 + m;
+};
+
+const minutesToHHMM = (mins) => {
+  if (mins === null || isNaN(mins) || mins < 0) return '-';
+  const h = Math.floor(mins / 60);
+  const m = mins % 60;
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+};
+
+const minutesToDisplayHours = (mins) => {
+  if (!mins || mins <= 0) return '0h';
+  const h = Math.floor(mins / 60);
+  const m = mins % 60;
+  if (m === 0) return `${h}h`;
+  return `${h}h ${m}min`;
+};
+
+const minutesToFullDisplay = (mins) => {
+  if (mins === null || isNaN(mins) || mins < 0) return '00h 00min';
+  const h = Math.floor(mins / 60);
+  const m = mins % 60;
+  return `${String(h).padStart(2, '0')}h ${String(m).padStart(2, '0')}min`;
+};
+
+const processDayRecord = (record, targetDailyMinutes = 480) => {
+  let totalDayMinutes = 0;
+  let nightMinutes = 0;
+
+  const newBatidas = record.batidas.map((b) => {
+    const mEnt = timeToMinutes(b.entrada);
+    let mSai = timeToMinutes(b.saida);
+
+    if (mEnt !== null && mSai !== null) {
+      if (mSai < mEnt || b.isNight) {
+        mSai += 1440;
+      }
+      const diff = Math.max(0, mSai - mEnt);
+      totalDayMinutes += diff;
+
+      if (b.isNight) {
+        nightMinutes += diff;
+      }
+
+      return { ...b, saldo: minutesToHHMM(diff) };
+    }
+    return { ...b, saldo: '-' };
+  });
+
+  const trabalhadoStr = minutesToDisplayHours(totalDayMinutes);
+  const extraMinutes = Math.max(0, totalDayMinutes - targetDailyMinutes);
+  const horaExtraStr = minutesToDisplayHours(extraMinutes);
+
+  return {
+    ...record,
+    batidas: newBatidas,
+    trabalhado: trabalhadoStr,
+    horaExtra: horaExtraStr,
+    totalDayMinutes,
+    extraMinutes,
+    nightMinutes
+  };
+};
+
+export default function AdminPonto() {
+  const [activeTab, setActiveTab] = useState('pontos'); // 'pontos' | 'resumo'
   const [selectedMonth, setSelectedMonth] = useState('Agosto/2026');
-  const [loading, setLoading] = useState(false);
+  
+  // Lista dinâmica de colaboradores do Supabase
+  const [employees, setEmployees] = useState([]);
+  const [selectedUser, setSelectedUser] = useState(null); // Objeto do colaborador selecionado
+  const [userSearchTerm, setUserSearchTerm] = useState('');
 
-  // Registros de exemplo/fallback
-  const [records, setRecords] = useState([
-    { id: 1, date: '06/08/2026 - Quinta-feira', horaExtra: '0h', trabalhado: '7h' },
-    { id: 2, date: '07/08/2026 - Sexta-feira', horaExtra: '1h', trabalhado: '9h' },
-    { id: 3, date: '08/08/2026 - Sábado', horaExtra: '0h', trabalhado: '0h' },
-    { id: 4, date: '09/08/2026 - Domingo', horaExtra: '0h', trabalhado: '0h' },
-  ]);
+  const [expandedRow, setExpandedRow] = useState(null);
+  const [toastMessage, setToastMessage] = useState(null);
+  const [showHistoryModal, setShowHistoryModal] = useState(false);
+  const [showJornadaModal, setShowJornadaModal] = useState(false);
 
+  const [editingRowKey, setEditingRowKey] = useState(null);
+  const [editFormData, setEditFormData] = useState({
+    isNight: false,
+    obs: '',
+    entrada: '',
+    saida: ''
+  });
+
+  const [registros, setRegistros] = useState([]);
+
+  // 1. CARREGAR COLABORADORES DO SUPABASE
   useEffect(() => {
-    fetchRecords();
-  }, [selectedMonth]);
-
-  const fetchRecords = async () => {
-    if (!supabase) return;
-    try {
-      setLoading(true);
+    async function loadEmployees() {
       const { data, error } = await supabase
-        .from('time_records')
+        .from('Employees')
         .select('*')
-        .order('record_date', { ascending: false });
+        .order('full_name', { ascending: true });
 
       if (!error && data && data.length > 0) {
-        // Mapeia registros reais se existirem no banco de dados
+        setEmployees(data);
+        setSelectedUser(data[0]); // Seleciona o primeiro colaborador cadastrado
       }
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setLoading(false);
+    }
+    loadEmployees();
+  }, []);
+
+  // 2. BUSCAR PONTOS DO COLABORADOR SELECCIONADO DO SUPABASE
+  const fetchRecordsFromSupabase = async () => {
+    if (!selectedUser) return;
+
+    const { data, error } = await supabase
+      .from('time_records')
+      .select('*')
+      .eq('employee_id', selectedUser.id)
+      .order('record_date', { ascending: false });
+
+    if (!error && data) {
+      // Agrupa os registros por data
+      const grouped = data.reduce((acc, curr) => {
+        const dateKey = curr.record_date;
+        if (!acc[dateKey]) {
+          acc[dateKey] = {
+            id: dateKey,
+            data: dateKey,
+            batidas: []
+          };
+        }
+        acc[dateKey].batidas.push({
+          db_id: curr.id,
+          entrada: curr.entrada || '-',
+          saida: curr.saida || '-',
+          isNight: curr.is_night || false,
+          obs: curr.obs || ''
+        });
+        return acc;
+      }, {});
+
+      const processed = Object.values(grouped).map((rec) => processDayRecord(rec));
+      setRegistros(processed);
     }
   };
 
-  return (
-    <div className="min-h-screen bg-[#eef2f5] flex flex-col font-sans text-slate-700">
-      <Navbar selectedCompany="Empresa Teste 11738" userInitials="JD" userName="Joquebede" />
+  useEffect(() => {
+    fetchRecordsFromSupabase();
+  }, [selectedUser]);
 
-      <div className="flex-1 max-w-7xl w-full mx-auto p-6 flex gap-8">
-        {/* MENU LATERAL DO COLABORADOR */}
-        <aside className="w-56 shrink-0 space-y-6">
-          <div className="space-y-4">
-            <h2 className="text-xs font-bold text-slate-800 uppercase tracking-wider">
-              PONTO ELETRÔNICO
-            </h2>
+  const filteredUsers = employees.filter(u => 
+    u.full_name.toLowerCase().includes(userSearchTerm.toLowerCase())
+  );
 
-            <div className="flex items-center gap-2.5 px-2 py-1.5">
-              <div className="w-7 h-7 rounded-full bg-slate-200 text-slate-700 flex items-center justify-center font-bold text-[11px]">
-                JD
-              </div>
-              <span className="text-xs font-bold text-slate-800 truncate">
-                Joquebede de Oliv...
-              </span>
-            </div>
+  const showToast = (msg) => {
+    setToastMessage(msg);
+    setTimeout(() => {
+      setToastMessage(null);
+    }, 3500);
+  };
+
+  const toggleRow = (id) => {
+    setExpandedRow(expandedRow === id ? null : id);
+  };
+
+  // REMOVER PONTO DO SUPABASE
+  const handleRemoveBatida = async (itemId, batidaIdx, dbId) => {
+    if (dbId) {
+      const { error } = await supabase.from('time_records').delete().eq('id', dbId);
+      if (error) {
+        alert('Erro ao remover: ' + error.message);
+        return;
+      }
+    }
+    fetchRecordsFromSupabase();
+    showToast('Ponto removido com sucesso!');
+  };
+
+  const handleStartEdit = (itemId, idx, batida) => {
+    setEditingRowKey(`${itemId}-${idx}`);
+    setEditFormData({
+      isNight: batida.isNight || false,
+      obs: batida.obs || '',
+      entrada: batida.entrada === '-' ? '' : batida.entrada,
+      saida: batida.saida === '-' ? '' : batida.saida
+    });
+  };
+
+  // SALVAR / EDITAR PONTO NO SUPABASE
+  const handleSaveEdit = async (itemId, batidaIdx, dbId) => {
+    if (dbId) {
+      const { error } = await supabase
+        .from('time_records')
+        .update({
+          entrada: editFormData.entrada.trim() || '-',
+          saida: editFormData.saida.trim() || '-',
+          is_night: editFormData.isNight,
+          obs: editFormData.obs
+        })
+        .eq('id', dbId);
+
+      if (error) {
+        alert('Erro ao salvar: ' + error.message);
+        return;
+      }
+    }
+    setEditingRowKey(null);
+    fetchRecordsFromSupabase();
+    showToast('Ponto atualizado com sucesso!');
+  };
+
+  // ADICIONAR NOVO PONTO NO SUPABASE
+  const handleAddPointToDb = async (recordDate) => {
+    if (!selectedUser) return;
+    const { error } = await supabase.from('time_records').insert([
+      {
+        employee_id: selectedUser.id,
+        record_date: recordDate,
+        entrada: '08:00',
+        saida: '12:00',
+        is_night: false,
+        obs: ''
+      }
+    ]);
+
+    if (error) {
+      alert('Erro ao adicionar: ' + error.message);
+    } else {
+      fetchRecordsFromSupabase();
+      showToast('Ponto adicionado com sucesso!');
+    }
+  };
+
+  const totalGeralTrabalhadoMinutos = registros.reduce((acc, curr) => acc + (curr.totalDayMinutes || 0), 0);
+  const totalGeralExtraMinutos = registros.reduce((acc, curr) => acc + (curr.extraMinutes || 0), 0);
+  const totalGeralNoturnoMinutos = registros.reduce((acc, curr) => acc + (curr.nightMinutes || 0), 0);
+  const totalGeralDiurnoMinutos = Math.max(0, totalGeralTrabalhadoMinutos - totalGeralNoturnoMinutos - totalGeralExtraMinutos);
+
+  const handleDownloadPDF = () => {
+    window.print();
+  };
+
+  // Componente Reutilizável do Seletor Flutuante de Usuário (Estilo Coalize)
+  const UserDropdownSelector = () => (
+    <div className="flex items-center space-x-2">
+      <span className="text-xs font-semibold text-slate-600">Usuário</span>
+      <DropdownMenu modal={false}>
+        <DropdownMenuTrigger className="flex items-center justify-between border border-slate-300 rounded px-3 py-1 bg-white text-xs text-slate-700 hover:bg-[#1a2c6a] hover:text-white transition-colors min-w-[170px] focus:outline-none shadow-xs">
+          <span className="truncate pr-2">{selectedUser ? selectedUser.full_name : 'Carregando...'}...</span>
+          <ChevronDown className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="start" className="w-56 p-1.5 bg-white rounded-md shadow-xl border border-slate-200 z-50">
+          {/* Campo de Busca */}
+          <div className="relative mb-1">
+            <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
+            <input 
+              type="text"
+              placeholder="Buscar usuário..."
+              value={userSearchTerm}
+              onChange={(e) => setUserSearchTerm(e.target.value)}
+              className="w-full pl-8 pr-2 py-1 text-xs border border-slate-200 rounded text-slate-700 focus:outline-none focus:border-[#2a3c7e]"
+              onClick={(e) => e.stopPropagation()}
+            />
           </div>
 
-          <nav className="space-y-1">
-            <button
-              onClick={() => navigate('/espelho')}
-              className="w-full flex items-center gap-2.5 px-3 py-2 rounded text-xs font-semibold bg-white text-teal-600 shadow-sm border border-slate-200/60 cursor-pointer"
-            >
-              <Clock className="w-4 h-4 text-teal-600" />
-              <span>Pontos registrados</span>
-            </button>
+          {/* Lista de Usuários */}
+          <div className="max-h-48 overflow-y-auto space-y-0.5">
+            {filteredUsers.length > 0 ? (
+              filteredUsers.map((user) => (
+                <DropdownMenuItem 
+                  key={user.id}
+                  onClick={() => {
+                    setSelectedUser(user);
+                    setUserSearchTerm('');
+                  }}
+                  className={`cursor-pointer text-xs px-2.5 py-2 rounded transition-colors ${
+                    selectedUser && selectedUser.id === user.id
+                      ? 'bg-[#2a3c7e] text-white font-medium hover:bg-[#1f2d60]' 
+                      : 'text-slate-700 hover:bg-slate-100'
+                  }`}
+                >
+                  {user.full_name}
+                </DropdownMenuItem>
+              ))
+            ) : (
+              <div className="px-2 py-3 text-xs text-center text-slate-400">
+                Nenhum usuário encontrado
+              </div>
+            )}
+          </div>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </div>
+  );
 
-            <button
-              onClick={() => navigate('/solicitacoes')}
-              className="w-full flex items-center gap-2.5 px-3 py-2 rounded text-xs font-medium text-slate-600 hover:bg-slate-200/50 transition cursor-pointer"
-            >
-              <FileText className="w-4 h-4 text-slate-500" />
-              <span>Solicitações</span>
-            </button>
-          </nav>
+  return (
+    <div className="min-h-screen bg-[#edf2f7] flex flex-col font-sans text-slate-700 relative">
+      <Navbar selectedCompany="Sua Empresa" />
+
+      <div className="flex flex-1">
+        {/* Sidebar */}
+        <aside className="w-64 min-w-[240px] max-w-[280px] p-5 flex flex-col space-y-6 bg-transparent shrink-0">
+          <div>
+            <h1 className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-4">
+              PONTO ELETRÔNICO
+            </h1>
+            
+            <div className="flex items-center justify-between p-2 rounded-lg hover:bg-slate-200/50 cursor-pointer text-slate-600 mb-4 transition-colors">
+              <div className="flex items-center space-x-2.5 min-w-0">
+                <div className="w-7 h-7 rounded-full bg-slate-200/80 flex items-center justify-center text-xs font-bold text-slate-700 shrink-0">
+                  {selectedUser ? selectedUser.full_name.substring(0, 2).toUpperCase() : '--'}
+                </div>
+                <span className="text-sm font-medium max-md:truncate">
+                  {selectedUser ? selectedUser.full_name.split(' ')[0] : 'Usuário'}
+                </span>
+              </div>
+              <ExternalLink className="w-3.5 h-3.5 text-slate-400 shrink-0 ml-1" />
+            </div>
+
+            <nav className="space-y-1">
+              <button 
+                onClick={() => setActiveTab('pontos')}
+                className={`w-full flex items-center space-x-3 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                  activeTab === 'pontos'
+                    ? 'bg-white text-slate-700 hover:bg-[#1a2c6a] hover:text-white border-l-4 border-[#ff8b00] shadow-sm font-semibold'
+                    : 'bg-white text-slate-500 hover:bg-[#1a2c6a] hover:text-white'
+                }`}
+              >
+                <Clock className="w-4 h-4 shrink-0" />
+                <span className="whitespace-nowrap max-md:truncate">Pontos registrados</span>
+              </button>
+              
+              <button 
+                onClick={() => setActiveTab('resumo')}
+                className={`w-full flex items-center space-x-3 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                  activeTab === 'resumo'
+                    ? 'bg-white text-slate-700 hover:bg-[#1a2c6a] hover:text-white border-l-4 border-[#ff8b00] shadow-sm font-semibold'
+                    : 'bg-white text-slate-500 hover:bg-[#1a2c6a] hover:text-white'
+                }`}
+              >
+                <FileText className="w-4 h-4 shrink-0" />
+                <span className="whitespace-nowrap max-md:truncate">Resumo das horas</span>
+              </button>
+            </nav>
+          </div>
         </aside>
 
-        {/* ÁREA PRINCIPAL / TABELA DE PONTOS */}
-        <main className="flex-1 space-y-3">
-          {/* BREADCRUMB */}
-          <div className="text-xs text-slate-500 flex items-center gap-1.5">
-            <Link to="/ponto" className="hover:text-teal-600 transition">
-              Painel
-            </Link>
-            <ChevronRight size={12} />
-            <span className="text-teal-600 font-medium">Pontos registrados</span>
+        {/* Conteúdo Central */}
+        <main className="flex-1 p-6 pl-0">
+          <div className="flex justify-between items-center mb-3 text-xs text-slate-500">
+            <div>
+              <a 
+                href="/admin" 
+                className="hover:text-[#ff8b00] hover:underline transition-colors font-medium cursor-pointer"
+              >
+                Painel
+              </a> 
+              <ChevronRight className="w-3 h-3 inline mx-1" />{' '}
+              <span className="text-[#ff8b00] font-medium">
+                {activeTab === 'pontos' ? 'Pontos registrados' : 'Resumo das horas'}
+              </span>
+            </div>
+            
+            <div className="flex items-center space-x-2">
+              <span>Departamento</span>
+              <select className="border border-slate-300 rounded px-2 py-1 bg-white text-xs font-medium focus:outline-none shadow-sm">
+                <option>Todos</option>
+              </select>
+            </div>
           </div>
 
-          {/* CARD DO ESPELHO DE PONTO */}
-          <div className="bg-white rounded-md border border-slate-200 shadow-sm overflow-hidden">
-            {/* CABEÇALHO DO CARD */}
-            <div className="p-4 border-b border-slate-200 flex justify-between items-center">
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-bold text-slate-700">Mês</span>
-                <select
-                  value={selectedMonth}
-                  onChange={(e) => setSelectedMonth(e.target.value)}
-                  className="border border-slate-200 rounded px-3 py-1 text-xs text-slate-700 bg-white focus:outline-none focus:ring-1 focus:ring-teal-500 font-medium"
+          {/* CONTEÚDO DA ABA: PONTOS REGISTRADOS */}
+          {activeTab === 'pontos' && (
+            <div className="bg-white rounded-lg shadow-sm border border-slate-200/80">
+              <div className="p-3.5 border-b border-slate-200 flex flex-wrap items-center justify-between gap-4">
+                <div className="flex items-center space-x-4 text-xs font-semibold text-slate-600">
+                  <div className="flex items-center space-x-2">
+                    <span>Mês</span>
+                    <select 
+                      value={selectedMonth}
+                      onChange={(e) => setSelectedMonth(e.target.value)}
+                      className="border border-slate-300 rounded px-3 py-1 bg-white text-xs font-normal focus:outline-none"
+                    >
+                      <option>Agosto/2026</option>
+                    </select>
+                  </div>
+
+                  {/* Seletor de Usuário Flutuante com Busca */}
+                  <UserDropdownSelector />
+                </div>
+
+                <button 
+                  onClick={() => setShowJornadaModal(true)}
+                  className="flex items-center text-xs text-[#ff8b00] font-medium hover:underline cursor-pointer"
                 >
-                  <option value="Agosto/2026">Agosto/2026</option>
-                  <option value="Julho/2026">Julho/2026</option>
-                  <option value="Junho/2026">Junho/2026</option>
-                </select>
+                  Ver jornada atual <Calendar className="w-3.5 h-3.5 ml-1" />
+                </button>
               </div>
 
-              <button
-                onClick={() => alert('Visualizando jornada atual do colaborador')}
-                className="text-xs font-bold text-teal-600 hover:underline flex items-center gap-1.5"
-              >
-                <span>Ver jornada atual</span>
-                <Calendar size={14} />
-              </button>
-            </div>
+              <div className="grid grid-cols-12 px-6 py-2.5 bg-slate-50/50 text-slate-500 font-bold text-[11px] uppercase tracking-wider border-b border-slate-200">
+                <div className="col-span-8"></div>
+                <div className="col-span-2 text-right">HORA EXTRA</div>
+                <div className="col-span-2 text-right">TRABALHADO</div>
+              </div>
 
-            {/* TABELA DE REGISTROS (SOMENTE LEITURA) */}
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs border-collapse">
-                <thead>
-                  <tr className="border-b border-slate-200 text-[10px] font-bold text-slate-700 uppercase tracking-wider">
-                    <th className="py-3 px-6"></th>
-                    <th className="py-3 px-6 text-right">HORA EXTRA</th>
-                    <th className="py-3 px-6 text-right">TRABALHADO</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 font-medium">
-                  {records.map((item) => (
-                    <tr key={item.id} className="hover:bg-slate-50/80 transition-colors">
-                      <td className="py-3.5 px-6 font-bold text-slate-800 flex items-center gap-2">
-                        <ChevronRight size={14} className="text-slate-400" />
-                        <span>{item.date}</span>
-                      </td>
-                      <td className="py-3.5 px-6 text-right text-slate-600">{item.horaExtra}</td>
-                      <td className="py-3.5 px-6 text-right text-slate-800 font-bold">{item.trabalhado}</td>
-                    </tr>
-                  ))}
-                </tbody>
-                <tfoot>
-                  <tr className="border-t border-slate-200 bg-slate-50/30 font-bold text-slate-800">
-                    <td className="py-3.5 px-6"></td>
-                    <td className="py-3.5 px-6 text-right">1h</td>
-                    <td className="py-3.5 px-6 text-right">16h</td>
-                  </tr>
-                </tfoot>
-              </table>
+              <div className="divide-y divide-slate-200">
+                {registros.length === 0 ? (
+                  <div className="p-8 text-center text-xs text-slate-400">
+                    Nenhum registro de ponto encontrado para este colaborador.
+                  </div>
+                ) : (
+                  registros.map((item) => {
+                    const isExpanded = expandedRow === item.id;
+                    return (
+                      <div key={item.id} className="transition-colors border-b border-slate-200">
+                        <div 
+                          onClick={() => toggleRow(item.id)}
+                          className="grid grid-cols-12 px-6 py-3.5 items-center text-xs hover:bg-slate-50 cursor-pointer"
+                        >
+                          <div className="col-span-8 flex items-center space-x-3">
+                            {isExpanded ? (
+                              <ChevronDown className="w-4 h-4 text-slate-500" />
+                            ) : (
+                              <ChevronRight className="w-4 h-4 text-slate-400" />
+                            )}
+                            <span className="font-semibold text-slate-700 text-xs">{item.data}</span>
+                          </div>
+                          <div className="col-span-2 text-right font-medium text-slate-600">{item.horaExtra}</div>
+                          <div className="col-span-2 text-right font-semibold text-slate-800">{item.trabalhado}</div>
+                        </div>
+
+                        {isExpanded && (
+                          <div className="px-8 py-4 bg-slate-50/40 border-t border-b border-slate-200 text-xs">
+                            <div className="flex items-center justify-between mb-4">
+                              <DropdownMenu modal={false}>
+                                <DropdownMenuTrigger className="flex items-center space-x-1 border border-slate-300 bg-white px-3 py-1 rounded font-medium text-slate-700 hover:bg-[#1a2c6a] hover:text-white transition-colors focus:outline-none">
+                                  <span>Adicionar</span>
+                                  <ChevronDown className="w-3.5 h-3.5" />
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="start" className="bg-white">
+                                  <DropdownMenuItem 
+                                    onClick={() => handleAddPointToDb(item.id)}
+                                    className="cursor-pointer"
+                                  >
+                                    Adicionar ponto
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem className="cursor-pointer">Falta justificada</DropdownMenuItem>
+                                  <DropdownMenuItem className="cursor-pointer">Trocar jornada</DropdownMenuItem>
+                                  <DropdownMenuItem className="cursor-pointer">Anotação</DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+
+                              <button 
+                                onClick={() => setShowHistoryModal(true)}
+                                className="flex items-center space-x-1 text-[#ff8b00] hover:underline font-medium cursor-pointer"
+                              >
+                                <History className="w-3.5 h-3.5" />
+                                <span>Ver histórico</span>
+                              </button>
+                            </div>
+
+                            <div className="grid grid-cols-12 text-slate-500 font-bold uppercase text-[10px] mb-2 px-2">
+                              <div className="col-span-6"></div>
+                              <div className="col-span-2 text-center">ENTRADA</div>
+                              <div className="col-span-2 text-center">SAÍDA</div>
+                              <div className="col-span-2 text-center">SALDO</div>
+                            </div>
+
+                            <div className="space-y-2">
+                              {item.batidas.map((b, idx) => {
+                                const isEditing = editingRowKey === `${item.id}-${idx}`;
+
+                                if (isEditing) {
+                                  return (
+                                    <div key={idx} className="flex items-center justify-between bg-white border border-slate-200 rounded-md p-2 shadow-sm gap-2">
+                                      <button 
+                                        onClick={() => setEditingRowKey(null)}
+                                        className="text-red-500 font-semibold hover:underline text-xs px-2"
+                                      >
+                                        Desfazer
+                                      </button>
+
+                                      <div className="flex items-center space-x-2">
+                                        <label className="flex items-center space-x-1 cursor-pointer bg-slate-50 p-1 rounded border border-slate-200">
+                                          <input 
+                                            type="checkbox"
+                                            checked={editFormData.isNight}
+                                            onChange={(e) => setEditFormData({ ...editFormData, isNight: e.target.checked })}
+                                            className="rounded border-slate-300 text-[#ff8b00] focus:ring-0"
+                                          />
+                                          <Moon className="w-3.5 h-3.5 text-slate-600" />
+                                        </label>
+
+                                        <input 
+                                          type="text"
+                                          placeholder="Max 15 caractere"
+                                          value={editFormData.obs}
+                                          onChange={(e) => setEditFormData({ ...editFormData, obs: e.target.value })}
+                                          className="border border-slate-300 rounded px-2 py-1 text-xs w-32 focus:outline-none focus:border-[#2a3c7e]"
+                                        />
+                                      </div>
+
+                                      <div className="flex items-center space-x-2">
+                                        <div className="relative flex items-center">
+                                          <input 
+                                            type="text"
+                                            value={editFormData.entrada}
+                                            onChange={(e) => setEditFormData({ ...editFormData, entrada: e.target.value })}
+                                            className="border border-slate-300 rounded px-2 py-1 text-xs w-16 text-center font-mono focus:outline-none"
+                                          />
+                                          {editFormData.entrada && (
+                                            <X 
+                                              onClick={() => setEditFormData({ ...editFormData, entrada: '' })}
+                                              className="w-3 h-3 text-red-400 absolute right-1 cursor-pointer" 
+                                            />
+                                          )}
+                                        </div>
+
+                                        <div className="relative flex items-center">
+                                          <input 
+                                            type="text"
+                                            value={editFormData.saida}
+                                            onChange={(e) => setEditFormData({ ...editFormData, saida: e.target.value })}
+                                            className="border border-slate-300 rounded px-2 py-1 text-xs w-16 text-center font-mono focus:outline-none"
+                                          />
+                                          {editFormData.saida && (
+                                            <X 
+                                              onClick={() => setEditFormData({ ...editFormData, saida: '' })}
+                                              className="w-3 h-3 text-red-400 absolute right-1 cursor-pointer" 
+                                            />
+                                          )}
+                                        </div>
+
+                                        <span className="text-slate-400 text-xs px-2">-</span>
+
+                                        <button 
+                                          onClick={() => handleSaveEdit(item.id, idx, b.db_id)}
+                                          className="bg-white border border-[#1a2c6a] text-[#1a2c6a] hover:bg-[#1a2c6a] hover:text-white font-medium px-4 py-1 rounded text-xs transition-colors"
+                                        >
+                                          Salvar
+                                        </button>
+                                      </div>
+                                    </div>
+                                  );
+                                }
+
+                                return (
+                                  <div key={idx} className="group grid grid-cols-12 items-center bg-white border border-slate-200/80 rounded-md py-1.5 px-3 shadow-sm hover:border-slate-300 transition-all">
+                                    <div className="col-span-6 flex items-center">
+                                      <button 
+                                        onClick={() => handleRemoveBatida(item.id, idx, b.db_id)}
+                                        className="opacity-0 group-hover:opacity-100 bg-red-500 hover:bg-red-600 text-white font-semibold px-2.5 py-0.5 rounded text-[11px] transition-opacity shadow-sm"
+                                      >
+                                        Remover
+                                      </button>
+                                    </div>
+
+                                    <div className="col-span-2 flex items-center justify-center space-x-1 text-slate-700 font-mono text-xs">
+                                      <span>{b.entrada}</span>
+                                      {b.entrada !== '-' && <Monitor className="w-3.5 h-3.5 text-slate-400" />}
+                                    </div>
+
+                                    <div className="col-span-2 flex items-center justify-center space-x-1 text-slate-700 font-mono text-xs">
+                                      <span>{b.saida}</span>
+                                      {b.saida !== '-' && <Monitor className="w-3.5 h-3.5 text-slate-400" />}
+                                    </div>
+
+                                    <div className="col-span-2 flex items-center justify-between pl-4">
+                                      <span className="font-mono text-slate-600 text-xs">{b.saldo}</span>
+                                      <button 
+                                        onClick={() => handleStartEdit(item.id, idx, b)}
+                                        className="text-[#ff8b00] hover:underline text-xs font-medium"
+                                      >
+                                        Editar
+                                      </button>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+
+                            <div className="flex justify-end space-x-6 items-center mt-3 pt-2 border-t border-slate-200 text-slate-600 font-medium text-xs">
+                              <span>Horas extras: <strong>{item.horaExtra}</strong></span>
+                              <span>Trabalhado: <strong>{item.trabalhado}</strong></span>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })
+                )}
+
+                <div className="grid grid-cols-12 px-6 py-3 items-center text-xs font-bold bg-slate-50/30">
+                  <div className="col-span-8"></div>
+                  <div className="col-span-2 text-right text-slate-800">
+                    {minutesToDisplayHours(totalGeralExtraMinutos)}
+                  </div>
+                  <div className="col-span-2 text-right text-slate-800">
+                    {minutesToDisplayHours(totalGeralTrabalhadoMinutos)}
+                  </div>
+                </div>
+              </div>
             </div>
-          </div>
+          )}
+
+          {/* RESUMO DAS HORAS */}
+          {activeTab === 'resumo' && (
+            <div className="bg-white rounded-lg shadow-sm border border-slate-200/80 p-5 space-y-3">
+              <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-200 pb-3">
+                <div className="flex items-center space-x-4 text-xs font-semibold text-slate-600">
+                  <div className="flex items-center space-x-2">
+                    <span>Mês</span>
+                    <select 
+                      value={selectedMonth}
+                      onChange={(e) => setSelectedMonth(e.target.value)}
+                      className="border border-slate-300 rounded px-2 py-1 bg-white text-xs font-normal focus:outline-none"
+                    >
+                      <option>Agosto/2026</option>
+                    </select>
+                  </div>
+
+                  {/* Seletor de Usuário Flutuante com Busca também no Resumo */}
+                  <UserDropdownSelector />
+                </div>
+
+                <button 
+                  onClick={handleDownloadPDF}
+                  className="bg-white border border-slate-300 text-slate-700 hover:bg-[#1a2c6a] hover:text-white px-3 py-1 rounded text-xs font-semibold transition-colors flex items-center space-x-1.5 cursor-pointer shadow-2xs"
+                >
+                  <span>Baixar em PDF</span>
+                </button>
+              </div>
+
+              {/* Tabela Clean Compacta */}
+              <div className="text-[12px] divide-y divide-slate-100">
+                {/* 1. TRABALHADO */}
+                <div className="py-2 space-y-1">
+                  <div className="grid grid-cols-12 items-center">
+                    <span className="col-span-3 text-slate-800 font-bold uppercase text-[11px]">1. TRABALHADO</span>
+                    <span className="col-span-5 text-slate-600">Horas diurnas</span>
+                    <span className="col-span-4 text-right font-medium text-slate-700">{minutesToFullDisplay(totalGeralDiurnoMinutos)}</span>
+                  </div>
+                  <div className="grid grid-cols-12 items-center">
+                    <span className="col-span-3"></span>
+                    <span className="col-span-5 text-slate-600">Adicional noturno</span>
+                    <span className="col-span-4 text-right font-medium text-slate-700">{minutesToFullDisplay(totalGeralNoturnoMinutos)}</span>
+                  </div>
+                  <div className="grid grid-cols-12 items-center">
+                    <span className="col-span-3"></span>
+                    <span className="col-span-5 text-slate-600">Hora extra</span>
+                    <span className="col-span-4 text-right font-medium text-slate-700">{minutesToFullDisplay(totalGeralExtraMinutos)}</span>
+                  </div>
+                  <div className="grid grid-cols-12 items-center pt-1 font-bold text-slate-900">
+                    <span className="col-span-3"></span>
+                    <span className="col-span-5">Total Trabalhado</span>
+                    <span className="col-span-4 text-right">{minutesToFullDisplay(totalGeralTrabalhadoMinutos)}</span>
+                  </div>
+                </div>
+
+                {/* 2. FALTAS */}
+                <div className="py-2 space-y-1">
+                  <div className="grid grid-cols-12 items-center">
+                    <span className="col-span-3 text-slate-800 font-bold uppercase text-[11px]">2. FALTAS</span>
+                    <span className="col-span-5 text-slate-600">Dias de falta</span>
+                    <span className="col-span-4 text-right font-medium text-slate-700">0 dias</span>
+                  </div>
+                  <div className="grid grid-cols-12 items-center pt-1 font-bold text-slate-900">
+                    <span className="col-span-3"></span>
+                    <span className="col-span-5">Horas de atraso + falta s/ justificativa</span>
+                    <span className="col-span-4 text-right">00h 00min</span>
+                  </div>
+                </div>
+
+                {/* 3. HORA EXTRA (geral) */}
+                <div className="py-2 space-y-1">
+                  <div className="grid grid-cols-12 items-center">
+                    <span className="col-span-3 text-slate-800 font-bold uppercase text-[11px]">3. HORA EXTRA (GERAL)</span>
+                    <span className="col-span-5 text-slate-600">Adicionada ao banco de horas</span>
+                    <span className="col-span-4 text-right font-medium text-slate-700">00h 00min</span>
+                  </div>
+                  <div className="grid grid-cols-12 items-center">
+                    <span className="col-span-3"></span>
+                    <span className="col-span-5 text-slate-600">Hora extra a pagar</span>
+                    <span className="col-span-4 text-right font-medium text-slate-700">{minutesToFullDisplay(totalGeralExtraMinutos)}</span>
+                  </div>
+                  <div className="grid grid-cols-12 items-center pt-1 font-bold text-slate-900">
+                    <span className="col-span-3"></span>
+                    <span className="col-span-5">Total Horas Extras</span>
+                    <span className="col-span-4 text-right">{minutesToFullDisplay(totalGeralExtraMinutos)}</span>
+                  </div>
+                </div>
+
+                {/* 4. HORA EXTRA (a pagar) */}
+                <div className="py-2 space-y-1">
+                  <div className="grid grid-cols-12 items-center">
+                    <span className="col-span-3 text-slate-800 font-bold uppercase text-[11px]">4. HORA EXTRA (A PAGAR)</span>
+                    <span className="col-span-5 text-slate-600">Dia útil (diurno)</span>
+                    <span className="col-span-4 text-right font-medium text-slate-700">{minutesToFullDisplay(totalGeralExtraMinutos)}</span>
+                  </div>
+                  <div className="grid grid-cols-12 items-center">
+                    <span className="col-span-3"></span>
+                    <span className="col-span-5 text-slate-600">Dia útil (noturno)</span>
+                    <span className="col-span-4 text-right font-medium text-slate-700">00h 00min</span>
+                  </div>
+                  <div className="grid grid-cols-12 items-center">
+                    <span className="col-span-3"></span>
+                    <span className="col-span-5 text-slate-600">DSR ou Folga (diurno)</span>
+                    <span className="col-span-4 text-right font-medium text-slate-700">00h 00min</span>
+                  </div>
+                  <div className="grid grid-cols-12 items-center">
+                    <span className="col-span-3"></span>
+                    <span className="col-span-5 text-slate-600">DSR ou Folga (noturno)</span>
+                    <span className="col-span-4 text-right font-medium text-slate-700">00h 00min</span>
+                  </div>
+                  <div className="grid grid-cols-12 items-center">
+                    <span className="col-span-3"></span>
+                    <span className="col-span-5 text-slate-600">Feriado (diurno)</span>
+                    <span className="col-span-4 text-right font-medium text-slate-700">00h 00min</span>
+                  </div>
+                  <div className="grid grid-cols-12 items-center">
+                    <span className="col-span-3"></span>
+                    <span className="col-span-5 text-slate-600">Feriado (noturno)</span>
+                    <span className="col-span-4 text-right font-medium text-slate-700">00h 00min</span>
+                  </div>
+                  <div className="grid grid-cols-12 items-center pt-1 font-bold text-slate-900">
+                    <span className="col-span-3"></span>
+                    <span className="col-span-5">Total Horas Extras</span>
+                    <span className="col-span-4 text-right">{minutesToFullDisplay(totalGeralExtraMinutos)}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
         </main>
       </div>
 
-      <footer className="py-4 text-center text-[11px] text-slate-400 border-t border-slate-200/50 mt-auto">
-        © 2026 Coalize® - Todos os direitos reservados.
+      {/* Popup / Toast de feedback */}
+      {toastMessage && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-[#1e293b] text-white px-5 py-3 rounded-lg shadow-xl flex items-center space-x-3 z-50">
+          <CheckCircle2 className="w-4 h-4 text-[#ff8b00]" />
+          <span className="text-xs font-medium">{toastMessage}</span>
+          <button onClick={() => setToastMessage(null)} className="text-slate-400 hover:text-white ml-2">
+            <X className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      )}
+
+      {/* Modal Histórico de Alteração */}
+      {showHistoryModal && (
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-2xl max-w-lg w-full overflow-hidden border border-slate-200">
+            <div className="flex items-center justify-between p-4 border-b border-slate-100">
+              <h2 className="text-base font-bold text-slate-800">Histórico de alteração</h2>
+              <button onClick={() => setShowHistoryModal(false)} className="text-slate-400 hover:text-slate-600">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-6 text-xs max-h-[70vh] overflow-y-auto">
+              <p className="text-slate-500 font-medium">Dia 06/08/2026</p>
+
+              <div className="relative pl-6 space-y-6 border-l-2 border-slate-200 ml-2">
+                <div className="relative">
+                  <div className="absolute -left-[31px] top-0 w-3 h-3 rounded-full border-2 border-red-500 bg-white"></div>
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <p className="text-slate-400 text-[11px]">07/08/2026 20:33</p>
+                      <p className="font-bold text-slate-700">WIA DIGITAL</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-semibold text-slate-700">06/08 08:00 <span className="text-red-500 ml-1">→ Removido</span></p>
+                      <p className="text-slate-400 flex items-center justify-end gap-1 mt-0.5"><Monitor className="w-3 h-3"/> Ponto manual</p>
+                      <p className="italic text-slate-400 text-[11px] mt-1">"Ponto removido via interface web"</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="relative">
+                  <div className="absolute -left-[31px] top-0 w-3 h-3 rounded-full border-2 border-[#ff8b00] bg-white"></div>
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <p className="text-slate-400 text-[11px]">06/08/2026 23:08</p>
+                      <p className="font-bold text-slate-700">WIA DIGITAL</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-semibold text-slate-700">06/08 14:00 → 06/08 21:00</p>
+                      <p className="text-slate-400 flex items-center justify-end gap-1 mt-0.5"><Monitor className="w-3 h-3"/> Ponto manual</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="p-4 border-t border-slate-100 flex justify-end">
+              <button 
+                onClick={() => setShowHistoryModal(false)}
+                className="bg-white border border-[#1a2c6a] text-[#1a2c6a] hover:bg-[#1a2c6a] hover:text-white font-medium px-6 py-2 rounded text-xs transition-colors"
+              >
+                Fechar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Jornada Atual */}
+      {showJornadaModal && (
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-2xl max-w-xl w-full overflow-hidden border border-slate-200">
+            <div className="flex items-center justify-between p-4 border-b border-slate-100">
+              <h2 className="text-base font-bold text-slate-800">Jornada atual</h2>
+              <button onClick={() => setShowJornadaModal(false)} className="text-slate-400 hover:text-slate-600">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-4 text-xs">
+              <div>
+                <p className="font-semibold text-slate-700">Nome: SEG A SEX 8H AS 12H DAS 14H AS 18H SAB 08H AS 12H</p>
+                <p className="text-slate-600 mt-1">Tipo: Padrão</p>
+                <p className="text-slate-600 mt-1">Usada desde: 06/08/2026</p>
+              </div>
+
+              <div className="border border-slate-200 rounded-md overflow-hidden">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="bg-slate-50 text-slate-500 text-[11px] border-b border-slate-200">
+                      <th className="p-2.5 font-bold uppercase">DIA DA SEMANA</th>
+                      <th className="p-2.5 font-bold uppercase text-center">ENTRADA</th>
+                      <th className="p-2.5 font-bold uppercase text-center">SAÍDA</th>
+                      <th className="p-2.5 font-bold uppercase text-center">ENTRADA</th>
+                      <th className="p-2.5 font-bold uppercase text-center">SAÍDA</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 text-slate-700">
+                    <tr>
+                      <td className="p-2.5 font-medium">Seg, Ter, Qua, Qui, Sex</td>
+                      <td className="p-2.5 text-center">08:00</td>
+                      <td className="p-2.5 text-center">12:00</td>
+                      <td className="p-2.5 text-center">14:00</td>
+                      <td className="p-2.5 text-center">18:00</td>
+                    </tr>
+                    <tr>
+                      <td className="p-2.5 font-medium">Sáb</td>
+                      <td className="p-2.5 text-center">08:00</td>
+                      <td className="p-2.5 text-center">12:00</td>
+                      <td className="p-2.5 text-center">-</td>
+                      <td className="p-2.5 text-center">-</td>
+                    </tr>
+                    <tr>
+                      <td className="p-2.5 font-medium">Dom</td>
+                      <td className="p-2.5 text-center">-</td>
+                      <td className="p-2.5 text-center">-</td>
+                      <td className="p-2.5 text-center">-</td>
+                      <td className="p-2.5 text-center">-</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+
+              <div className="text-right text-slate-700 font-medium">
+                Total de horas semanal: <strong>44h00min</strong>
+              </div>
+            </div>
+
+            <div className="p-4 border-t border-slate-100 flex justify-between items-center bg-slate-50/50">
+              <button className="text-[#ff8b00] font-semibold text-xs hover:underline">
+                Configurar jornada
+              </button>
+              <button 
+                onClick={() => setShowJornadaModal(false)}
+                className="bg-white border border-[#1a2c6a] text-[#1a2c6a] hover:bg-[#1a2c6a] hover:text-white font-medium px-6 py-2 rounded text-xs transition-colors"
+              >
+                Fechar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Widget Flutuante de Suporte */}
+      <div className="fixed bottom-6 right-6">
+        <button className="w-10 h-10 bg-white border border-[#1a2c6a] text-[#1a2c6a] hover:bg-[#1a2c6a] hover:text-white rounded-md flex items-center justify-center shadow-lg transition-colors">
+          <MessageSquare className="w-5 h-5" />
+        </button>
+      </div>
+
+      {/* Rodapé */}
+      <footer className="text-center py-3 text-xs text-slate-400 border-t border-slate-200 bg-white">
+        © 2026 PontoMax - Todos os direitos reservados.
       </footer>
     </div>
   );

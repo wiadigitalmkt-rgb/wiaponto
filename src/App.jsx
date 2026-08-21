@@ -33,15 +33,14 @@ import Contratos from './pages/admin/Contratos';
 import Banco from './pages/admin/Banco';
 import AdminDocumentos from './pages/admin/Documentos';
 
-// Import da Página de Documentos do Colaborador (caminho em minúsculo para bater com a estrutura de pastas)
+// Import da Página de Documentos do Colaborador
 import Documentos from './pages/documentos';
-import Ajuda from './pages/Ajuda'; // Ajuste o caminho caso o arquivo esteja em outro diretório
+import Ajuda from './pages/Ajuda';
 
 const AuthenticatedApp = () => {
-  const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
+  const { isLoadingAuth, authError, navigateToLogin } = useAuth();
   const location = useLocation();
 
-  // Lista de rotas públicas que não devem ser redirecionadas pelo AuthContext
   const publicRoutes = ['/login', '/register', '/forgot-password', '/recuperar-senha', '/reset-password'];
   const isPublicRoute = publicRoutes.includes(location.pathname.toLowerCase());
 
@@ -53,7 +52,6 @@ const AuthenticatedApp = () => {
     );
   }
 
-  // Só redireciona se houver erro de auth E a pessoa NÃO estiver em uma rota pública
   if (authError && !isPublicRoute) {
     if (authError.type === 'user_not_registered') {
       return <UserNotRegisteredError />;
@@ -72,17 +70,17 @@ const AuthenticatedApp = () => {
       <Route path="/recuperar-senha" element={<ForgotPassword />} />
       <Route path="/reset-password" element={<ResetPassword />} />
 
-      {/* Rotas Protegidas - Autenticação Geral */}
+      {/* Rotas Protegidas (Exige Login) */}
       <Route element={<ProtectedRoute unauthenticatedElement={<Navigate to="/login" replace />} />}>
         
-        {/* Rotas Diretas do Colaborador (Livre do Layout legado Base44) */}
+        {/* Rotas do Colaborador */}
         <Route path="/" element={<PunchClock />} />
         <Route path="/ponto" element={<PunchClock />} />
         <Route path="/espelho" element={<TimeClockMirror />} />
         <Route path="/documentos" element={<Documentos />} />
         <Route path="/ajuda" element={<Ajuda />} />
 
-        {/* Rotas Legadas (que usavam Layout antigo) */}
+        {/* Rotas Legadas */}
         <Route element={<Layout />}>
           <Route path="/home-old" element={<Home />} />
           <Route path="/solicitacoes" element={<Requests />} />
@@ -92,8 +90,8 @@ const AuthenticatedApp = () => {
           <Route path="/admin-old" element={<Admin />} />
         </Route>
 
-        {/* ROTAS RESTRITAS APENAS PARA GESTORES/ADMINS */}
-        <Route element={<ProtectedRoute allowedRoles={['gestor', 'admin']} />}>
+        {/* Rotas Exclusivas para Gestores/Admins */}
+        <Route element={<ProtectedRoute allowedRoles={['gestor', 'admin', 'administrador']} />}>
           <Route path="/admin" element={<AdminDashboard />} />
           <Route path="/admin/ponto" element={<PontoEletronico />} />
           <Route path="/admin/colaboradores" element={<Employees />} />

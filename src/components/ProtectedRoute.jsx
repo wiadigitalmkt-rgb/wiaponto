@@ -1,30 +1,35 @@
 import React from 'react';
 import { Navigate, Outlet } from 'react-router-dom';
-import { useAuth } from '@/context/AuthContext';
+import { useAuth } from '@/lib/AuthContext';
 
-export default function ProtectedRoute({ allowedRoles = ['gestor', 'admin'] }) {
-  const { user, loading } = useAuth();
+export default function ProtectedRoute({ allowedRoles = [], unauthenticatedElement = null }) {
+  const { user, isLoadingAuth } = useAuth();
 
-  if (loading) {
-
-      <div className="min-h-screen flex items-center justify-center bg-slate-100">
+  if (isLoadingAuth) {
+    return (
+      <div className="fixed inset-0 flex items-center justify-center bg-slate-100">
         <span className="text-slate-500 text-sm">Validando permissões...</span>
       </div>
     );
   }
 
-  // Não está logado -> Redireciona para o Login
+  // Não está logado
   if (!user) {
-    return <Navigate to="/login" replace />;
+    return unauthenticatedElement || <Navigate to="/login" replace />;
   }
 
-  // Normaliza a role cadastrada no objeto do usuário
-  const userRole = (user.role || user.tipoAcesso || '').toLowerCase();
-  const isAuthorized = allowedRoles.some((role) => userRole.includes(role));
+  // Se nenhuma regra de role foi passada, permite o acesso (apenas checou login)
+  if (!allowedRoles || allowedRoles.length === 0) {
+    return <Outlet />;
+  }
 
-  // É colaborador tentando acessar página de Gestor -> Redireciona para o Painel do Colaborador
+  // Normaliza a permissão do usuário
+  const userRole = String(user.role || user.tipoAcesso || '').toLowerCase();
+  const isAuthorized = allowedRoles.some((role) => userRole.includes(role.toLowerCase()));
+
+  // Colaborador tentando acessar rota de gestor -> Redireciona para a home/ponto
   if (!isAuthorized) {
-    return <Navigate to="/colaborador/ponto" replace />;
+    return <Navigate to="/ponto" replace />;
   }
 
   return <Outlet />;

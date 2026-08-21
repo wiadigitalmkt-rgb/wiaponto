@@ -42,21 +42,21 @@ export const AuthProvider = ({ children }) => {
   };
 
   const navigateToLogin = () => {
-    const publicPaths = ['/login', '/register', '/forgot-password', '/reset-password'];
-    if (!publicPaths.includes(window.location.pathname)) {
+    const publicPaths = ['/login', '/register', '/forgot-password', '/recuperar-senha', '/reset-password'];
+    if (!publicPaths.includes(window.location.pathname.toLowerCase())) {
       window.location.href = '/login';
     }
   };
 
-  const publicPaths = ['/login', '/register', '/forgot-password', '/reset-password'];
-  const isPublicRoute = publicPaths.includes(window.location.pathname);
+  const publicPaths = ['/login', '/register', '/forgot-password', '/recuperar-senha', '/reset-password'];
+  const isPublicRoute = publicPaths.includes(window.location.pathname.toLowerCase());
   const authError = (!user && !loading && !isPublicRoute) ? { type: 'auth_required' } : null;
 
   const value = {
     user,
     session,
-    loading,
     isLoadingAuth: loading,
+    isLoadingPublicSettings: false,
     authError,
     signOut,
     navigateToLogin,
@@ -65,7 +65,7 @@ export const AuthProvider = ({ children }) => {
 
   return (
     <AuthContext.Provider value={value}>
-      {!loading && children}
+      {children}
     </AuthContext.Provider>
   );
 };

@@ -72,7 +72,7 @@ const AuthenticatedApp = () => {
       <Route path="/recuperar-senha" element={<ForgotPassword />} />
       <Route path="/reset-password" element={<ResetPassword />} />
 
-      {/* Rotas Protegidas */}
+      {/* Rotas Protegidas - Autenticação Geral */}
       <Route element={<ProtectedRoute unauthenticatedElement={<Navigate to="/login" replace />} />}>
         
         {/* Rotas Diretas do Colaborador (Livre do Layout legado Base44) */}
@@ -92,16 +92,18 @@ const AuthenticatedApp = () => {
           <Route path="/admin-old" element={<Admin />} />
         </Route>
 
-        {/* Rotas do Painel Admin */}
-        <Route path="/admin" element={<AdminDashboard />} />
-        <Route path="/admin/ponto" element={<PontoEletronico />} />
-        <Route path="/admin/colaboradores" element={<Employees />} />
-        <Route path="/admin/empresa" element={<CompanySettings />} />
-        <Route path="/admin/usuario" element={<Usuario />} />
-        <Route path="/admin/admissao" element={<Admissao />} />
-        <Route path="/admin/contratos" element={<Contratos />} />
-        <Route path="/admin/banco-horas" element={<Banco />} />
-        <Route path="/admin/documentos" element={<AdminDocumentos />} />
+        {/* ROTAS RESTRITAS APENAS PARA GESTORES/ADMINS */}
+        <Route element={<ProtectedRoute allowedRoles={['gestor', 'admin']} />}>
+          <Route path="/admin" element={<AdminDashboard />} />
+          <Route path="/admin/ponto" element={<PontoEletronico />} />
+          <Route path="/admin/colaboradores" element={<Employees />} />
+          <Route path="/admin/empresa" element={<CompanySettings />} />
+          <Route path="/admin/usuario" element={<Usuario />} />
+          <Route path="/admin/admissao" element={<Admissao />} />
+          <Route path="/admin/contratos" element={<Contratos />} />
+          <Route path="/admin/banco-horas" element={<Banco />} />
+          <Route path="/admin/documentos" element={<AdminDocumentos />} />
+        </Route>
 
       </Route>
 

@@ -9,7 +9,6 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 
-// Import da imagem exatamente como está salva em src/assets/LOGOWIANOVO.png
 import logoImg from '@/assets/LOGOWIANOVO.png';
 
 export default function Navbar({ selectedCompany = 'PontoMax' }) {
@@ -17,7 +16,7 @@ export default function Navbar({ selectedCompany = 'PontoMax' }) {
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
 
-  // Recupera a sessão armazenada no navegador (suporta objetos simples e aninhados)
+  // Recupera a sessão armazenada no navegador
   const storedSession = JSON.parse(
     localStorage.getItem('userSession') || sessionStorage.getItem('userSession') || '{}'
   );
@@ -25,18 +24,18 @@ export default function Navbar({ selectedCompany = 'PontoMax' }) {
   // Normaliza os dados do usuário atual combinando Contexto e Storage
   const currentUser = storedSession?.user || storedSession || user || {};
 
-  // Define o e-mail com prioridade: AuthContext -> Storage Direto -> Storage Aninhado
+  // Define o e-mail com prioridade
   const userEmail = 
     user?.email || 
     storedSession?.email || 
     storedSession?.user?.email || 
     '';
 
-  // Define o nome completo do usuário para fallback
+  // Ajustado para capturar 'full_name' do objeto direto ou do Supabase Metadata
   const userName = 
-    user?.user_metadata?.full_name || 
-    user?.full_name || 
     currentUser?.full_name || 
+    user?.full_name || 
+    user?.user_metadata?.full_name || 
     currentUser?.name || 
     '';
 
@@ -50,7 +49,6 @@ export default function Navbar({ selectedCompany = 'PontoMax' }) {
 
   const isAdmin = userRole === 'admin' || userRole === 'Administrador' || userRole === 'gestor';
 
-  // Puxa as empresas vinculadas ao usuário autenticado 
   const userCompanies = user?.companies || [user?.companyName || selectedCompany];
 
   const filteredCompanies = userCompanies.filter((company) =>
@@ -84,7 +82,6 @@ export default function Navbar({ selectedCompany = 'PontoMax' }) {
 
   return (
     <header className="sticky top-0 z-50 bg-[#1a2c6a] text-white h-12 shadow-md w-full shrink-0 flex items-center justify-between px-6 border-b border-[#2a3c7e] select-none">
-      {/* Lado Esquerdo */}
       <div className="flex items-center gap-8">
         <Link to={isAdmin ? "/admin" : "/espelho"} className="flex items-center gap-2">
           <img 
@@ -96,7 +93,6 @@ export default function Navbar({ selectedCompany = 'PontoMax' }) {
 
         <nav className="hidden md:flex items-center gap-6 text-sm font-medium text-slate-200">
           {isAdmin ? (
-            /* MENU COMPLETO - VISÃO ADMINISTRADOR */
             <>
               <DropdownMenu modal={false}>
                 <DropdownMenuTrigger className="hover:text-white flex items-center gap-1 transition focus:outline-none">
@@ -152,7 +148,6 @@ export default function Navbar({ selectedCompany = 'PontoMax' }) {
               </Link>
             </>
           ) : (
-            /* MENU RESTRITO - VISÃO COLABORADOR */
             <>
               <Link to="/documentos" className="hover:text-white transition">
                 Documentos
@@ -168,9 +163,7 @@ export default function Navbar({ selectedCompany = 'PontoMax' }) {
         </nav>
       </div>
 
-      {/* Lado Direito */}
       <div className="flex items-center gap-4 shrink-0">
-        {/* Botão de Empresa */}
         <DropdownMenu modal={false}>
           <DropdownMenuTrigger className="hidden sm:flex items-center justify-between gap-6 border border-white/40 bg-transparent px-4 py-1.5 rounded-md text-xs font-semibold text-white hover:border-white/70 transition focus:outline-none cursor-pointer">
             <span className="truncate">{selectedCompany}</span>
@@ -205,11 +198,6 @@ export default function Navbar({ selectedCompany = 'PontoMax' }) {
                   </DropdownMenuItem>
                 );
               })}
-              {filteredCompanies.length === 0 && (
-                <div className="px-3 py-2 text-xs text-slate-400 text-center">
-                  Nenhuma empresa encontrada
-                </div>
-              )}
             </div>
           </DropdownMenuContent>
         </DropdownMenu>
@@ -222,7 +210,11 @@ export default function Navbar({ selectedCompany = 'PontoMax' }) {
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="bg-white text-slate-800 w-52">
             <div className="px-3 py-2 border-b border-slate-100 text-xs">
-              {userName && <p className="font-bold text-slate-800 truncate">{userName}</p>}
+              {userName ? (
+                <p className="font-bold text-slate-800 truncate">{userName}</p>
+              ) : (
+                <p className="font-bold text-slate-800 truncate">Usuário</p>
+              )}
               <p className="text-slate-500 truncate">{userEmail || 'Usuário Sem E-mail'}</p>
             </div>
             <DropdownMenuItem

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import Navbar from '@/components/Navbar';
-import { supabase } from '@/lib/supabase'; // Conexão com o Supabase
+import { supabase } from '@/lib/supabase';
 import { Link, useNavigate } from 'react-router-dom';
 import { 
   Search, 
@@ -26,7 +26,7 @@ export default function Employees() {
 
   // Filtros
   const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState('Todos'); // Padrão ajustado para 'Todos' para evitar ocultar cadastros
+  const [statusFilter, setStatusFilter] = useState('Todos'); // Mantém 'Todos' por padrão
   const [itemsPerPage, setItemsPerPage] = useState('10');
 
   // Modais
@@ -60,7 +60,7 @@ export default function Employees() {
 
       if (error) throw error;
 
-      // Mapeia os dados do Banco para o formato do Componente
+      // Mapeia os dados do Banco garantindo 'Ativo' para quem não tem status definido
       const formatted = (data || []).map((emp) => {
         const nameParts = (emp.full_name || '').split(' ');
         const initials = nameParts.length > 1 
@@ -75,7 +75,7 @@ export default function Employees() {
           cargo: emp.position || '(Preencher)',
           departamento: emp.department || '-',
           tipoAcesso: emp.role === 'gestor' || emp.role === 'admin' ? 'Gestor' : 'Colaborador',
-          status: emp.status || 'Ativo',
+          status: emp.status ? emp.status.trim() : 'Ativo',
         };
       });
 
@@ -180,10 +180,11 @@ export default function Employees() {
       user.tipoAcesso.toLowerCase().includes(term) ||
       user.cargo.toLowerCase().includes(term);
 
+    const userStatus = user.status.toLowerCase();
     const matchesStatus = 
       statusFilter === 'Todos' || 
-      (statusFilter === 'Ativos' && user.status === 'Ativo') ||
-      (statusFilter === 'Inativos' && user.status === 'Inativo');
+      (statusFilter === 'Ativos' && (userStatus === 'ativo' || userStatus === '')) ||
+      (statusFilter === 'Inativos' && userStatus === 'inativo');
 
     return matchesSearch && matchesStatus;
   });

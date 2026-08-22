@@ -214,7 +214,7 @@ export default function PunchClock() {
 
       setMapSuccess(true);
     } catch (err) {
-      console.error(err);
+      console.error('Erro ao bater ponto:', err);
     } finally {
       setLoading(false);
     }

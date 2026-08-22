@@ -26,7 +26,7 @@ export default function Employees() {
 
   // Filtros
   const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState('Ativos');
+  const [statusFilter, setStatusFilter] = useState('Todos'); // Padrão ajustado para 'Todos' para evitar ocultar cadastros
   const [itemsPerPage, setItemsPerPage] = useState('10');
 
   // Modais
@@ -70,11 +70,12 @@ export default function Employees() {
         return {
           id: emp.id,
           initials,
-          name: emp.full_name,
+          name: emp.full_name || 'Sem nome',
           email: emp.email || '-',
           cargo: emp.position || '(Preencher)',
           departamento: emp.department || '-',
           tipoAcesso: emp.role === 'gestor' || emp.role === 'admin' ? 'Gestor' : 'Colaborador',
+          status: emp.status || 'Ativo',
         };
       });
 
@@ -121,6 +122,7 @@ export default function Employees() {
           salary: formData.salario || null,
           contract_type: formData.tipoContrato || null,
           work_schedule: formData.jornada || '08:00 - 18:00',
+          status: 'Ativo'
         },
       ]).select();
 
@@ -172,12 +174,18 @@ export default function Employees() {
 
   const filteredUsers = usersData.filter((user) => {
     const term = searchTerm.toLowerCase();
-    return (
+    const matchesSearch = 
       user.name.toLowerCase().includes(term) ||
       user.email.toLowerCase().includes(term) ||
       user.tipoAcesso.toLowerCase().includes(term) ||
-      user.cargo.toLowerCase().includes(term)
-    );
+      user.cargo.toLowerCase().includes(term);
+
+    const matchesStatus = 
+      statusFilter === 'Todos' || 
+      (statusFilter === 'Ativos' && user.status === 'Ativo') ||
+      (statusFilter === 'Inativos' && user.status === 'Inativo');
+
+    return matchesSearch && matchesStatus;
   });
 
   return (
@@ -238,9 +246,9 @@ export default function Employees() {
                     onChange={(e) => setStatusFilter(e.target.value)}
                     className="border border-slate-200 rounded px-3 py-1.5 bg-white text-xs text-slate-700 font-medium focus:outline-none focus:border-[#ff8b00] cursor-pointer min-w-[110px]"
                   >
+                    <option value="Todos">Todos</option>
                     <option value="Ativos">Ativos</option>
                     <option value="Inativos">Inativos</option>
-                    <option value="Todos">Todos</option>
                   </select>
                 </div>
               </div>

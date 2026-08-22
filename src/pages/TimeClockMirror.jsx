@@ -138,7 +138,7 @@ export default function AdminPonto() {
     loadEmployees();
   }, []);
 
-  // 2. BUSCAR PONTOS DO COLABORADOR SELECCIONADO DO SUPABASE
+  // 2. BUSCAR PONTOS DO COLABORADOR SELECIONADO DO SUPABASE
   const fetchRecordsFromSupabase = async () => {
     if (!selectedUser) return;
 
@@ -174,8 +174,32 @@ export default function AdminPonto() {
     }
   };
 
+  // VÍNCULO EM TEMPO REAL COM SUPABASE REALTIME
   useEffect(() => {
     fetchRecordsFromSupabase();
+
+    if (!selectedUser?.id || !supabase) return;
+
+    // Escuta alterações na tabela time_records em tempo real
+    const channel = supabase
+      .channel(`realtime:time_records:${selectedUser.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'time_records',
+          filter: `employee_id=eq.${selectedUser.id}`
+        },
+        () => {
+          fetchRecordsFromSupabase();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [selectedUser]);
 
   const filteredUsers = employees.filter(u => 
@@ -276,7 +300,7 @@ export default function AdminPonto() {
       <span className="text-xs font-semibold text-slate-600">Usuário</span>
       <DropdownMenu modal={false}>
         <DropdownMenuTrigger className="flex items-center justify-between border border-slate-300 rounded px-3 py-1 bg-white text-xs text-slate-700 hover:bg-[#1a2c6a] hover:text-white transition-colors min-w-[170px] focus:outline-none shadow-xs">
-          <span className="truncate pr-2">{selectedUser ? selectedUser.full_name : 'Carregando...'}...</span>
+          <span className="truncate pr-2">{selectedUser ? selectedUser.full_name : 'Carregando...'}</span>
           <ChevronDown className="w-3.5 h-3.5 text-slate-400 shrink-0" />
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start" className="w-56 p-1.5 bg-white rounded-md shadow-xl border border-slate-200 z-50">

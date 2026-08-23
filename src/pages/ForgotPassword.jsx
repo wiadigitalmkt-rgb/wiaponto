@@ -93,7 +93,7 @@ export default function ForgotPassword() {
 
           {emailSent ? (
             <div className="space-y-6 text-center py-4">
-              <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-teal-100 text-[#00a887]">
+              <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-teal-100 text-[#fc9314]">
                 <CheckCircle size={36} />
               </div>
               <p className="text-sm text-slate-600 leading-relaxed">
@@ -118,7 +118,7 @@ export default function ForgotPassword() {
                   value={userInput}
                   onChange={(e) => setUserInput(e.target.value)}
                   placeholder="Digite seu CPF ou E-mail"
-                  className="w-full px-3.5 py-2.5 rounded-md border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#00a887] transition-all text-xs text-slate-700 bg-white placeholder:text-slate-400"
+                  className="w-full px-3.5 py-2.5 rounded-md border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#fc9314] transition-all text-xs text-slate-700 bg-white placeholder:text-slate-400"
                 />
               </div>
 

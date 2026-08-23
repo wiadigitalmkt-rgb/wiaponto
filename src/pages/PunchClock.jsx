@@ -47,6 +47,7 @@ export default function PunchClock() {
   });
   const [pendingPunches, setPendingPunches] = useState([]);
   const [currentDateTime, setCurrentDateTime] = useState('');
+  const [greeting, setGreeting] = useState('Olá'); // Novo estado para a saudação dinâmica
 
   // Estados da Confirmação no Mapa
   const [mapSuccess, setMapSuccess] = useState(false);
@@ -142,7 +143,7 @@ export default function PunchClock() {
     loadTodayPunch();
   }, [profileData.email]);
 
-  // Atualização em tempo real do relógio
+  // Atualização em tempo real do relógio e da saudação
   useEffect(() => {
     updateDateTime();
     const interval = setInterval(updateDateTime, 1000);
@@ -167,6 +168,16 @@ export default function PunchClock() {
     const hours = String(now.getHours()).padStart(2, '0');
     const minutes = String(now.getMinutes()).padStart(2, '0');
     setCurrentDateTime(`${dateStr}, ${hours}:${minutes}h`);
+    
+    // Lógica para atualizar a saudação dinamicamente
+    const currentHour = now.getHours();
+    if (currentHour >= 5 && currentHour < 13) {
+      setGreeting('Bom dia');
+    } else if (currentHour >= 13 && currentHour < 18) {
+      setGreeting('Boa tarde');
+    } else {
+      setGreeting('Boa noite');
+    }
   };
 
   // Redireciona para o Mapa de Ponto
@@ -296,7 +307,7 @@ export default function PunchClock() {
       {currentView === 'home' && (
         <main className="flex-1 flex flex-col items-center justify-start pt-10 px-4 pb-12">
           <h1 className="text-xl md:text-2xl font-bold text-slate-800 mb-8 flex items-center justify-center gap-2">
-            <span>Boa noite,</span>
+            <span>{greeting},</span>
             <span>{profileData.nome}</span>
             <span>!  👋 </span>
           </h1>

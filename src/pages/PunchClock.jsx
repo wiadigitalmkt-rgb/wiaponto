@@ -521,7 +521,7 @@ export default function PunchClock() {
       )}
 
       <footer className="py-4 text-center text-[11px] text-slate-400 border-t border-slate-200/60 bg-slate-50 mt-auto">
-        © 2026 Coalize® - Todos os direitos reservados.
+        © 2026 WiaPonto® - Todos os direitos reservados.
       </footer>
     </div>
   );

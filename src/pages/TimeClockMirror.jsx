@@ -122,9 +122,10 @@ export default function AdminPonto() {
 
   const [registros, setRegistros] = useState([]);
 
-  // 1. CARREGAR COLABORADORES DO SUPABASE
+  // 1. CARREGAR COLABORADORES DO SUPABASE E DETECTAR USUÁRIO LOGADO
   useEffect(() => {
     async function loadEmployees() {
+      const { data: { user } } = await supabase.auth.getUser();
       const { data, error } = await supabase
         .from('Employees')
         .select('*')
@@ -132,7 +133,14 @@ export default function AdminPonto() {
 
       if (!error && data && data.length > 0) {
         setEmployees(data);
-        setSelectedUser(data[0]); // Seleciona o primeiro colaborador cadastrado
+        
+        // Se houver um usuário logado no Auth, seleciona o colaborador correspondente por padrão
+        let defaultUser = data[0];
+        if (user?.email) {
+          const matched = data.find(e => e.email?.toLowerCase() === user.email.toLowerCase());
+          if (matched) defaultUser = matched;
+        }
+        setSelectedUser(defaultUser);
       }
     }
     loadEmployees();
@@ -142,11 +150,30 @@ export default function AdminPonto() {
   const fetchRecordsFromSupabase = async () => {
     if (!selectedUser) return;
 
-    const { data, error } = await supabase
+    let query = supabase
       .from('time_records')
       .select('*')
-      .eq('employee_id', selectedUser.id)
-      .order('record_date', { ascending: false });
+      .eq('employee_id', selectedUser.id);
+
+    // Mapeia e filtra pelo mês selecionado
+    const monthMap = {
+      'Janeiro': '01', 'Fevereiro': '02', 'Março': '03', 'Abril': '04',
+      'Maio': '05', 'Junho': '06', 'Julho': '07', 'Agosto': '08',
+      'Setembro': '09', 'Outubro': '10', 'Novembro': '11', 'Dezembro': '12'
+    };
+
+    const parts = selectedMonth.split('/');
+    if (parts.length === 2) {
+      const monthNum = monthMap[parts[0]];
+      const yearNum = parts[1];
+      if (monthNum && yearNum) {
+        const startDate = `${yearNum}-${monthNum}-01`;
+        const endDate = `${yearNum}-${monthNum}-31`;
+        query = query.gte('record_date', startDate).lte('record_date', endDate);
+      }
+    }
+
+    const { data, error } = await query.order('record_date', { ascending: false });
 
     if (!error && data) {
       // Agrupa os registros por data
@@ -200,7 +227,7 @@ export default function AdminPonto() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [selectedUser]);
+  }, [selectedUser, selectedMonth]);
 
   const filteredUsers = employees.filter(u => 
     u.full_name.toLowerCase().includes(userSearchTerm.toLowerCase())
@@ -436,6 +463,11 @@ export default function AdminPonto() {
                       className="border border-slate-300 rounded px-3 py-1 bg-white text-xs font-normal focus:outline-none"
                     >
                       <option>Agosto/2026</option>
+                      <option>Julho/2026</option>
+                      <option>Junho/2026</option>
+                      <option>Maio/2026</option>
+                      <option>Abril/2026</option>
+                      <option>Março/2026</option>
                     </select>
                   </div>
 
@@ -670,6 +702,11 @@ export default function AdminPonto() {
                       className="border border-slate-300 rounded px-2 py-1 bg-white text-xs font-normal focus:outline-none"
                     >
                       <option>Agosto/2026</option>
+                      <option>Julho/2026</option>
+                      <option>Junho/2026</option>
+                      <option>Maio/2026</option>
+                      <option>Abril/2026</option>
+                      <option>Março/2026</option>
                     </select>
                   </div>
 

@@ -32,11 +32,11 @@ export default function PunchClock() {
 
   // Estados da Sessão Perfil
   const [profileData, setProfileData] = useState({
-    nome: 'Joquebede',
-    sobrenome: 'de Oliveira',
-    email: 'elenuzaazp@gmail.com',
-    empresa: 'Empresa Teste 11738',
-    initials: 'JD',
+    nome: 'Carregando...',
+    sobrenome: '',
+    email: '',
+    empresa: 'Minha Empresa',
+    initials: 'US',
     avatarUrl: null,
   });
 
@@ -49,7 +49,7 @@ export default function PunchClock() {
   const [showNewPass, setShowNewPass] = useState(false);
   const [showConfirmPass, setShowConfirmPass] = useState(false);
 
-  const [signatureName, setSignatureName] = useState('Joquebede de Oliveira');
+  const [signatureName, setSignatureName] = useState('');
   const [selectedSignatureStyle, setSelectedSignatureStyle] = useState('');
 
   // Função para pegar a data local (AAAA-MM-DD) sem problemas de fuso horário/UTC
@@ -60,9 +60,43 @@ export default function PunchClock() {
     return `${year}-${month}-${day}`;
   };
 
-  // Carrega a última batida do Supabase ao iniciar
+  // Carrega usuário atual do Supabase Auth e Banco de Dados
+  useEffect(() => {
+    async function loadAuthUser() {
+      if (!supabase) return;
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user?.email) {
+        const { data: emp } = await supabase
+          .from('Employees')
+          .select('*')
+          .eq('email', user.email)
+          .maybeSingle();
+
+        const fullName = emp?.full_name || user.user_metadata?.full_name || 'Usuário';
+        const nameParts = fullName.split(' ');
+        const firstName = emp?.first_name || nameParts[0] || '';
+        const lastName = emp?.last_name || nameParts.slice(1).join(' ') || '';
+        const initials = nameParts.length > 1 
+          ? `${nameParts[0][0]}${nameParts[nameParts.length - 1][0]}`.toUpperCase()
+          : fullName.substring(0, 2).toUpperCase();
+
+        setProfileData({
+          nome: firstName,
+          sobrenome: lastName,
+          email: user.email,
+          empresa: 'Minha Empresa',
+          initials: initials,
+          avatarUrl: null
+        });
+        setSignatureName(`${firstName} ${lastName}`.trim());
+      }
+    }
+    loadAuthUser();
+  }, []);
+
+  // Carrega a última batida do Supabase ao iniciar ou trocar de e-mail
   const loadTodayPunch = async () => {
-    if (!supabase) return;
+    if (!supabase || !profileData.email) return;
     try {
       const todayStr = getLocalDateString();
       
@@ -94,7 +128,9 @@ export default function PunchClock() {
   };
 
   useEffect(() => {
-    loadTodayPunch();
+    if (profileData.email) {
+      loadTodayPunch();
+    }
   }, [profileData.email]);
 
   // Atualização em tempo real do relógio
@@ -152,7 +188,7 @@ export default function PunchClock() {
       const timeFormatted = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
       const fullName = `${profileData.nome} ${profileData.sobrenome}`.trim();
 
-      if (supabase) {
+      if (supabase && profileData.email) {
         // Busca colaborador existente pelo e-mail ou cria
         let { data: emp } = await supabase
           .from('Employees')
@@ -251,9 +287,9 @@ export default function PunchClock() {
       {currentView === 'home' && (
         <main className="flex-1 flex flex-col items-center justify-start pt-10 px-4 pb-12">
           <h1 className="text-xl md:text-2xl font-bold text-slate-800 mb-8 flex items-center justify-center gap-2">
-            <span>Boa noite,</span>
+            <span>Olá,</span>
             <span>{profileData.nome}</span>
-            <span>!  👋 </span>
+            <span>! 👋 </span>
           </h1>
 
           <div className="bg-white rounded-lg border border-slate-200/80 shadow-sm w-full max-w-2xl overflow-hidden">

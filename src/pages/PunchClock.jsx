@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Navbar from '@/components/Navbar';
 import { supabase } from '@/lib/supabase';
+import { useAuth } from '@/lib/AuthContext';
 import { 
   Scan, Calendar, Clock, ChevronDown, User, LogOut, 
   Eye, EyeOff, Upload, CheckCircle2, MapPin, Check, FileText
@@ -9,6 +10,27 @@ import {
 
 export default function PunchClock() {
   const navigate = useNavigate();
+
+  // Autenticação e dados do usuário atual (dinâmico)
+  const authContext = useAuth() || {};
+  const { user: contextUser } = authContext;
+
+  const storedSession = JSON.parse(
+    localStorage.getItem('userSession') || sessionStorage.getItem('userSession') || '{}'
+  );
+  
+  const currentUser = storedSession?.user || storedSession || contextUser || {};
+  const userEmail = currentUser?.email || contextUser?.email || '';
+  
+  const fullName = 
+    currentUser?.full_name || 
+    contextUser?.full_name || 
+    contextUser?.user_metadata?.full_name || 
+    currentUser?.name || 
+    'Usuário';
+
+  const firstName = fullName !== 'Usuário' ? fullName.split(' ')[0] : 'Carregando...';
+  const lastName = fullName !== 'Usuário' ? fullName.split(' ').slice(1).join(' ') : '';
 
   // Estados de navegação interna
   const [currentView, setCurrentView] = useState('home'); // 'home' | 'profile' | 'map'
@@ -32,13 +54,27 @@ export default function PunchClock() {
 
   // Estados da Sessão Perfil
   const [profileData, setProfileData] = useState({
-    nome: 'Carregando...',
-    sobrenome: '',
-    email: '',
-    empresa: 'Minha Empresa',
-    initials: 'US',
+    nome: firstName,
+    sobrenome: lastName,
+    email: userEmail,
+    empresa: currentUser?.companyName || 'Sua Empresa',
+    initials: firstName !== 'Carregando...' ? firstName.substring(0, 2).toUpperCase() : 'WI',
     avatarUrl: null,
   });
+
+  // Atualiza o perfil caso o usuário demore a ser carregado no contexto
+  useEffect(() => {
+    if (userEmail && userEmail !== profileData.email) {
+      setProfileData(prev => ({
+        ...prev,
+        nome: firstName,
+        sobrenome: lastName,
+        email: userEmail,
+        empresa: currentUser?.companyName || 'Sua Empresa',
+        initials: firstName !== 'Carregando...' ? firstName.substring(0, 2).toUpperCase() : 'WI',
+      }));
+    }
+  }, [userEmail, firstName, lastName]);
 
   const [passwords, setPasswords] = useState({
     atual: '',
@@ -49,7 +85,7 @@ export default function PunchClock() {
   const [showNewPass, setShowNewPass] = useState(false);
   const [showConfirmPass, setShowConfirmPass] = useState(false);
 
-  const [signatureName, setSignatureName] = useState('');
+  const [signatureName, setSignatureName] = useState(fullName);
   const [selectedSignatureStyle, setSelectedSignatureStyle] = useState('');
 
   // Função para pegar a data local (AAAA-MM-DD) sem problemas de fuso horário/UTC
@@ -60,41 +96,7 @@ export default function PunchClock() {
     return `${year}-${month}-${day}`;
   };
 
-  // Carrega usuário atual do Supabase Auth e Banco de Dados
-  useEffect(() => {
-    async function loadAuthUser() {
-      if (!supabase) return;
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user?.email) {
-        const { data: emp } = await supabase
-          .from('Employees')
-          .select('*')
-          .eq('email', user.email)
-          .maybeSingle();
-
-        const fullName = emp?.full_name || user.user_metadata?.full_name || 'Usuário';
-        const nameParts = fullName.split(' ');
-        const firstName = emp?.first_name || nameParts[0] || '';
-        const lastName = emp?.last_name || nameParts.slice(1).join(' ') || '';
-        const initials = nameParts.length > 1 
-          ? `${nameParts[0][0]}${nameParts[nameParts.length - 1][0]}`.toUpperCase()
-          : fullName.substring(0, 2).toUpperCase();
-
-        setProfileData({
-          nome: firstName,
-          sobrenome: lastName,
-          email: user.email,
-          empresa: 'Minha Empresa',
-          initials: initials,
-          avatarUrl: null
-        });
-        setSignatureName(`${firstName} ${lastName}`.trim());
-      }
-    }
-    loadAuthUser();
-  }, []);
-
-  // Carrega a última batida do Supabase ao iniciar ou trocar de e-mail
+  // Carrega a última batida do Supabase ao iniciar
   const loadTodayPunch = async () => {
     if (!supabase || !profileData.email) return;
     try {
@@ -107,30 +109,37 @@ export default function PunchClock() {
         .maybeSingle();
 
       if (emp?.id) {
-        const { data: record } = await supabase
+        // Busca os registros para não dar erro caso falte ordenação no backend
+        const { data: records, error } = await supabase
           .from('time_records')
           .select('*')
           .eq('employee_id', emp.id)
-          .eq('record_date', todayStr)
-          .order('created_at', { ascending: false })
-          .limit(1)
-          .maybeSingle();
+          .eq('record_date', todayStr);
 
-        if (record) {
-          const lastTime = (record.saida && record.saida !== '-') ? record.saida : record.entrada;
+        if (records && records.length > 0) {
+          // Ordena via JS para pegar sempre a última batida correta do dia
+          records.sort((a, b) => {
+            const timeA = a.saida !== '-' && a.saida ? a.saida : a.entrada;
+            const timeB = b.saida !== '-' && b.saida ? b.saida : b.entrada;
+            return timeA.localeCompare(timeB);
+          });
+          
+          const latestRecord = records[records.length - 1];
+          const lastTime = (latestRecord.saida && latestRecord.saida !== '-') ? latestRecord.saida : latestRecord.entrada;
+          
           const [yr, mo, dy] = todayStr.split('-');
           setLastPunch(`${dy}/${mo}/${yr} às ${lastTime}h`);
+        } else {
+          setLastPunch('Nenhum registro hoje');
         }
       }
     } catch (err) {
-      console.error(err);
+      console.error('Erro ao buscar última batida:', err);
     }
   };
 
   useEffect(() => {
-    if (profileData.email) {
-      loadTodayPunch();
-    }
+    loadTodayPunch();
   }, [profileData.email]);
 
   // Atualização em tempo real do relógio
@@ -178,7 +187,7 @@ export default function PunchClock() {
     setCurrentView('map');
   };
 
-  // Confirma o Ponto na tela do Mapa e atualiza no Supabase para refletir no Admin e Dashboard
+  // Confirma o Ponto na tela do Mapa e atualiza no Supabase
   const handleConfirmPunch = async () => {
     setLoading(true);
     try {
@@ -186,9 +195,9 @@ export default function PunchClock() {
       // Correção do fuso usando data local
       const recordDate = getLocalDateString(now);
       const timeFormatted = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
-      const fullName = `${profileData.nome} ${profileData.sobrenome}`.trim();
+      const fullNameFormat = `${profileData.nome} ${profileData.sobrenome}`.trim();
 
-      if (supabase && profileData.email) {
+      if (supabase) {
         // Busca colaborador existente pelo e-mail ou cria
         let { data: emp } = await supabase
           .from('Employees')
@@ -199,7 +208,7 @@ export default function PunchClock() {
         if (!emp) {
           const { data: newEmp } = await supabase
             .from('Employees')
-            .insert([{ full_name: fullName, email: profileData.email, role: 'colaborador' }])
+            .insert([{ full_name: fullNameFormat, email: profileData.email, role: 'colaborador' }])
             .select('id')
             .single();
           emp = newEmp;
@@ -287,9 +296,9 @@ export default function PunchClock() {
       {currentView === 'home' && (
         <main className="flex-1 flex flex-col items-center justify-start pt-10 px-4 pb-12">
           <h1 className="text-xl md:text-2xl font-bold text-slate-800 mb-8 flex items-center justify-center gap-2">
-            <span>Olá,</span>
+            <span>Boa noite,</span>
             <span>{profileData.nome}</span>
-            <span>! 👋 </span>
+            <span>!  👋 </span>
           </h1>
 
           <div className="bg-white rounded-lg border border-slate-200/80 shadow-sm w-full max-w-2xl overflow-hidden">

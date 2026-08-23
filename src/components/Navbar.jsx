@@ -217,6 +217,16 @@ export default function Navbar({ selectedCompany = 'PontoMax' }) {
               )}
               <p className="text-slate-500 truncate">{userEmail || 'Usuário Sem E-mail'}</p>
             </div>
+            
+            {!isAdmin && (
+              <DropdownMenuItem
+                onClick={() => window.location.href = 'https://wiaponto.vercel.app/ponto'}
+                className="cursor-pointer flex items-center"
+              >
+                Bater Ponto
+              </DropdownMenuItem>
+            )}
+
             <DropdownMenuItem
               onClick={handleSignOut}
               className="text-red-600 focus:text-red-600 cursor-pointer flex items-center"

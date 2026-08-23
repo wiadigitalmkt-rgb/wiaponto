@@ -101,7 +101,7 @@ export default function ForgotPassword() {
               </p>
               <button
                 onClick={() => navigate('/login')}
-                className="w-full py-2.5 px-6 rounded-md bg-[#00a887] hover:bg-[#008f73] text-white font-semibold text-sm transition-all shadow-sm cursor-pointer"
+                className="w-full py-2.5 px-6 rounded-md bg-[#fc9314] hover:bg-[#ff8b00] text-white font-semibold text-sm transition-all shadow-sm cursor-pointer"
               >
                 Ir para o Login
               </button>
@@ -125,7 +125,7 @@ export default function ForgotPassword() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full py-2.5 px-6 rounded-md bg-[#00a887] hover:bg-[#008f73] text-white font-semibold text-sm flex items-center justify-center gap-2 transition-all shadow-sm active:scale-[0.99] cursor-pointer disabled:opacity-50"
+                className="w-full py-2.5 px-6 rounded-md bg-[#fc9314] hover:bg-[#ff8b00] text-white font-semibold text-sm flex items-center justify-center gap-2 transition-all shadow-sm active:scale-[0.99] cursor-pointer disabled:opacity-50"
               >
                 {loading ? 'Enviando e-mail...' : 'Enviar Link de Recuperação'}
                 {!loading && <ArrowRight size={16} />}

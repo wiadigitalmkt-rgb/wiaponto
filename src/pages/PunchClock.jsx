@@ -8,6 +8,27 @@ import {
   Eye, EyeOff, Upload, CheckCircle2, MapPin, Check, FileText
 } from 'lucide-react';
 
+// ============================================================================
+// FUNÇÕES UTILITÁRIAS DE CÁLCULO DE HORAS
+// ============================================================================
+
+const timeToMinutes = (timeStr) => {
+  if (!timeStr || timeStr === '-' || timeStr.trim() === '') return null;
+  const parts = timeStr.trim().split(':');
+  if (parts.length < 2) return null;
+  const h = parseInt(parts[0], 10);
+  const m = parseInt(parts[1], 10);
+  if (isNaN(h) || isNaN(m)) return null;
+  return h * 60 + m;
+};
+
+const minutesToHHMM = (mins) => {
+  if (mins === null || isNaN(mins) || mins < 0) return '00:00';
+  const h = Math.floor(mins / 60);
+  const m = mins % 60;
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+};
+
 export default function PunchClock() {
   const navigate = useNavigate();
 
@@ -47,7 +68,7 @@ export default function PunchClock() {
   });
   const [pendingPunches, setPendingPunches] = useState([]);
   const [currentDateTime, setCurrentDateTime] = useState('');
-  const [greeting, setGreeting] = useState('Olá'); // Novo estado para a saudação dinâmica
+  const [greeting, setGreeting] = useState('Olá');
 
   // Estados da Confirmação no Mapa
   const [mapSuccess, setMapSuccess] = useState(false);
@@ -97,8 +118,8 @@ export default function PunchClock() {
     return `${year}-${month}-${day}`;
   };
 
-  // Carrega a última batida do Supabase ao iniciar
-  const loadTodayPunch = async () => {
+  // Carrega a última batida e estatísticas mensais do Supabase ao iniciar
+  const loadPunchData = async () => {
     if (!supabase || !profileData.email) return;
     try {
       const todayStr = getLocalDateString();
@@ -110,22 +131,21 @@ export default function PunchClock() {
         .maybeSingle();
 
       if (emp?.id) {
-        // Busca os registros para não dar erro caso falte ordenação no backend
-        const { data: records, error } = await supabase
+        // 1. Busca os registros de hoje para definir a última batida
+        const { data: recordsToday } = await supabase
           .from('time_records')
           .select('*')
           .eq('employee_id', emp.id)
           .eq('record_date', todayStr);
 
-        if (records && records.length > 0) {
-          // Ordena via JS para pegar sempre a última batida correta do dia
-          records.sort((a, b) => {
+        if (recordsToday && recordsToday.length > 0) {
+          recordsToday.sort((a, b) => {
             const timeA = a.saida !== '-' && a.saida ? a.saida : a.entrada;
             const timeB = b.saida !== '-' && b.saida ? b.saida : b.entrada;
             return timeA.localeCompare(timeB);
           });
           
-          const latestRecord = records[records.length - 1];
+          const latestRecord = recordsToday[recordsToday.length - 1];
           const lastTime = (latestRecord.saida && latestRecord.saida !== '-') ? latestRecord.saida : latestRecord.entrada;
           
           const [yr, mo, dy] = todayStr.split('-');
@@ -133,14 +153,60 @@ export default function PunchClock() {
         } else {
           setLastPunch('Nenhum registro hoje');
         }
+
+        // 2. Busca todos os registros do mês atual para calcular "Dias trabalhados" e "Horas no mês"
+        const now = new Date();
+        const yearNum = now.getFullYear();
+        const monthNum = String(now.getMonth() + 1).padStart(2, '0');
+        const startDate = `${yearNum}-${monthNum}-01`;
+        const endDate = `${yearNum}-${monthNum}-31`;
+
+        const { data: monthRecords } = await supabase
+          .from('time_records')
+          .select('*')
+          .eq('employee_id', emp.id)
+          .gte('record_date', startDate)
+          .lte('record_date', endDate);
+
+        if (monthRecords && monthRecords.length > 0) {
+          // Agrupa por data para contar os dias distintos com batidas
+          const uniqueDates = new Set(monthRecords.map(r => r.record_date));
+          const diasTrabalhadosCount = uniqueDates.size;
+
+          // Calcula o total de minutos trabalhados no mês
+          let totalMonthMinutes = 0;
+          monthRecords.forEach(curr => {
+            const mEnt = timeToMinutes(curr.entrada);
+            let mSai = timeToMinutes(curr.saida);
+            if (mEnt !== null && mSai !== null) {
+              if (mSai < mEnt || curr.is_night) {
+                mSai += 1440;
+              }
+              const diff = Math.max(0, mSai - mEnt);
+              totalMonthMinutes += diff;
+            }
+          });
+
+          setStats({
+            diasTrabalhados: diasTrabalhadosCount,
+            horasNoMes: minutesToHHMM(totalMonthMinutes),
+            bancoDeHoras: '00:00'
+          });
+        } else {
+          setStats({
+            diasTrabalhados: 0,
+            horasNoMes: '00:00',
+            bancoDeHoras: '00:00'
+          });
+        }
       }
     } catch (err) {
-      console.error('Erro ao buscar última batida:', err);
+      console.error('Erro ao buscar dados de ponto:', err);
     }
   };
 
   useEffect(() => {
-    loadTodayPunch();
+    loadPunchData();
   }, [profileData.email]);
 
   // Atualização em tempo real do relógio e da saudação
@@ -169,7 +235,6 @@ export default function PunchClock() {
     const minutes = String(now.getMinutes()).padStart(2, '0');
     setCurrentDateTime(`${dateStr}, ${hours}:${minutes}h`);
     
-    // Lógica para atualizar a saudação dinamicamente
     const currentHour = now.getHours();
     if (currentHour >= 5 && currentHour < 13) {
       setGreeting('Bom dia');
@@ -203,13 +268,11 @@ export default function PunchClock() {
     setLoading(true);
     try {
       const now = new Date();
-      // Correção do fuso usando data local
       const recordDate = getLocalDateString(now);
       const timeFormatted = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
       const fullNameFormat = `${profileData.nome} ${profileData.sobrenome}`.trim();
 
       if (supabase) {
-        // Busca colaborador existente pelo e-mail ou cria
         let { data: emp } = await supabase
           .from('Employees')
           .select('id')
@@ -226,7 +289,6 @@ export default function PunchClock() {
         }
 
         if (emp?.id) {
-          // Verifica se já existe batida sem saída hoje para fechar ou abrir novo intervalo
           const { data: openRecord } = await supabase
             .from('time_records')
             .select('*')
@@ -256,6 +318,9 @@ export default function PunchClock() {
           }
         }
       }
+
+      // Recarrega os dados atualizados após a batida
+      await loadPunchData();
 
       const dateStr = now.toLocaleDateString('pt-BR');
       const hours = String(now.getHours()).padStart(2, '0');

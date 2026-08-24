@@ -122,25 +122,38 @@ export default function AdminPonto() {
 
   const [registros, setRegistros] = useState([]);
 
-  // 1. CARREGAR COLABORADORES DO SUPABASE E DETECTAR USUÁRIO LOGADO
+  // 1. CARREGAR COLABORADORES DO SUPABASE E DETECTAR USUÁRIO LOGADO COM RESTRIÇÃO
   useEffect(() => {
     async function loadEmployees() {
+      // Pega usuário do Auth ou LocalStorage
       const { data: { user } } = await supabase.auth.getUser();
+      const storedSession = JSON.parse(
+        localStorage.getItem('userSession') || sessionStorage.getItem('userSession') || '{}'
+      );
+      const currentUserEmail = user?.email || storedSession?.user?.email || storedSession?.email;
+
       const { data, error } = await supabase
         .from('Employees')
         .select('*')
         .order('full_name', { ascending: true });
 
       if (!error && data && data.length > 0) {
-        setEmployees(data);
+        let matchedUser = data[0];
         
-        // Se houver um usuário logado no Auth, seleciona o colaborador correspondente por padrão
-        let defaultUser = data[0];
-        if (user?.email) {
-          const matched = data.find(e => e.email?.toLowerCase() === user.email.toLowerCase());
-          if (matched) defaultUser = matched;
+        if (currentUserEmail) {
+          const found = data.find(e => e.email?.toLowerCase() === currentUserEmail.toLowerCase());
+          if (found) matchedUser = found;
         }
-        setSelectedUser(defaultUser);
+
+        // REGRA DE ACESSO: Se for 'colaborador', limita a lista apenas a ele mesmo
+        if (matchedUser && matchedUser.role === 'colaborador') {
+          setEmployees([matchedUser]);
+          setSelectedUser(matchedUser);
+        } else {
+          // Se for gestor ou admin, carrega todos
+          setEmployees(data);
+          setSelectedUser(matchedUser);
+        }
       }
     }
     loadEmployees();
@@ -322,57 +335,68 @@ export default function AdminPonto() {
   };
 
   // Componente Reutilizável do Seletor Flutuante de Usuário (Estilo Coalize)
-  const UserDropdownSelector = () => (
-    <div className="flex items-center space-x-2">
-      <span className="text-xs font-semibold text-slate-600">Usuário</span>
-      <DropdownMenu modal={false}>
-        <DropdownMenuTrigger className="flex items-center justify-between border border-slate-300 rounded px-3 py-1 bg-white text-xs text-slate-700 hover:bg-[#1a2c6a] hover:text-white transition-colors min-w-[170px] focus:outline-none shadow-xs">
-          <span className="truncate pr-2">{selectedUser ? selectedUser.full_name : 'Carregando...'}</span>
-          <ChevronDown className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="start" className="w-56 p-1.5 bg-white rounded-md shadow-xl border border-slate-200 z-50">
-          {/* Campo de Busca */}
-          <div className="relative mb-1">
-            <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
-            <input 
-              type="text"
-              placeholder="Buscar usuário..."
-              value={userSearchTerm}
-              onChange={(e) => setUserSearchTerm(e.target.value)}
-              className="w-full pl-8 pr-2 py-1 text-xs border border-slate-200 rounded text-slate-700 focus:outline-none focus:border-[#2a3c7e]"
-              onClick={(e) => e.stopPropagation()}
-            />
-          </div>
+  const UserDropdownSelector = () => {
+    // Se o array tiver apenas 1 colaborador, o dropdown vira apenas um texto desabilitado
+    const isColaboradorOnly = employees.length <= 1;
 
-          {/* Lista de Usuários */}
-          <div className="max-h-48 overflow-y-auto space-y-0.5">
-            {filteredUsers.length > 0 ? (
-              filteredUsers.map((user) => (
-                <DropdownMenuItem 
-                  key={user.id}
-                  onClick={() => {
-                    setSelectedUser(user);
-                    setUserSearchTerm('');
-                  }}
-                  className={`cursor-pointer text-xs px-2.5 py-2 rounded transition-colors ${
-                    selectedUser && selectedUser.id === user.id
-                      ? 'bg-[#2a3c7e] text-white font-medium hover:bg-[#1f2d60]' 
-                      : 'text-slate-700 hover:bg-slate-100'
-                  }`}
-                >
-                  {user.full_name}
-                </DropdownMenuItem>
-              ))
-            ) : (
-              <div className="px-2 py-3 text-xs text-center text-slate-400">
-                Nenhum usuário encontrado
-              </div>
-            )}
+    return (
+      <div className="flex items-center space-x-2">
+        <span className="text-xs font-semibold text-slate-600">Usuário</span>
+        {isColaboradorOnly ? (
+          <div className="flex items-center justify-between border border-slate-300 rounded px-3 py-1 bg-slate-50 text-xs text-slate-500 min-w-[170px] cursor-not-allowed shadow-xs opacity-90">
+            <span className="truncate pr-2">{selectedUser ? selectedUser.full_name : 'Carregando...'}</span>
           </div>
-        </DropdownMenuContent>
-      </DropdownMenu>
-    </div>
-  );
+        ) : (
+          <DropdownMenu modal={false}>
+            <DropdownMenuTrigger className="flex items-center justify-between border border-slate-300 rounded px-3 py-1 bg-white text-xs text-slate-700 hover:bg-[#1a2c6a] hover:text-white transition-colors min-w-[170px] focus:outline-none shadow-xs">
+              <span className="truncate pr-2">{selectedUser ? selectedUser.full_name : 'Carregando...'}</span>
+              <ChevronDown className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="w-56 p-1.5 bg-white rounded-md shadow-xl border border-slate-200 z-50">
+              {/* Campo de Busca */}
+              <div className="relative mb-1">
+                <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
+                <input 
+                  type="text"
+                  placeholder="Buscar usuário..."
+                  value={userSearchTerm}
+                  onChange={(e) => setUserSearchTerm(e.target.value)}
+                  className="w-full pl-8 pr-2 py-1 text-xs border border-slate-200 rounded text-slate-700 focus:outline-none focus:border-[#2a3c7e]"
+                  onClick={(e) => e.stopPropagation()}
+                />
+              </div>
+
+              {/* Lista de Usuários */}
+              <div className="max-h-48 overflow-y-auto space-y-0.5">
+                {filteredUsers.length > 0 ? (
+                  filteredUsers.map((user) => (
+                    <DropdownMenuItem 
+                      key={user.id}
+                      onClick={() => {
+                        setSelectedUser(user);
+                        setUserSearchTerm('');
+                      }}
+                      className={`cursor-pointer text-xs px-2.5 py-2 rounded transition-colors ${
+                        selectedUser && selectedUser.id === user.id
+                          ? 'bg-[#2a3c7e] text-white font-medium hover:bg-[#1f2d60]' 
+                          : 'text-slate-700 hover:bg-slate-100'
+                      }`}
+                    >
+                      {user.full_name}
+                    </DropdownMenuItem>
+                  ))
+                ) : (
+                  <div className="px-2 py-3 text-xs text-center text-slate-400">
+                    Nenhum usuário encontrado
+                  </div>
+                )}
+              </div>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
+      </div>
+    );
+  };
 
   return (
     <div className="min-h-screen bg-[#edf2f7] flex flex-col font-sans text-slate-700 relative">

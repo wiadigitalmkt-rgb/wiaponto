@@ -263,7 +263,7 @@ export default function Dashboard() {
                 </div>
               </div>
               <div className="p-4 border-t border-slate-100 mt-6 bg-slate-50/50">
-                <Link to="/admin/ponto" className="text-xs font-bold text-[#ff8b00] hover:underline">
+                <Link to="/ponto" className="text-xs font-bold text-[#ff8b00] hover:underline">
                   Ver todos os pontos
                 </Link>
               </div>

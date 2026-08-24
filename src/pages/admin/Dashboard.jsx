@@ -56,7 +56,7 @@ export default function Dashboard() {
   }, []);
 
   const modules = [
-    { title: 'Ponto eletrônico', icon: Clock, path: '/admin/ponto' },
+    { title: 'Espelho de ponto', icon: Clock, path: '/espelho' },
     { title: 'Usuários', icon: Users, path: '/admin/colaboradores' },
     { title: 'Admissão', icon: UserPlus, path: '/admin/admissao' },
     { title: 'Contratos', icon: FileText, path: '/admin/contratos' },

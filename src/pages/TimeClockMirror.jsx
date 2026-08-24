@@ -108,6 +108,9 @@ export default function AdminPonto() {
   const [employees, setEmployees] = useState([]);
   const [selectedUser, setSelectedUser] = useState(null); // Objeto do colaborador selecionado
   const [userSearchTerm, setUserSearchTerm] = useState('');
+  
+  // Estado para verificar se é um GESTOR
+  const [isManager, setIsManager] = useState(false);
 
   const [expandedRow, setExpandedRow] = useState(null);
   const [toastMessage, setToastMessage] = useState(null);
@@ -147,12 +150,15 @@ export default function AdminPonto() {
           if (found) matchedUser = found;
         }
 
+        // VERIFICA O ROLE DO USUÁRIO LOGADO
         if (matchedUser && matchedUser.role === 'colaborador') {
           setEmployees([matchedUser]);
           setSelectedUser(matchedUser);
+          setIsManager(false); // Trava edições/exclusões para colaboradores
         } else {
           setEmployees(data);
           setSelectedUser(matchedUser);
+          setIsManager(true); // Libera edições/exclusões para gestores/admins
         }
       }
     }
@@ -257,6 +263,7 @@ export default function AdminPonto() {
   };
 
   const handleRemoveBatida = async (itemId, batidaIdx, dbId) => {
+    if (!isManager) return; // Segurança extra
     if (dbId) {
       const { error } = await supabase.from('time_records').delete().eq('id', dbId);
       if (error) {
@@ -269,6 +276,7 @@ export default function AdminPonto() {
   };
 
   const handleStartEdit = (itemId, idx, batida) => {
+    if (!isManager) return; // Segurança extra
     setEditingRowKey(`${itemId}-${idx}`);
     setEditFormData({
       isNight: batida.isNight || false,
@@ -301,7 +309,7 @@ export default function AdminPonto() {
   };
 
   const handleAddPointToDb = async (recordDate) => {
-    if (!selectedUser) return;
+    if (!isManager || !selectedUser) return; // Segurança extra
     const { error } = await supabase.from('time_records').insert([
       {
         employee_id: selectedUser.id,
@@ -533,27 +541,31 @@ export default function AdminPonto() {
                         {isExpanded && (
                           <div className="px-8 py-4 bg-slate-50/40 border-t border-b border-slate-200 text-xs">
                             <div className="flex items-center justify-between mb-4">
-                              <DropdownMenu modal={false}>
-                                <DropdownMenuTrigger className="flex items-center space-x-1 border border-slate-300 bg-white px-3 py-1 rounded font-medium text-slate-700 hover:bg-[#1a2c6a] hover:text-white transition-colors focus:outline-none">
-                                  <span>Adicionar</span>
-                                  <ChevronDown className="w-3.5 h-3.5" />
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="start" className="bg-white">
-                                  <DropdownMenuItem 
-                                    onClick={() => handleAddPointToDb(item.id)}
-                                    className="cursor-pointer"
-                                  >
-                                    Adicionar ponto
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem className="cursor-pointer">Falta justificada</DropdownMenuItem>
-                                  <DropdownMenuItem className="cursor-pointer">Trocar jornada</DropdownMenuItem>
-                                  <DropdownMenuItem className="cursor-pointer">Anotação</DropdownMenuItem>
-                                </DropdownMenuContent>
-                              </DropdownMenu>
+                              
+                              {/* EXIBE ADICIONAR APENAS PARA GESTOR */}
+                              {isManager && (
+                                <DropdownMenu modal={false}>
+                                  <DropdownMenuTrigger className="flex items-center space-x-1 border border-slate-300 bg-white px-3 py-1 rounded font-medium text-slate-700 hover:bg-[#1a2c6a] hover:text-white transition-colors focus:outline-none">
+                                    <span>Adicionar</span>
+                                    <ChevronDown className="w-3.5 h-3.5" />
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent align="start" className="bg-white">
+                                    <DropdownMenuItem 
+                                      onClick={() => handleAddPointToDb(item.id)}
+                                      className="cursor-pointer"
+                                    >
+                                      Adicionar ponto
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem className="cursor-pointer">Falta justificada</DropdownMenuItem>
+                                    <DropdownMenuItem className="cursor-pointer">Trocar jornada</DropdownMenuItem>
+                                    <DropdownMenuItem className="cursor-pointer">Anotação</DropdownMenuItem>
+                                  </DropdownMenuContent>
+                                </DropdownMenu>
+                              )}
 
                               <button 
                                 onClick={() => setShowHistoryModal(true)}
-                                className="flex items-center space-x-1 text-[#ff8b00] hover:underline font-medium cursor-pointer"
+                                className="flex items-center space-x-1 text-[#ff8b00] hover:underline font-medium cursor-pointer ml-auto"
                               >
                                 <History className="w-3.5 h-3.5" />
                                 <span>Ver histórico</span>
@@ -571,7 +583,7 @@ export default function AdminPonto() {
                               {item.batidas.map((b, idx) => {
                                 const isEditing = editingRowKey === `${item.id}-${idx}`;
 
-                                if (isEditing) {
+                                if (isEditing && isManager) {
                                   return (
                                     <div key={idx} className="flex items-center justify-between bg-white border border-slate-200 rounded-md p-2 shadow-sm gap-2">
                                       <button 
@@ -649,12 +661,15 @@ export default function AdminPonto() {
                                   <div key={idx} className="group grid grid-cols-12 items-center bg-white border border-slate-200/80 rounded-md py-1.5 px-3 shadow-sm hover:border-slate-300 transition-all">
                                     {/* COLUNA ESQUERDA: BOTOES, LOCALIZAÇÃO E SELFIE */}
                                     <div className="col-span-6 flex items-center space-x-3 overflow-hidden">
-                                      <button 
-                                        onClick={() => handleRemoveBatida(item.id, idx, b.db_id)}
-                                        className="opacity-0 group-hover:opacity-100 bg-red-500 hover:bg-red-600 text-white font-semibold px-2 py-0.5 rounded text-[10px] transition-opacity shadow-sm shrink-0"
-                                      >
-                                        Remover
-                                      </button>
+                                      {/* EXIBE REMOVER APENAS PARA GESTOR */}
+                                      {isManager && (
+                                        <button 
+                                          onClick={() => handleRemoveBatida(item.id, idx, b.db_id)}
+                                          className="opacity-0 group-hover:opacity-100 bg-red-500 hover:bg-red-600 text-white font-semibold px-2 py-0.5 rounded text-[10px] transition-opacity shadow-sm shrink-0"
+                                        >
+                                          Remover
+                                        </button>
+                                      )}
 
                                       {/* Selfie Thumbnail */}
                                       {b.photo_url ? (
@@ -707,12 +722,16 @@ export default function AdminPonto() {
 
                                     <div className="col-span-2 flex items-center justify-between pl-4">
                                       <span className="font-mono text-slate-600 text-xs">{b.saldo}</span>
-                                      <button 
-                                        onClick={() => handleStartEdit(item.id, idx, b)}
-                                        className="text-[#ff8b00] hover:underline text-xs font-medium"
-                                      >
-                                        Editar
-                                      </button>
+                                      
+                                      {/* EXIBE EDITAR APENAS PARA GESTOR */}
+                                      {isManager && (
+                                        <button 
+                                          onClick={() => handleStartEdit(item.id, idx, b)}
+                                          className="text-[#ff8b00] hover:underline text-xs font-medium"
+                                        >
+                                          Editar
+                                        </button>
+                                      )}
                                     </div>
                                   </div>
                                 );

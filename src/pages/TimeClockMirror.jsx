@@ -110,7 +110,7 @@ export default function AdminPonto() {
   const [userSearchTerm, setUserSearchTerm] = useState('');
   
   // Estado para verificar se é um GESTOR
-  const [isManager, setIsManager] = useState(false);
+  const [isManager, setIsManager] = useState(true);
 
   const [expandedRow, setExpandedRow] = useState(null);
   const [toastMessage, setToastMessage] = useState(null);
@@ -131,11 +131,14 @@ export default function AdminPonto() {
   // 1. CARREGAR COLABORADORES DO SUPABASE E DETECTAR USUÁRIO LOGADO COM RESTRIÇÃO
   useEffect(() => {
     async function loadEmployees() {
-      const { data: { user } } = await supabase.auth.getUser();
+      const { data: authData } = await supabase.auth.getUser();
       const storedSession = JSON.parse(
         localStorage.getItem('userSession') || sessionStorage.getItem('userSession') || '{}'
       );
-      const currentUserEmail = user?.email || storedSession?.user?.email || storedSession?.email;
+      
+      const sessionUser = storedSession?.user || storedSession || {};
+      const currentUserEmail = authData?.user?.email || sessionUser?.email || '';
+      const currentUserCpf = sessionUser?.cpf || '';
 
       const { data, error } = await supabase
         .from('Employees')
@@ -143,22 +146,38 @@ export default function AdminPonto() {
         .order('full_name', { ascending: true });
 
       if (!error && data && data.length > 0) {
-        let matchedUser = data[0];
-        
-        if (currentUserEmail) {
-          const found = data.find(e => e.email?.toLowerCase() === currentUserEmail.toLowerCase());
-          if (found) matchedUser = found;
-        }
+        // Localiza o registro do usuário logado na tabela
+        const loggedInEmployee = data.find(e => 
+          (currentUserEmail && e.email?.toLowerCase() === currentUserEmail.toLowerCase()) ||
+          (currentUserCpf && e.cpf === currentUserCpf)
+        );
 
-        // VERIFICA O ROLE DO USUÁRIO LOGADO
-        if (matchedUser && matchedUser.role === 'colaborador') {
-          setEmployees([matchedUser]);
-          setSelectedUser(matchedUser);
-          setIsManager(false); // Trava edições/exclusões para colaboradores
-        } else {
+        // Verifica os papéis de acesso tanto no banco quanto na sessão armazenada
+        const sessionRole = String(sessionUser?.role || sessionUser?.access_type || '').toLowerCase();
+        const dbRole = String(loggedInEmployee?.role || loggedInEmployee?.access_type || '').toLowerCase();
+
+        const isUserManager = 
+          sessionRole.includes('gestor') || 
+          sessionRole.includes('admin') || 
+          dbRole.includes('gestor') || 
+          dbRole.includes('admin') ||
+          (!loggedInEmployee && currentUserEmail.includes('gestor')); // Fallback para perfil gestor sem e-mail direto na tabela
+
+        if (isUserManager || (!loggedInEmployee && currentUserEmail)) {
+          // Se for gestor ou se a conta for de gestão, carrega todos os colaboradores
+          setIsManager(true);
           setEmployees(data);
-          setSelectedUser(matchedUser);
-          setIsManager(true); // Libera edições/exclusões para gestores/admins
+          setSelectedUser(prev => prev || loggedInEmployee || data[0]);
+        } else if (loggedInEmployee && loggedInEmployee.role === 'colaborador') {
+          // Restringe apenas se for estritamente colaborador
+          setIsManager(false);
+          setEmployees([loggedInEmployee]);
+          setSelectedUser(loggedInEmployee);
+        } else {
+          // Padrão de segurança: Gestor
+          setIsManager(true);
+          setEmployees(data);
+          setSelectedUser(prev => prev || data[0]);
         }
       }
     }
@@ -248,7 +267,7 @@ export default function AdminPonto() {
   }, [selectedUser, selectedMonth]);
 
   const filteredUsers = employees.filter(u => 
-    u.full_name.toLowerCase().includes(userSearchTerm.toLowerCase())
+    u.full_name?.toLowerCase().includes(userSearchTerm.toLowerCase())
   );
 
   const showToast = (msg) => {
@@ -263,7 +282,7 @@ export default function AdminPonto() {
   };
 
   const handleRemoveBatida = async (itemId, batidaIdx, dbId) => {
-    if (!isManager) return; // Segurança extra
+    if (!isManager) return;
     if (dbId) {
       const { error } = await supabase.from('time_records').delete().eq('id', dbId);
       if (error) {
@@ -276,7 +295,7 @@ export default function AdminPonto() {
   };
 
   const handleStartEdit = (itemId, idx, batida) => {
-    if (!isManager) return; // Segurança extra
+    if (!isManager) return;
     setEditingRowKey(`${itemId}-${idx}`);
     setEditFormData({
       isNight: batida.isNight || false,
@@ -309,7 +328,7 @@ export default function AdminPonto() {
   };
 
   const handleAddPointToDb = async (recordDate) => {
-    if (!isManager || !selectedUser) return; // Segurança extra
+    if (!isManager || !selectedUser) return;
     const { error } = await supabase.from('time_records').insert([
       {
         employee_id: selectedUser.id,
@@ -339,7 +358,7 @@ export default function AdminPonto() {
   };
 
   const UserDropdownSelector = () => {
-    const isColaboradorOnly = employees.length <= 1;
+    const isColaboradorOnly = !isManager && employees.length <= 1;
 
     return (
       <div className="flex items-center space-x-2">

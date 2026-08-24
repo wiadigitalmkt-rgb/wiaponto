@@ -14,7 +14,9 @@ import {
   CheckCircle2,
   X,
   History,
-  Search
+  Search,
+  MapPin,
+  Camera
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -111,6 +113,7 @@ export default function AdminPonto() {
   const [toastMessage, setToastMessage] = useState(null);
   const [showHistoryModal, setShowHistoryModal] = useState(false);
   const [showJornadaModal, setShowJornadaModal] = useState(false);
+  const [selectedPhotoModal, setSelectedPhotoModal] = useState(null);
 
   const [editingRowKey, setEditingRowKey] = useState(null);
   const [editFormData, setEditFormData] = useState({
@@ -125,7 +128,6 @@ export default function AdminPonto() {
   // 1. CARREGAR COLABORADORES DO SUPABASE E DETECTAR USUÁRIO LOGADO COM RESTRIÇÃO
   useEffect(() => {
     async function loadEmployees() {
-      // Pega usuário do Auth ou LocalStorage
       const { data: { user } } = await supabase.auth.getUser();
       const storedSession = JSON.parse(
         localStorage.getItem('userSession') || sessionStorage.getItem('userSession') || '{}'
@@ -145,12 +147,10 @@ export default function AdminPonto() {
           if (found) matchedUser = found;
         }
 
-        // REGRA DE ACESSO: Se for 'colaborador', limita a lista apenas a ele mesmo
         if (matchedUser && matchedUser.role === 'colaborador') {
           setEmployees([matchedUser]);
           setSelectedUser(matchedUser);
         } else {
-          // Se for gestor ou admin, carrega todos
           setEmployees(data);
           setSelectedUser(matchedUser);
         }
@@ -168,7 +168,6 @@ export default function AdminPonto() {
       .select('*')
       .eq('employee_id', selectedUser.id);
 
-    // Mapeia e filtra pelo mês selecionado
     const monthMap = {
       'Janeiro': '01', 'Fevereiro': '02', 'Março': '03', 'Abril': '04',
       'Maio': '05', 'Junho': '06', 'Julho': '07', 'Agosto': '08',
@@ -189,7 +188,6 @@ export default function AdminPonto() {
     const { data, error } = await query.order('record_date', { ascending: false });
 
     if (!error && data) {
-      // Agrupa os registros por data
       const grouped = data.reduce((acc, curr) => {
         const dateKey = curr.record_date;
         if (!acc[dateKey]) {
@@ -204,7 +202,10 @@ export default function AdminPonto() {
           entrada: curr.entrada || '-',
           saida: curr.saida || '-',
           isNight: curr.is_night || false,
-          obs: curr.obs || ''
+          obs: curr.obs || '',
+          latitude: curr.latitude,
+          longitude: curr.longitude,
+          photo_url: curr.photo_url
         });
         return acc;
       }, {});
@@ -214,13 +215,11 @@ export default function AdminPonto() {
     }
   };
 
-  // VÍNCULO EM TEMPO REAL COM SUPABASE REALTIME
   useEffect(() => {
     fetchRecordsFromSupabase();
 
     if (!selectedUser?.id || !supabase) return;
 
-    // Escuta alterações na tabela time_records em tempo real
     const channel = supabase
       .channel(`realtime:time_records:${selectedUser.id}`)
       .on(
@@ -257,7 +256,6 @@ export default function AdminPonto() {
     setExpandedRow(expandedRow === id ? null : id);
   };
 
-  // REMOVER PONTO DO SUPABASE
   const handleRemoveBatida = async (itemId, batidaIdx, dbId) => {
     if (dbId) {
       const { error } = await supabase.from('time_records').delete().eq('id', dbId);
@@ -280,7 +278,6 @@ export default function AdminPonto() {
     });
   };
 
-  // SALVAR / EDITAR PONTO NO SUPABASE
   const handleSaveEdit = async (itemId, batidaIdx, dbId) => {
     if (dbId) {
       const { error } = await supabase
@@ -303,7 +300,6 @@ export default function AdminPonto() {
     showToast('Ponto atualizado com sucesso!');
   };
 
-  // ADICIONAR NOVO PONTO NO SUPABASE
   const handleAddPointToDb = async (recordDate) => {
     if (!selectedUser) return;
     const { error } = await supabase.from('time_records').insert([
@@ -334,9 +330,7 @@ export default function AdminPonto() {
     window.print();
   };
 
-  // Componente Reutilizável do Seletor Flutuante de Usuário (Estilo Coalize)
   const UserDropdownSelector = () => {
-    // Se o array tiver apenas 1 colaborador, o dropdown vira apenas um texto desabilitado
     const isColaboradorOnly = employees.length <= 1;
 
     return (
@@ -353,7 +347,6 @@ export default function AdminPonto() {
               <ChevronDown className="w-3.5 h-3.5 text-slate-400 shrink-0" />
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start" className="w-56 p-1.5 bg-white rounded-md shadow-xl border border-slate-200 z-50">
-              {/* Campo de Busca */}
               <div className="relative mb-1">
                 <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
                 <input 
@@ -366,7 +359,6 @@ export default function AdminPonto() {
                 />
               </div>
 
-              {/* Lista de Usuários */}
               <div className="max-h-48 overflow-y-auto space-y-0.5">
                 {filteredUsers.length > 0 ? (
                   filteredUsers.map((user) => (
@@ -495,7 +487,6 @@ export default function AdminPonto() {
                     </select>
                   </div>
 
-                  {/* Seletor de Usuário Flutuante com Busca */}
                   <UserDropdownSelector />
                 </div>
 
@@ -570,7 +561,7 @@ export default function AdminPonto() {
                             </div>
 
                             <div className="grid grid-cols-12 text-slate-500 font-bold uppercase text-[10px] mb-2 px-2">
-                              <div className="col-span-6"></div>
+                              <div className="col-span-6">DETALHES / LOCALIZAÇÃO E SELFIE</div>
                               <div className="col-span-2 text-center">ENTRADA</div>
                               <div className="col-span-2 text-center">SAÍDA</div>
                               <div className="col-span-2 text-center">SALDO</div>
@@ -656,13 +647,52 @@ export default function AdminPonto() {
 
                                 return (
                                   <div key={idx} className="group grid grid-cols-12 items-center bg-white border border-slate-200/80 rounded-md py-1.5 px-3 shadow-sm hover:border-slate-300 transition-all">
-                                    <div className="col-span-6 flex items-center">
+                                    {/* COLUNA ESQUERDA: BOTOES, LOCALIZAÇÃO E SELFIE */}
+                                    <div className="col-span-6 flex items-center space-x-3 overflow-hidden">
                                       <button 
                                         onClick={() => handleRemoveBatida(item.id, idx, b.db_id)}
-                                        className="opacity-0 group-hover:opacity-100 bg-red-500 hover:bg-red-600 text-white font-semibold px-2.5 py-0.5 rounded text-[11px] transition-opacity shadow-sm"
+                                        className="opacity-0 group-hover:opacity-100 bg-red-500 hover:bg-red-600 text-white font-semibold px-2 py-0.5 rounded text-[10px] transition-opacity shadow-sm shrink-0"
                                       >
                                         Remover
                                       </button>
+
+                                      {/* Selfie Thumbnail */}
+                                      {b.photo_url ? (
+                                        <button 
+                                          onClick={() => setSelectedPhotoModal(b.photo_url)}
+                                          className="flex items-center space-x-1 text-[11px] font-medium text-slate-700 bg-slate-100 hover:bg-orange-50 hover:text-[#ff8b00] border border-slate-200 rounded px-1.5 py-0.5 transition-colors cursor-pointer shrink-0"
+                                          title="Clique para ver a selfie"
+                                        >
+                                          <img 
+                                            src={b.photo_url} 
+                                            alt="Selfie" 
+                                            className="w-5 h-5 rounded object-cover border border-slate-300"
+                                          />
+                                          <span className="hidden sm:inline">Selfie</span>
+                                        </button>
+                                      ) : (
+                                        <span className="text-[10px] text-slate-400 flex items-center gap-1 shrink-0">
+                                          <Camera className="w-3 h-3" /> S/ Selfie
+                                        </span>
+                                      )}
+
+                                      {/* Localização GPS */}
+                                      {b.latitude && b.longitude ? (
+                                        <a 
+                                          href={`https://maps.google.com/?q=${b.latitude},${b.longitude}`} 
+                                          target="_blank" 
+                                          rel="noreferrer"
+                                          className="flex items-center space-x-1 text-slate-600 hover:text-[#ff8b00] bg-slate-50 hover:bg-orange-50 px-2 py-0.5 rounded border border-slate-200/80 font-mono text-[10px] transition-colors truncate"
+                                          title="Clique para abrir no Google Maps"
+                                        >
+                                          <MapPin className="w-3 h-3 text-[#ff8b00] shrink-0" />
+                                          <span className="truncate">Lat: {Number(b.latitude).toFixed(4)}, Lng: {Number(b.longitude).toFixed(4)}</span>
+                                        </a>
+                                      ) : (
+                                        <span className="text-[10px] text-slate-400 flex items-center gap-1 shrink-0">
+                                          <MapPin className="w-3 h-3" /> S/ GPS
+                                        </span>
+                                      )}
                                     </div>
 
                                     <div className="col-span-2 flex items-center justify-center space-x-1 text-slate-700 font-mono text-xs">
@@ -734,7 +764,6 @@ export default function AdminPonto() {
                     </select>
                   </div>
 
-                  {/* Seletor de Usuário Flutuante com Busca também no Resumo */}
                   <UserDropdownSelector />
                 </div>
 
@@ -748,7 +777,6 @@ export default function AdminPonto() {
 
               {/* Tabela Clean Compacta */}
               <div className="text-[12px] divide-y divide-slate-100">
-                {/* 1. TRABALHADO */}
                 <div className="py-2 space-y-1">
                   <div className="grid grid-cols-12 items-center">
                     <span className="col-span-3 text-slate-800 font-bold uppercase text-[11px]">1. TRABALHADO</span>
@@ -772,7 +800,6 @@ export default function AdminPonto() {
                   </div>
                 </div>
 
-                {/* 2. FALTAS */}
                 <div className="py-2 space-y-1">
                   <div className="grid grid-cols-12 items-center">
                     <span className="col-span-3 text-slate-800 font-bold uppercase text-[11px]">2. FALTAS</span>
@@ -786,7 +813,6 @@ export default function AdminPonto() {
                   </div>
                 </div>
 
-                {/* 3. HORA EXTRA (geral) */}
                 <div className="py-2 space-y-1">
                   <div className="grid grid-cols-12 items-center">
                     <span className="col-span-3 text-slate-800 font-bold uppercase text-[11px]">3. HORA EXTRA (GERAL)</span>
@@ -805,7 +831,6 @@ export default function AdminPonto() {
                   </div>
                 </div>
 
-                {/* 4. HORA EXTRA (a pagar) */}
                 <div className="py-2 space-y-1">
                   <div className="grid grid-cols-12 items-center">
                     <span className="col-span-3 text-slate-800 font-bold uppercase text-[11px]">4. HORA EXTRA (A PAGAR)</span>
@@ -848,6 +873,23 @@ export default function AdminPonto() {
           )}
         </main>
       </div>
+
+      {/* Modal Ampliador de Foto da Selfie */}
+      {selectedPhotoModal && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center z-50 p-4" onClick={() => setSelectedPhotoModal(null)}>
+          <div className="bg-white p-3 rounded-lg shadow-2xl max-w-sm w-full relative" onClick={(e) => e.stopPropagation()}>
+            <div className="flex justify-between items-center mb-2 pb-2 border-b border-slate-100">
+              <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                <Camera className="w-4 h-4 text-[#ff8b00]" /> Selfie de Confirmação
+              </span>
+              <button onClick={() => setSelectedPhotoModal(null)} className="text-slate-400 hover:text-slate-600">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <img src={selectedPhotoModal} alt="Selfie ampliada" className="w-full h-auto rounded-md border border-slate-200" />
+          </div>
+        </div>
+      )}
 
       {/* Popup / Toast de feedback */}
       {toastMessage && (

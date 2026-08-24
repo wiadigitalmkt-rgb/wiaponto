@@ -15,6 +15,26 @@ import {
   X
 } from 'lucide-react';
 
+// ============================================================================
+// FUNÇÕES UTILITÁRIAS DE CÁLCULO DE HORAS (Mesma regra do Espelho de Ponto)
+// ============================================================================
+const timeToMinutes = (timeStr) => {
+  if (!timeStr || timeStr === '-' || timeStr.trim() === '') return null;
+  const parts = timeStr.trim().split(':');
+  if (parts.length < 2) return null;
+  const h = parseInt(parts[0], 10);
+  const m = parseInt(parts[1], 10);
+  if (isNaN(h) || isNaN(m)) return null;
+  return h * 60 + m;
+};
+
+const minutesToDisplayHours = (mins) => {
+  if (!mins || mins <= 0) return '00h00min';
+  const h = Math.floor(mins / 60);
+  const m = mins % 60;
+  return `${String(h).padStart(2, '0')}h${String(m).padStart(2, '0')}min`;
+};
+
 export default function Dashboard() {
   const [selectedCompany, setSelectedCompany] = useState('Sua Empresa');
   const [activeModal, setActiveModal] = useState(null);
@@ -26,21 +46,24 @@ export default function Dashboard() {
     pendentesJustificativa: 0
   });
 
+  // Estado para armazenar os usuários com horas extras
+  const [overtimeUsers, setOvertimeUsers] = useState([]);
+
   useEffect(() => {
     async function loadTodayStats() {
       if (!supabase) return;
 
       const todayStr = new Date().toISOString().split('T')[0];
 
-      // Busca total de funcionários
-      const { count: totalEmp } = await supabase
+      // Busca total de funcionários e pega dados para cruzar os nomes
+      const { data: employeesData, count: totalEmp } = await supabase
         .from('Employees')
-        .select('*', { count: 'exact', head: true });
+        .select('id, full_name', { count: 'exact' });
 
       // Busca registros de ponto do dia
       const { data: todayRecords } = await supabase
         .from('time_records')
-        .select('employee_id')
+        .select('*')
         .eq('record_date', todayStr);
 
       const uniqueEmployeesToday = new Set(todayRecords?.map(r => r.employee_id)).size;
@@ -50,9 +73,73 @@ export default function Dashboard() {
         totalColaboradores: totalEmp || 0,
         pendentesJustificativa: 0
       });
+
+      // Lógica para calcular horas extras do dia
+      const extraList = [];
+      const recordsByEmp = {};
+      
+      todayRecords?.forEach(r => {
+         if (!recordsByEmp[r.employee_id]) recordsByEmp[r.employee_id] = [];
+         recordsByEmp[r.employee_id].push(r);
+      });
+
+      Object.keys(recordsByEmp).forEach(empId => {
+         let totalDayMinutes = 0;
+         recordsByEmp[empId].forEach(b => {
+           const mEnt = timeToMinutes(b.entrada);
+           let mSai = timeToMinutes(b.saida);
+           
+           if (mEnt !== null && mSai !== null) {
+             if (mSai < mEnt || b.is_night) mSai += 1440;
+             totalDayMinutes += Math.max(0, mSai - mEnt);
+           }
+         });
+         
+         // Base diária esperada = 480 minutos (8h)
+         const extraMinutes = Math.max(0, totalDayMinutes - 480);
+         if (extraMinutes > 0) {
+           const emp = employeesData?.find(e => e.id === empId);
+           const fullName = emp ? emp.full_name : 'Usuário Desconhecido';
+           
+           // Extrair iniciais formatadas
+           const nameParts = fullName.split(' ');
+           let initials = 'US';
+           if (nameParts.length > 1) {
+               initials = (nameParts[0][0] + nameParts[1][0]).toUpperCase();
+           } else if (nameParts.length === 1 && nameParts[0].length > 0) {
+               initials = nameParts[0].substring(0, 2).toUpperCase();
+           }
+
+           extraList.push({
+             id: empId,
+             name: fullName,
+             initials: initials,
+             extraDisplay: minutesToDisplayHours(extraMinutes)
+           });
+         }
+      });
+      
+      setOvertimeUsers(extraList);
     }
 
+    // Carrega estatísticas imediatamente
     loadTodayStats();
+
+    // Inscreve no canal realtime para atualizar ao bater o ponto
+    const channel = supabase
+      .channel('dashboard_time_records')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'time_records' },
+        () => {
+          loadTodayStats();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   const modules = [
@@ -182,27 +269,42 @@ export default function Dashboard() {
               </div>
             </div>
 
-            {/* Card Hora Extra */}
+            {/* Card Hora Extra - ATUALIZADO EM TEMPO REAL */}
             <div className="bg-white rounded-lg border border-slate-200/80 shadow-sm flex flex-col justify-between overflow-hidden">
-              <div className="p-6 pb-0">
+              <div className="p-6 pb-0 flex-1 flex flex-col">
                 <h4 className="font-bold text-[#1a2c6a] text-base mb-4">Hora Extra</h4>
-                <p className="text-xs font-bold text-slate-600 mb-4">1 usuário com horas extras</p>
+                <p className="text-xs font-bold text-slate-600 mb-4">
+                  {overtimeUsers.length === 1 
+                    ? '1 usuário com horas extras hoje' 
+                    : `${overtimeUsers.length} usuários com horas extras hoje`}
+                </p>
                 
-                <div className="flex items-center justify-between p-3 rounded-md bg-slate-50 text-xs font-medium">
-                  <div className="flex items-center gap-2">
-                    <div className="w-7 h-7 rounded-full bg-slate-200 text-slate-700 flex items-center justify-center font-bold text-[10px]">
-                      JO
+                <div className="space-y-2 max-h-[150px] overflow-y-auto pr-1">
+                  {overtimeUsers.length > 0 ? (
+                    overtimeUsers.map(user => (
+                      <div key={user.id} className="flex items-center justify-between p-3 rounded-md bg-slate-50 text-xs font-medium">
+                        <div className="flex items-center gap-2">
+                          <div className="w-7 h-7 rounded-full bg-slate-200 text-slate-700 flex items-center justify-center font-bold text-[10px]">
+                            {user.initials}
+                          </div>
+                          <span className="font-bold text-slate-700">{user.name}</span>
+                        </div>
+                        <span className="font-mono font-bold text-slate-800">{user.extraDisplay}</span>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="text-xs text-slate-400 italic text-center py-4">
+                      Nenhuma hora extra registrada até o momento.
                     </div>
-                    <span className="font-bold text-slate-700">Joquebede de Oliveira</span>
-                  </div>
-                  <span className="font-mono font-bold text-slate-800">02h00min</span>
+                  )}
                 </div>
               </div>
 
               <div className="p-4 border-t border-slate-100 mt-6 bg-slate-50/50">
-                <button className="text-xs font-bold text-[#ff8b00] hover:underline">
+                {/* Redirecionamento exato conforme requisitado */}
+                <a href="https://wiaponto.vercel.app/espelho" className="text-xs font-bold text-[#ff8b00] hover:underline">
                   Ver todos
-                </button>
+                </a>
               </div>
             </div>
 

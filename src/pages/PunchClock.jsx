@@ -5,7 +5,8 @@ import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/AuthContext';
 import { 
   Scan, Calendar, Clock, ChevronDown, User, LogOut, 
-  Eye, EyeOff, Upload, CheckCircle2, MapPin, Check, FileText
+  Eye, EyeOff, Upload, CheckCircle2, MapPin, Check, FileText,
+  Camera, RefreshCw, AlertCircle
 } from 'lucide-react';
 
 // ============================================================================
@@ -70,9 +71,19 @@ export default function PunchClock() {
   const [currentDateTime, setCurrentDateTime] = useState('');
   const [greeting, setGreeting] = useState('Olá');
 
-  // Estados da Confirmação no Mapa
+  // Estados da Confirmação no Mapa / Localização / Selfie
   const [mapSuccess, setMapSuccess] = useState(false);
   const [punchDateTimeModal, setPunchDateTimeModal] = useState({ date: '', time: '' });
+
+  // Novas validações obrigatórias
+  const [location, setLocation] = useState({ lat: null, lng: null, loading: false, error: null });
+  const [selfieImage, setSelfieImage] = useState(null);
+  const [cameraError, setCameraError] = useState(null);
+  const [cameraLoading, setCameraLoading] = useState(false);
+
+  const videoRef = useRef(null);
+  const canvasRef = useRef(null);
+  const mediaStreamRef = useRef(null);
 
   // Estados da Sessão Perfil
   const [profileData, setProfileData] = useState({
@@ -98,19 +109,7 @@ export default function PunchClock() {
     }
   }, [userEmail, firstName, lastName]);
 
-  const [passwords, setPasswords] = useState({
-    atual: '',
-    nova: '',
-    confirmacao: ''
-  });
-  const [showCurrentPass, setShowCurrentPass] = useState(false);
-  const [showNewPass, setShowNewPass] = useState(false);
-  const [showConfirmPass, setShowConfirmPass] = useState(false);
-
-  const [signatureName, setSignatureName] = useState(fullName);
-  const [selectedSignatureStyle, setSelectedSignatureStyle] = useState('');
-
-  // Função para pegar a data local (AAAA-MM-DD) sem problemas de fuso horário/UTC
+  // Função para pegar a data local (AAAA-MM-DD)
   const getLocalDateString = (d = new Date()) => {
     const year = d.getFullYear();
     const month = String(d.getMonth() + 1).padStart(2, '0');
@@ -131,7 +130,6 @@ export default function PunchClock() {
         .maybeSingle();
 
       if (emp?.id) {
-        // 1. Busca os registros de hoje para definir a última batida
         const { data: recordsToday } = await supabase
           .from('time_records')
           .select('*')
@@ -154,7 +152,6 @@ export default function PunchClock() {
           setLastPunch('Nenhum registro hoje');
         }
 
-        // 2. Busca todos os registros do mês atual para calcular "Dias trabalhados" e "Horas no mês"
         const now = new Date();
         const yearNum = now.getFullYear();
         const monthNum = String(now.getMonth() + 1).padStart(2, '0');
@@ -169,11 +166,9 @@ export default function PunchClock() {
           .lte('record_date', endDate);
 
         if (monthRecords && monthRecords.length > 0) {
-          // Agrupa por data para contar os dias distintos com batidas
           const uniqueDates = new Set(monthRecords.map(r => r.record_date));
           const diasTrabalhadosCount = uniqueDates.size;
 
-          // Calcula o total de minutos trabalhados no mês
           let totalMonthMinutes = 0;
           monthRecords.forEach(curr => {
             const mEnt = timeToMinutes(curr.entrada);
@@ -209,14 +204,12 @@ export default function PunchClock() {
     loadPunchData();
   }, [profileData.email]);
 
-  // Atualização em tempo real do relógio e da saudação
   useEffect(() => {
     updateDateTime();
     const interval = setInterval(updateDateTime, 1000);
     return () => clearInterval(interval);
   }, []);
 
-  // Fechar dropdown ao clicar fora
   useEffect(() => {
     function handleClickOutside(event) {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
@@ -226,6 +219,13 @@ export default function PunchClock() {
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [dropdownRef]);
+
+  // Desliga a câmera quando a view muda
+  useEffect(() => {
+    if (currentView !== 'map') {
+      stopCamera();
+    }
+  }, [currentView]);
 
   const updateDateTime = () => {
     const now = new Date();
@@ -245,7 +245,87 @@ export default function PunchClock() {
     }
   };
 
-  // Redireciona para o Mapa de Ponto
+  // --- LÓGICA DE LOCALIZAÇÃO EM TEMPO REAL ---
+  const requestLocation = () => {
+    if (!navigator.geolocation) {
+      setLocation({ lat: null, lng: null, loading: false, error: 'Navegador não suporta geolocalização.' });
+      return;
+    }
+
+    setLocation(prev => ({ ...prev, loading: true, error: null }));
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        setLocation({
+          lat: position.coords.latitude,
+          lng: position.coords.longitude,
+          loading: false,
+          error: null
+        });
+      },
+      (err) => {
+        let msg = 'Erro ao obter localização. Permita o acesso ao GPS.';
+        if (err.code === err.PERMISSION_DENIED) {
+          msg = 'Acesso à localização negado. Você precisa permitir o GPS no navegador.';
+        }
+        setLocation({ lat: null, lng: null, loading: false, error: msg });
+      },
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+    );
+  };
+
+  // --- LÓGICA DA CÂMERA E SELFIE ---
+  const startCamera = async () => {
+    setCameraError(null);
+    setCameraLoading(true);
+    stopCamera();
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } },
+        audio: false
+      });
+      mediaStreamRef.current = stream;
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+      }
+    } catch (err) {
+      console.error('Erro ao acessar a câmera:', err);
+      setCameraError('Permissão para acessar a câmera negada ou câmera não disponível.');
+    } finally {
+      setCameraLoading(false);
+    }
+  };
+
+  const stopCamera = () => {
+    if (mediaStreamRef.current) {
+      mediaStreamRef.current.getTracks().forEach(track => track.stop());
+      mediaStreamRef.current = null;
+    }
+  };
+
+  const captureSelfie = () => {
+    if (!videoRef.current || !canvasRef.current) return;
+    const video = videoRef.current;
+    const canvas = canvasRef.current;
+    
+    canvas.width = video.videoWidth || 320;
+    canvas.height = video.videoHeight || 240;
+
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+    const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
+    setSelfieImage(dataUrl);
+    stopCamera();
+  };
+
+  const retakeSelfie = () => {
+    setSelfieImage(null);
+    startCamera();
+  };
+
+  // Redireciona para o Mapa de Ponto e inicia a validação dos requisitos
   const handleOpenMap = () => {
     setIsMenuOpen(false);
     const now = new Date();
@@ -260,11 +340,19 @@ export default function PunchClock() {
       time: `${hours}h${minutes}min`
     });
     setMapSuccess(false);
+    setSelfieImage(null);
+    
     setCurrentView('map');
+
+    // Inicia a captura imediata da localização e da câmera
+    requestLocation();
+    setTimeout(() => startCamera(), 300);
   };
 
-  // Confirma o Ponto na tela do Mapa e atualiza no Supabase
+  // Confirms Punch in Map view
   const handleConfirmPunch = async () => {
+    if (!location.lat || !location.lng || !selfieImage) return;
+
     setLoading(true);
     try {
       const now = new Date();
@@ -302,7 +390,12 @@ export default function PunchClock() {
           if (openRecord) {
             await supabase
               .from('time_records')
-              .update({ saida: timeFormatted })
+              .update({ 
+                saida: timeFormatted,
+                latitude: location.lat,
+                longitude: location.lng,
+                photo_url: selfieImage
+              })
               .eq('id', openRecord.id);
           } else {
             await supabase.from('time_records').insert([
@@ -312,14 +405,16 @@ export default function PunchClock() {
                 entrada: timeFormatted,
                 saida: '-',
                 is_night: false,
-                obs: 'Ponto Web'
+                obs: 'Ponto Web (GPS + Selfie)',
+                latitude: location.lat,
+                longitude: location.lng,
+                photo_url: selfieImage
               }
             ]);
           }
         }
       }
 
-      // Recarrega os dados atualizados após a batida
       await loadPunchData();
 
       const dateStr = now.toLocaleDateString('pt-BR');
@@ -334,6 +429,7 @@ export default function PunchClock() {
       ]);
 
       setMapSuccess(true);
+      stopCamera();
     } catch (err) {
       console.error('Erro ao bater ponto:', err);
     } finally {
@@ -342,6 +438,7 @@ export default function PunchClock() {
   };
 
   const handleLogout = async () => {
+    stopCamera();
     if (supabase) await supabase.auth.signOut();
     navigate('/login');
   };
@@ -354,17 +451,11 @@ export default function PunchClock() {
     }
   };
 
+  // O botão de confirmar só é habilitado se tiver Localização E Selfie válidas
+  const isFormValid = location.lat && location.lng && selfieImage && !loading;
+
   return (
     <div className="min-h-screen bg-[#eef2f5] flex flex-col font-sans text-slate-700">
-      <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Caveat:wght@600&family=Dancing+Script:wght@600&family=Great+Vibes&family=Pacifico&family=Sacramento&display=swap');
-        .font-sig-1 { font-family: 'Dancing Script', cursive; }
-        .font-sig-2 { font-family: 'Great Vibes', cursive; }
-        .font-sig-3 { font-family: 'Caveat', cursive; }
-        .font-sig-4 { font-family: 'Sacramento', cursive; }
-        .font-sig-5 { font-family: 'Pacifico', cursive; }
-      `}</style>
-
       {/* NAVBAR OFICIAL APLICADA */}
       <Navbar selectedCompany={profileData.empresa} />
 
@@ -374,7 +465,7 @@ export default function PunchClock() {
           <h1 className="text-xl md:text-2xl font-bold text-slate-800 mb-8 flex items-center justify-center gap-2">
             <span>{greeting},</span>
             <span>{profileData.nome}</span>
-            <span>!  👋 </span>
+            <span>! 👋</span>
           </h1>
 
           <div className="bg-white rounded-lg border border-slate-200/80 shadow-sm w-full max-w-2xl overflow-hidden">
@@ -399,7 +490,7 @@ export default function PunchClock() {
               <button
                 onClick={handleOpenMap}
                 disabled={loading}
-                className="w-full bg-[#fc9314] hover:bg-[#ff8b00] text-white font-bold text-xs py-3.5 rounded-md transition duration-150 shadow-sm tracking-wide disabled:opacity-50"
+                className="w-full bg-[#fc9314] hover:bg-[#ff8b00] text-white font-bold text-xs py-3.5 rounded-md transition duration-150 shadow-sm tracking-wide disabled:opacity-50 cursor-pointer"
               >
                 Bater ponto
               </button>
@@ -508,10 +599,10 @@ export default function PunchClock() {
         </main>
       )}
 
-      {/* VIEW 3: MAPA E CONFIRMAÇÃO DE PONTO */}
+      {/* VIEW 3: MAPA E CONFIRMAÇÃO DE PONTO COM LOCALIZAÇÃO + SELFIE */}
       {currentView === 'map' && (
-        <div className="relative flex-1 w-full bg-slate-200 overflow-hidden min-h-[calc(100vh-60px)]">
-          <div className="absolute inset-0 bg-[#d4dadc] opacity-80 flex items-center justify-center">
+        <div className="relative flex-1 w-full bg-slate-200 overflow-y-auto py-8 min-h-[calc(100vh-60px)] flex items-center justify-center">
+          <div className="absolute inset-0 bg-[#d4dadc] opacity-60 flex items-center justify-center">
             <div className="relative flex items-center justify-center">
               <div className="p-3 bg-[#ff8b00] text-white rounded-full shadow-2xl relative z-10 animate-bounce">
                 <MapPin size={28} />
@@ -519,14 +610,15 @@ export default function PunchClock() {
             </div>
           </div>
 
-          <div className="absolute inset-0 bg-black/40 flex items-center justify-center p-4 z-20">
+          <div className="relative z-20 w-full max-w-md px-4">
             {!mapSuccess ? (
-              <div className="bg-white rounded-lg shadow-2xl max-w-sm w-full p-6 text-center space-y-5 animate-in zoom-in-95">
-                <div className="w-10 h-10 rounded-full bg-orange-50 text-[#ff8b00] mx-auto flex items-center justify-center border border-orange-100">
-                  <CheckCircle2 size={22} />
+              <div className="bg-white rounded-xl shadow-2xl p-6 text-center space-y-4 animate-in zoom-in-95">
+                
+                {/* CABEÇALHO COM DATA E HORA */}
+                <div>
+                  <h3 className="text-base font-bold text-slate-800">Validação de Ponto</h3>
+                  <p className="text-xs text-slate-500">Localização e Selfie são obrigatórias</p>
                 </div>
-
-                <h3 className="text-sm font-bold text-slate-800">Localização validada com sucesso!</h3>
 
                 <div className="bg-slate-50/80 p-3 rounded-md flex justify-around items-center text-left text-xs border border-slate-100">
                   <div className="flex items-center gap-2">
@@ -548,34 +640,167 @@ export default function PunchClock() {
                   </div>
                 </div>
 
+                {/* PAINEL 1: GEOLOCALIZAÇÃO OBRIGATÓRIA */}
+                <div className="border border-slate-200 rounded-lg p-3.5 bg-slate-50/50 text-left space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                      <MapPin size={14} className="text-[#ff8b00]" />
+                      Localização (GPS)
+                    </span>
+                    {location.lat && location.lng ? (
+                      <span className="text-[10px] bg-green-100 text-green-700 font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
+                        <Check size={12} /> Validada
+                      </span>
+                    ) : (
+                      <span className="text-[10px] bg-amber-100 text-amber-700 font-bold px-2 py-0.5 rounded-full">
+                        Obrigatória
+                      </span>
+                    )}
+                  </div>
+
+                  {location.loading && (
+                    <p className="text-xs text-slate-500 animate-pulse flex items-center gap-1.5">
+                      <RefreshCw size={12} className="animate-spin" /> Obtendo coordenadas de GPS...
+                    </p>
+                  )}
+
+                  {location.error && (
+                    <div className="space-y-1.5">
+                      <p className="text-xs text-red-600 flex items-center gap-1">
+                        <AlertCircle size={12} /> {location.error}
+                      </p>
+                      <button
+                        onClick={requestLocation}
+                        className="text-xs font-bold text-[#ff8b00] hover:underline flex items-center gap-1"
+                      >
+                        <RefreshCw size={11} /> Tentar obter localização novamente
+                      </button>
+                    </div>
+                  )}
+
+                  {location.lat && location.lng && (
+                    <p className="text-[11px] font-mono text-slate-600 bg-white p-1.5 rounded border border-slate-200">
+                      Lat: {location.lat.toFixed(6)}, Lng: {location.lng.toFixed(6)}
+                    </p>
+                  )}
+                </div>
+
+                {/* PAINEL 2: CÂMERA / SELFIE OBRIGATÓRIA */}
+                <div className="border border-slate-200 rounded-lg p-3.5 bg-slate-50/50 text-left space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                      <Camera size={14} className="text-[#ff8b00]" />
+                      Selfie de Confirmação
+                    </span>
+                    {selfieImage ? (
+                      <span className="text-[10px] bg-green-100 text-green-700 font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
+                        <Check size={12} /> Foto Tirada
+                      </span>
+                    ) : (
+                      <span className="text-[10px] bg-amber-100 text-amber-700 font-bold px-2 py-0.5 rounded-full">
+                        Obrigatória
+                      </span>
+                    )}
+                  </div>
+
+                  <canvas ref={canvasRef} className="hidden" />
+
+                  {cameraError && (
+                    <div className="space-y-1.5">
+                      <p className="text-xs text-red-600 flex items-center gap-1">
+                        <AlertCircle size={12} /> {cameraError}
+                      </p>
+                      <button
+                        onClick={startCamera}
+                        className="text-xs font-bold text-[#ff8b00] hover:underline flex items-center gap-1"
+                      >
+                        <RefreshCw size={11} /> Tentar abrir câmera novamente
+                      </button>
+                    </div>
+                  )}
+
+                  {!selfieImage ? (
+                    <div className="space-y-2">
+                      <div className="relative w-full h-44 bg-slate-900 rounded-md overflow-hidden flex items-center justify-center border border-slate-300">
+                        <video
+                          ref={videoRef}
+                          autoPlay
+                          playsInline
+                          muted
+                          className="w-full h-full object-cover transform -scale-x-100"
+                        />
+                        {cameraLoading && (
+                          <div className="absolute inset-0 bg-slate-900/80 flex items-center justify-center text-white text-xs">
+                            Iniciando câmera...
+                          </div>
+                        )}
+                      </div>
+
+                      <button
+                        onClick={captureSelfie}
+                        disabled={cameraLoading || !!cameraError}
+                        className="w-full bg-slate-800 hover:bg-slate-900 text-white font-bold text-xs py-2 rounded flex items-center justify-center gap-1.5 transition disabled:opacity-50 cursor-pointer"
+                      >
+                        <Camera size={14} /> Tirar Foto
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      <div className="w-full h-44 rounded-md overflow-hidden border border-slate-300 bg-black">
+                        <img src={selfieImage} alt="Selfie do colaborador" className="w-full h-full object-cover" />
+                      </div>
+
+                      <button
+                        onClick={retakeSelfie}
+                        className="w-full text-xs font-bold text-slate-600 hover:text-slate-800 py-1 flex items-center justify-center gap-1 cursor-pointer"
+                      >
+                        <RefreshCw size={12} /> Tirar Foto Novamente
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                {/* BOTÕES DE AÇÃO */}
                 <div className="space-y-2 pt-2">
                   <button
                     onClick={handleConfirmPunch}
-                    disabled={loading}
-                    className="w-full bg-[#ff8b00] hover:bg-[#e07a00] text-white font-bold text-xs py-3 rounded uppercase tracking-wider transition shadow-sm"
+                    disabled={!isFormValid}
+                    className="w-full bg-[#ff8b00] hover:bg-[#e07a00] text-white font-bold text-xs py-3.5 rounded uppercase tracking-wider transition shadow-sm disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
                   >
                     {loading ? 'CONFIRMANDO...' : 'CONFIRMAR PONTO'}
                   </button>
 
+                  {!isFormValid && (
+                    <p className="text-[10px] text-slate-400">
+                      * O botão será liberado assim que a localização for obtida e a selfie for tirada.
+                    </p>
+                  )}
+
                   <button
-                    onClick={() => setCurrentView('home')}
-                    className="w-full text-xs font-bold text-[#ff8b00] hover:text-[#e07a00] py-1"
+                    onClick={() => {
+                      stopCamera();
+                      setCurrentView('home');
+                    }}
+                    className="w-full text-xs font-bold text-[#ff8b00] hover:text-[#e07a00] py-1 cursor-pointer"
                   >
                     Cancelar Ponto
                   </button>
                 </div>
               </div>
             ) : (
-              <div className="bg-white rounded-lg shadow-2xl max-w-sm w-full p-8 text-center space-y-5 animate-in zoom-in-95">
+              <div className="bg-white rounded-xl shadow-2xl p-8 text-center space-y-5 animate-in zoom-in-95">
                 <div className="w-14 h-14 rounded-full bg-[#ff8b00] text-white mx-auto flex items-center justify-center shadow-md">
                   <Check size={32} />
                 </div>
 
-                <h3 className="text-base font-bold text-slate-800">Ponto registrado com sucesso</h3>
+                <h3 className="text-base font-bold text-slate-800">Ponto registrado com sucesso!</h3>
 
                 <button
-                  onClick={() => setCurrentView('home')}
-                  className="w-full border-2 border-[#ff8b00] text-[#ff8b00] hover:bg-orange-50 font-bold text-xs py-2.5 rounded transition uppercase tracking-wider"
+                  onClick={() => {
+                    stopCamera();
+                    setCurrentView('home');
+                  }}
+                  className="w-full border-2 border-[#ff8b00] text-[#ff8b00] hover:bg-orange-50 font-bold text-xs py-2.5 rounded transition uppercase tracking-wider cursor-pointer"
                 >
                   OK
                 </button>

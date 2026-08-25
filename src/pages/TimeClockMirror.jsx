@@ -369,7 +369,7 @@ export default function AdminPonto() {
           </div>
         ) : (
           <DropdownMenu modal={false}>
-            <DropdownMenuTrigger className="flex items-center justify-between border border-slate-300 rounded px-3 py-1 bg-white text-xs text-slate-700 hover:bg-[#1a2c6a] hover:text-white transition-colors min-w-[170px] focus:outline-none shadow-xs">
+            <DropdownMenuTrigger className="flex items-center justify-between border border-slate-300 rounded px-3 py-1 bg-white text-xs text-slate-700 hover:border-[#2a3c7e] transition-colors min-w-[170px] focus:outline-none shadow-xs">
               <span className="truncate pr-2">{selectedUser ? selectedUser.full_name : 'Carregando...'}</span>
               <ChevronDown className="w-3.5 h-3.5 text-slate-400 shrink-0" />
             </DropdownMenuTrigger>
@@ -395,11 +395,7 @@ export default function AdminPonto() {
                         setSelectedUser(user);
                         setUserSearchTerm('');
                       }}
-                      className={`cursor-pointer text-xs px-2.5 py-2 rounded transition-colors ${
-                        selectedUser && selectedUser.id === user.id
-                          ? 'bg-[#2a3c7e] text-white font-medium hover:bg-[#1f2d60]' 
-                          : 'text-slate-700 hover:bg-slate-100'
-                      }`}
+                      className="cursor-pointer text-xs px-2.5 py-2 rounded text-slate-700 transition-colors hover:bg-[#2a3c7e] hover:text-white focus:bg-[#2a3c7e] focus:text-white data-[highlighted]:bg-[#2a3c7e] data-[highlighted]:text-white focus:outline-none"
                     >
                       {user.full_name}
                     </DropdownMenuItem>
@@ -487,7 +483,7 @@ export default function AdminPonto() {
             
             <div className="flex items-center space-x-2">
               <span>Departamento</span>
-              <select className="border border-slate-300 rounded px-2 py-1 bg-white text-xs font-medium focus:outline-none focus:border-[#2a3c7e] focus:ring-1 focus:ring-[#2a3c7e] shadow-sm">
+              <select className="border border-slate-300 rounded px-2 py-1 bg-white text-xs font-medium focus:outline-none hover:border-[#2a3c7e] cursor-pointer transition-colors shadow-sm">
                 <option>Todos</option>
               </select>
             </div>
@@ -503,7 +499,7 @@ export default function AdminPonto() {
                     <select 
                       value={selectedMonth}
                       onChange={(e) => setSelectedMonth(e.target.value)}
-                      className="border border-slate-300 rounded px-3 py-1 bg-white text-xs font-normal focus:outline-none focus:border-[#2a3c7e] focus:ring-1 focus:ring-[#2a3c7e]"
+                      className="border border-slate-300 rounded px-3 py-1 bg-white text-xs font-normal focus:outline-none hover:border-[#2a3c7e] cursor-pointer transition-colors"
                     >
                       <option>Agosto/2026</option>
                       <option>Julho/2026</option>
@@ -791,7 +787,7 @@ export default function AdminPonto() {
                     <select 
                       value={selectedMonth}
                       onChange={(e) => setSelectedMonth(e.target.value)}
-                      className="border border-slate-300 rounded px-2 py-1 bg-white text-xs font-normal focus:outline-none focus:border-[#2a3c7e] focus:ring-1 focus:ring-[#2a3c7e]"
+                      className="border border-slate-300 rounded px-2 py-1 bg-white text-xs font-normal focus:outline-none hover:border-[#2a3c7e] cursor-pointer transition-colors"
                     >
                       <option>Agosto/2026</option>
                       <option>Julho/2026</option>

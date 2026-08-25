@@ -446,8 +446,8 @@ export default function AdminPonto() {
                 onClick={() => setActiveTab('pontos')}
                 className={`w-full flex items-center space-x-3 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
                   activeTab === 'pontos'
-                    ? 'bg-white text-slate-700 hover:bg-[#1a2c6a] hover:text-white border-l-4 border-[#ff8b00] shadow-sm font-semibold'
-                    : 'bg-white text-slate-500 hover:bg-[#1a2c6a] hover:text-white'
+                    ? 'bg-white text-slate-700 hover:bg-[#fc9314] hover:text-white border-l-4 border-[#ff8b00] shadow-sm font-semibold'
+                    : 'bg-white text-slate-500 hover:bg-[#fc9314] hover:text-white'
                 }`}
               >
                 <Clock className="w-4 h-4 shrink-0" />
@@ -458,8 +458,8 @@ export default function AdminPonto() {
                 onClick={() => setActiveTab('resumo')}
                 className={`w-full flex items-center space-x-3 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
                   activeTab === 'resumo'
-                    ? 'bg-white text-slate-700 hover:bg-[#1a2c6a] hover:text-white border-l-4 border-[#ff8b00] shadow-sm font-semibold'
-                    : 'bg-white text-slate-500 hover:bg-[#1a2c6a] hover:text-white'
+                    ? 'bg-white text-slate-700 hover:bg-[#fc9314] hover:text-white border-l-4 border-[#ff8b00] shadow-sm font-semibold'
+                    : 'bg-white text-slate-500 hover:bg-[#fc9314] hover:text-white'
                 }`}
               >
                 <FileText className="w-4 h-4 shrink-0" />
@@ -487,7 +487,7 @@ export default function AdminPonto() {
             
             <div className="flex items-center space-x-2">
               <span>Departamento</span>
-              <select className="border border-slate-300 rounded px-2 py-1 bg-white text-xs font-medium focus:outline-none shadow-sm">
+              <select className="border border-slate-300 rounded px-2 py-1 bg-white text-xs font-medium focus:outline-none focus:border-[#2a3c7e] focus:ring-1 focus:ring-[#2a3c7e] shadow-sm">
                 <option>Todos</option>
               </select>
             </div>
@@ -503,7 +503,7 @@ export default function AdminPonto() {
                     <select 
                       value={selectedMonth}
                       onChange={(e) => setSelectedMonth(e.target.value)}
-                      className="border border-slate-300 rounded px-3 py-1 bg-white text-xs font-normal focus:outline-none"
+                      className="border border-slate-300 rounded px-3 py-1 bg-white text-xs font-normal focus:outline-none focus:border-[#2a3c7e] focus:ring-1 focus:ring-[#2a3c7e]"
                     >
                       <option>Agosto/2026</option>
                       <option>Julho/2026</option>
@@ -791,7 +791,7 @@ export default function AdminPonto() {
                     <select 
                       value={selectedMonth}
                       onChange={(e) => setSelectedMonth(e.target.value)}
-                      className="border border-slate-300 rounded px-2 py-1 bg-white text-xs font-normal focus:outline-none"
+                      className="border border-slate-300 rounded px-2 py-1 bg-white text-xs font-normal focus:outline-none focus:border-[#2a3c7e] focus:ring-1 focus:ring-[#2a3c7e]"
                     >
                       <option>Agosto/2026</option>
                       <option>Julho/2026</option>

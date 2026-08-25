@@ -92,7 +92,6 @@ const AuthenticatedApp = () => {
         {/* Rotas Exclusivas para Gestores/Admins */}
         <Route element={<ProtectedRoute allowedRoles={['gestor', 'admin', 'administrador']} />}>
           <Route path="/admin" element={<AdminDashboard />} />
-          <Route path="/admin/ponto" element={<PontoEletronico />} />
           <Route path="/admin/colaboradores" element={<Employees />} />
           <Route path="/admin/empresa" element={<CompanySettings />} />
           <Route path="/admin/usuario" element={<Usuario />} />

@@ -103,6 +103,7 @@ const processDayRecord = (record, targetDailyMinutes = 480) => {
 export default function AdminPonto() {
   const [activeTab, setActiveTab] = useState('pontos'); // 'pontos' | 'resumo'
   const [selectedMonth, setSelectedMonth] = useState('Agosto/2026');
+  const [selectedDepartment, setSelectedDepartment] = useState('Todos');
   
   // Lista dinâmica de colaboradores do Supabase
   const [employees, setEmployees] = useState([]);
@@ -371,7 +372,7 @@ export default function AdminPonto() {
           <DropdownMenu modal={false}>
             <DropdownMenuTrigger className="flex items-center justify-between border border-slate-300 rounded px-3 py-1 bg-white text-xs text-slate-700 hover:border-[#2a3c7e] transition-colors min-w-[170px] focus:outline-none shadow-xs">
               <span className="truncate pr-2">{selectedUser ? selectedUser.full_name : 'Carregando...'}</span>
-              <ChevronDown className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+              <ChevronDown className="w-3.5 h-3.5 text-slate-400 shrink-0 ml-2" />
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start" className="w-56 p-1.5 bg-white rounded-md shadow-xl border border-slate-200 z-50">
               <div className="relative mb-1">
@@ -409,6 +410,62 @@ export default function AdminPonto() {
             </DropdownMenuContent>
           </DropdownMenu>
         )}
+      </div>
+    );
+  };
+
+  const DepartmentDropdownSelector = () => {
+    return (
+      <div className="flex items-center space-x-2">
+        <span className="text-xs font-semibold text-slate-600">Departamento</span>
+        <DropdownMenu modal={false}>
+          <DropdownMenuTrigger className="flex items-center justify-between border border-slate-300 rounded px-3 py-1 bg-white text-xs text-slate-700 hover:border-[#2a3c7e] transition-colors focus:outline-none shadow-xs">
+            <span>{selectedDepartment}</span>
+            <ChevronDown className="w-3.5 h-3.5 text-slate-400 shrink-0 ml-2" />
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start" className="w-40 p-1.5 bg-white rounded-md shadow-xl border border-slate-200 z-50">
+            <DropdownMenuItem 
+              onClick={() => setSelectedDepartment('Todos')}
+              className="cursor-pointer text-xs px-2.5 py-2 rounded text-slate-700 transition-colors hover:bg-[#2a3c7e] hover:text-white focus:bg-[#2a3c7e] focus:text-white data-[highlighted]:bg-[#2a3c7e] data-[highlighted]:text-white focus:outline-none"
+            >
+              Todos
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+    );
+  };
+
+  const MonthDropdownSelector = () => {
+    const months = [
+      'Agosto/2026',
+      'Julho/2026',
+      'Junho/2026',
+      'Maio/2026',
+      'Abril/2026',
+      'Março/2026'
+    ];
+
+    return (
+      <div className="flex items-center space-x-2">
+        <span className="text-xs font-semibold text-slate-600">Mês</span>
+        <DropdownMenu modal={false}>
+          <DropdownMenuTrigger className="flex items-center justify-between border border-slate-300 rounded px-3 py-1 bg-white text-xs text-slate-700 hover:border-[#2a3c7e] transition-colors focus:outline-none shadow-xs">
+            <span>{selectedMonth}</span>
+            <ChevronDown className="w-3.5 h-3.5 text-slate-400 shrink-0 ml-2" />
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start" className="w-40 p-1.5 bg-white rounded-md shadow-xl border border-slate-200 z-50">
+            {months.map((month) => (
+              <DropdownMenuItem 
+                key={month}
+                onClick={() => setSelectedMonth(month)}
+                className="cursor-pointer text-xs px-2.5 py-2 rounded text-slate-700 transition-colors hover:bg-[#2a3c7e] hover:text-white focus:bg-[#2a3c7e] focus:text-white data-[highlighted]:bg-[#2a3c7e] data-[highlighted]:text-white focus:outline-none"
+              >
+                {month}
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
     );
   };
@@ -481,53 +538,17 @@ export default function AdminPonto() {
               </span>
             </div>
             
-            <div className="flex items-center space-x-2">
-  <span className="text-xs font-semibold text-slate-600">Departamento</span>
-  <DropdownMenu modal={false}>
-    <DropdownMenuTrigger className="flex items-center justify-between border border-slate-300 rounded px-3 py-1 bg-white text-xs text-slate-700 hover:border-[#2a3c7e] transition-colors focus:outline-none shadow-xs">
-      <span>Todos</span>
-      <ChevronDown className="w-3.5 h-3.5 text-slate-400 shrink-0 ml-2" />
-    </DropdownMenuTrigger>
-    <DropdownMenuContent align="start" className="w-40 p-1.5 bg-white rounded-md shadow-xl border border-slate-200 z-50">
-      <DropdownMenuItem className="cursor-pointer text-xs px-2.5 py-2 rounded text-slate-700 transition-colors hover:bg-[#2a3c7e] hover:text-white focus:bg-[#2a3c7e] focus:text-white data-[highlighted]:bg-[#2a3c7e] data-[highlighted]:text-white focus:outline-none">
-        Todos
-      </DropdownMenuItem>
-    </DropdownMenuContent>
-  </DropdownMenu>
-</div>
+            <DepartmentDropdownSelector />
+          </div>
 
           {/* CONTEÚDO DA ABA: PONTOS REGISTRADOS */}
           {activeTab === 'pontos' && (
             <div className="bg-white rounded-lg shadow-sm border border-slate-200/80">
               <div className="p-3.5 border-b border-slate-200 flex flex-wrap items-center justify-between gap-4">
                 <div className="flex items-center space-x-4 text-xs font-semibold text-slate-600">
-                  <div className="flex items-center space-x-2">
-  <span className="text-xs font-semibold text-slate-600">Mês</span>
-  <DropdownMenu modal={false}>
-    <DropdownMenuTrigger className="flex items-center justify-between border border-slate-300 rounded px-3 py-1 bg-white text-xs text-slate-700 hover:border-[#2a3c7e] transition-colors focus:outline-none shadow-xs">
-      <span>{selectedMonth}</span>
-      <ChevronDown className="w-3.5 h-3.5 text-slate-400 shrink-0 ml-2" />
-    </DropdownMenuTrigger>
-    <DropdownMenuContent align="start" className="w-40 p-1.5 bg-white rounded-md shadow-xl border border-slate-200 z-50">
-      {[
-        'Agosto/2026',
-        'Julho/2026',
-        'Junho/2026',
-        'Maio/2026',
-        'Abril/2026',
-        'Março/2026'
-      ].map((month) => (
-        <DropdownMenuItem
-          key={month}
-          onClick={() => setSelectedMonth(month)}
-          className="cursor-pointer text-xs px-2.5 py-2 rounded text-slate-700 transition-colors hover:bg-[#2a3c7e] hover:text-white focus:bg-[#2a3c7e] focus:text-white data-[highlighted]:bg-[#2a3c7e] data-[highlighted]:text-white focus:outline-none"
-        >
-          {month}
-        </DropdownMenuItem>
-      ))}
-    </DropdownMenuContent>
-  </DropdownMenu>
-</div>
+                  <MonthDropdownSelector />
+                  <UserDropdownSelector />
+                </div>
 
                 <button 
                   onClick={() => setShowJornadaModal(true)}
@@ -798,22 +819,7 @@ export default function AdminPonto() {
             <div className="bg-white rounded-lg shadow-sm border border-slate-200/80 p-5 space-y-3">
               <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-200 pb-3">
                 <div className="flex items-center space-x-4 text-xs font-semibold text-slate-600">
-                  <div className="flex items-center space-x-2">
-                    <span>Mês</span>
-                    <select 
-                      value={selectedMonth}
-                      onChange={(e) => setSelectedMonth(e.target.value)}
-                      className="border border-slate-300 rounded px-2 py-1 bg-white text-xs font-normal focus:outline-none hover:border-[#2a3c7e] cursor-pointer transition-colors"
-                    >
-                      <option>Agosto/2026</option>
-                      <option>Julho/2026</option>
-                      <option>Junho/2026</option>
-                      <option>Maio/2026</option>
-                      <option>Abril/2026</option>
-                      <option>Março/2026</option>
-                    </select>
-                  </div>
-
+                  <MonthDropdownSelector />
                   <UserDropdownSelector />
                 </div>
 

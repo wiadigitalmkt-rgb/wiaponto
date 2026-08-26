@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import Navbar from '@/components/Navbar';
 import { supabase } from '@/lib/supabase';
 import { 
@@ -101,6 +102,7 @@ const processDayRecord = (record, targetDailyMinutes = 480) => {
 };
 
 export default function AdminPonto() {
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('pontos'); // 'pontos' | 'resumo'
   const [selectedMonth, setSelectedMonth] = useState('Agosto/2026');
   const [selectedDepartment, setSelectedDepartment] = useState('Todos');
@@ -349,6 +351,12 @@ export default function AdminPonto() {
     }
   };
 
+  const handleUserClick = () => {
+    if (isManager && selectedUser?.id) {
+      navigate(`/admin/usuario?id=${selectedUser.id}`);
+    }
+  };
+
   const totalGeralTrabalhadoMinutos = registros.reduce((acc, curr) => acc + (curr.totalDayMinutes || 0), 0);
   const totalGeralExtraMinutos = registros.reduce((acc, curr) => acc + (curr.extraMinutes || 0), 0);
   const totalGeralNoturnoMinutos = registros.reduce((acc, curr) => acc + (curr.nightMinutes || 0), 0);
@@ -482,7 +490,14 @@ export default function AdminPonto() {
               PONTO ELETRÔNICO
             </h1>
             
-            <div className="flex items-center justify-between p-2 rounded-lg hover:bg-slate-200/50 cursor-pointer text-slate-600 mb-4 transition-colors">
+            <div 
+              onClick={handleUserClick}
+              className={`flex items-center justify-between p-2 rounded-lg text-slate-600 mb-4 transition-colors ${
+                isManager 
+                  ? 'hover:bg-slate-200/50 cursor-pointer' 
+                  : 'cursor-default'
+              }`}
+            >
               <div className="flex items-center space-x-2.5 min-w-0">
                 <div className="w-7 h-7 rounded-full bg-slate-200/80 flex items-center justify-center text-xs font-bold text-slate-700 shrink-0">
                   {selectedUser ? selectedUser.full_name.substring(0, 2).toUpperCase() : '--'}

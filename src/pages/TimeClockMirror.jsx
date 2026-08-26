@@ -364,12 +364,12 @@ export default function AdminPonto() {
       <div className="flex items-center space-x-2">
         <span className="text-xs font-semibold text-slate-600">Usuário</span>
         {isColaboradorOnly ? (
-          <div className="flex items-center justify-between border-0 rounded px-3 py-1 bg-slate-50 text-xs text-slate-500 min-w-[170px] cursor-not-allowed opacity-90">
+          <div className="flex items-center justify-between border border-slate-300 rounded px-3 py-1 bg-slate-50 text-xs text-slate-500 min-w-[170px] cursor-not-allowed shadow-xs opacity-90">
             <span className="truncate pr-2">{selectedUser ? selectedUser.full_name : 'Carregando...'}</span>
           </div>
         ) : (
           <DropdownMenu modal={false}>
-            <DropdownMenuTrigger className="flex items-center justify-between border-0 rounded px-3 py-1 bg-white text-xs text-slate-700 hover:bg-[#2a3c7e] hover:text-white transition-colors min-w-[170px] focus:outline-none focus:ring-0">
+            <DropdownMenuTrigger className="flex items-center justify-between border border-slate-300 rounded px-3 py-1 bg-white text-xs text-slate-700 hover:border-[#2a3c7e] transition-colors min-w-[170px] focus:outline-none shadow-xs">
               <span className="truncate pr-2">{selectedUser ? selectedUser.full_name : 'Carregando...'}</span>
               <ChevronDown className="w-3.5 h-3.5 text-slate-400 shrink-0" />
             </DropdownMenuTrigger>
@@ -483,8 +483,8 @@ export default function AdminPonto() {
             
             <div className="flex items-center space-x-2">
               <span>Departamento</span>
-              <select className="border-0 rounded px-2 py-1 bg-white text-xs font-medium focus:outline-none focus:ring-0 hover:bg-[#2a3c7e] hover:text-white cursor-pointer transition-colors">
-                <option className="bg-white text-slate-700 hover:bg-[#2a3c7e] hover:text-white">Todos</option>
+              <select className="border border-slate-300 rounded px-2 py-1 bg-white text-xs font-medium focus:outline-none hover:border-[#2a3c7e] cursor-pointer transition-colors shadow-sm">
+                <option>Todos</option>
               </select>
             </div>
           </div>
@@ -499,14 +499,14 @@ export default function AdminPonto() {
                     <select 
                       value={selectedMonth}
                       onChange={(e) => setSelectedMonth(e.target.value)}
-                      className="border-0 rounded px-3 py-1 bg-white text-xs font-normal focus:outline-none focus:ring-0 hover:bg-[#2a3c7e] hover:text-white cursor-pointer transition-colors"
+                      className="border border-slate-300 rounded px-3 py-1 bg-white text-xs font-normal focus:outline-none hover:border-[#2a3c7e] cursor-pointer transition-colors"
                     >
-                      <option className="bg-white text-slate-700 hover:bg-[#2a3c7e] hover:text-white">Agosto/2026</option>
-                      <option className="bg-white text-slate-700 hover:bg-[#2a3c7e] hover:text-white">Julho/2026</option>
-                      <option className="bg-white text-slate-700 hover:bg-[#2a3c7e] hover:text-white">Junho/2026</option>
-                      <option className="bg-white text-slate-700 hover:bg-[#2a3c7e] hover:text-white">Maio/2026</option>
-                      <option className="bg-white text-slate-700 hover:bg-[#2a3c7e] hover:text-white">Abril/2026</option>
-                      <option className="bg-white text-slate-700 hover:bg-[#2a3c7e] hover:text-white">Março/2026</option>
+                      <option>Agosto/2026</option>
+                      <option>Julho/2026</option>
+                      <option>Junho/2026</option>
+                      <option>Maio/2026</option>
+                      <option>Abril/2026</option>
+                      <option>Março/2026</option>
                     </select>
                   </div>
 
@@ -787,14 +787,14 @@ export default function AdminPonto() {
                     <select 
                       value={selectedMonth}
                       onChange={(e) => setSelectedMonth(e.target.value)}
-                      className="border-0 rounded px-2 py-1 bg-white text-xs font-normal focus:outline-none focus:ring-0 hover:bg-[#2a3c7e] hover:text-white cursor-pointer transition-colors"
+                      className="border border-slate-300 rounded px-2 py-1 bg-white text-xs font-normal focus:outline-none hover:border-[#2a3c7e] cursor-pointer transition-colors"
                     >
-                      <option className="bg-white text-slate-700 hover:bg-[#2a3c7e] hover:text-white">Agosto/2026</option>
-                      <option className="bg-white text-slate-700 hover:bg-[#2a3c7e] hover:text-white">Julho/2026</option>
-                      <option className="bg-white text-slate-700 hover:bg-[#2a3c7e] hover:text-white">Junho/2026</option>
-                      <option className="bg-white text-slate-700 hover:bg-[#2a3c7e] hover:text-white">Maio/2026</option>
-                      <option className="bg-white text-slate-700 hover:bg-[#2a3c7e] hover:text-white">Abril/2026</option>
-                      <option className="bg-white text-slate-700 hover:bg-[#2a3c7e] hover:text-white">Março/2026</option>
+                      <option>Agosto/2026</option>
+                      <option>Julho/2026</option>
+                      <option>Junho/2026</option>
+                      <option>Maio/2026</option>
+                      <option>Abril/2026</option>
+                      <option>Março/2026</option>
                     </select>
                   </div>
 

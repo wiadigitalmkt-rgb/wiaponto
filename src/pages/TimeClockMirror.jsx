@@ -529,9 +529,6 @@ export default function AdminPonto() {
   </DropdownMenu>
 </div>
 
-                  <UserDropdownSelector />
-                </div>
-
                 <button 
                   onClick={() => setShowJornadaModal(true)}
                   className="flex items-center text-xs text-[#ff8b00] font-medium hover:underline cursor-pointer"

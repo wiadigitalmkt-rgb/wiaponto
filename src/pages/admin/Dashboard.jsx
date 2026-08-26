@@ -149,7 +149,7 @@ export default function Dashboard() {
     { title: 'Contratos', icon: FileText, path: '/admin/contratos' },
     { title: 'Banco de horas', icon: Calendar, path: '/admin/banco-horas' },
     { title: 'Distribuição de Docs', icon: FileText, path: '/admin/documentos' },
-    { title: 'Central de Ajuda', icon: HelpCircle, path: '/admin/ajuda' },
+    { title: 'Central de Ajuda', icon: HelpCircle, path: '/ajuda' },
     { 
       title: 'Comunicação interna', 
       icon: MessageSquare, 

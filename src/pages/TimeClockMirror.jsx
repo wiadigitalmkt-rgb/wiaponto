@@ -1100,7 +1100,7 @@ export default function AdminPonto() {
 
       {/* Rodapé */}
       <footer className="text-center py-3 text-xs text-slate-400 border-t border-slate-200 bg-white">
-        © 2026 PontoMax - Todos os direitos reservados.
+        © 2026 WiaPonto - Todos os direitos reservados.
       </footer>
     </div>
   );

@@ -125,7 +125,7 @@ export default function Documentos() {
 
               <button
                 onClick={() => alert('Função de Enviar espelhos em breve!')}
-                className="mb-3 bg-[#009688] hover:bg-[#00897b] text-white text-xs font-semibold px-4 py-2 rounded transition-colors shadow-sm"
+                className="mb-3 bg-[#fc9314] hover:bg-[#ff8b00] text-white text-xs font-semibold px-4 py-2 rounded transition-colors shadow-sm"
               >
                 Enviar espelhos
               </button>

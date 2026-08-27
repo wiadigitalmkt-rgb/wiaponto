@@ -294,7 +294,7 @@ export default function Documentos() {
               }`}
             >
               <FileText className={`w-4 h-4 ${activeMenu === 'pdf' ? 'text-[#ff8b00]' : 'text-slate-500'}`} />
-              <span>Arquivos em PDF</span>
+              <span>Arquivos em GERAL</span>
             </button>
 
             <button
@@ -719,6 +719,8 @@ export default function Documentos() {
                   <option value="Holerite">Contra-cheque / Holerite</option>
                   <option value="Documento">Documento Pessoal (RG/CPF)</option>
                   <option value="Atestado">Atestado Médico</option>
+                  <option value="Atestado">Certificados</option>
+                  <option value="Atestado">Fotos</option>
                   <option value="Outros">Outros</option>
                 </select>
               </div>

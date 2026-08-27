@@ -30,7 +30,6 @@ import Admissao from './pages/admin/Admissao';
 // Imports das Páginas Admin Criadas
 import Contratos from './pages/admin/Contratos';
 import Banco from './pages/admin/Banco';
-import AdminDocumentos from './pages/admin/Documentos';
 
 // Import da Página de Documentos do Colaborador
 import Documentos from './pages/documentos';
@@ -98,7 +97,6 @@ const AuthenticatedApp = () => {
           <Route path="/admin/admissao" element={<Admissao />} />
           <Route path="/admin/contratos" element={<Contratos />} />
           <Route path="/admin/banco-horas" element={<Banco />} />
-          <Route path="/admin/documentos" element={<AdminDocumentos />} />
         </Route>
 
       </Route>

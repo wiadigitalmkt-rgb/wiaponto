@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import Navbar from '@/components/Navbar';
@@ -51,11 +50,11 @@ export default function Documentos() {
               onClick={() => setActiveMenu('espelho')}
               className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded text-xs font-medium transition-colors ${
                 activeMenu === 'espelho'
-                  ? 'bg-white text-teal-600 shadow-sm border border-slate-200/60 font-semibold'
+                  ? 'bg-white text-[#ff8b00] shadow-sm border border-slate-200/60 font-semibold'
                   : 'text-slate-600 hover:bg-slate-200/50'
               }`}
             >
-              <Clock className="w-4 h-4 text-teal-600" />
+              <Clock className="w-4 h-4 text-[#ff8b00]" />
               <span>Espelho</span>
             </button>
 
@@ -63,7 +62,7 @@ export default function Documentos() {
               onClick={() => setActiveMenu('pdf')}
               className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded text-xs font-medium transition-colors ${
                 activeMenu === 'pdf'
-                  ? 'bg-white text-teal-600 shadow-sm border border-slate-200/60 font-semibold'
+                  ? 'bg-white text-[#ff8b00] shadow-sm border border-slate-200/60 font-semibold'
                   : 'text-slate-600 hover:bg-slate-200/50'
               }`}
             >
@@ -75,7 +74,7 @@ export default function Documentos() {
               onClick={() => setActiveMenu('avisos')}
               className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded text-xs font-medium transition-colors ${
                 activeMenu === 'avisos'
-                  ? 'bg-white text-teal-600 shadow-sm border border-slate-200/60 font-semibold'
+                  ? 'bg-white text-[#ff8b00] shadow-sm border border-slate-200/60 font-semibold'
                   : 'text-slate-600 hover:bg-slate-200/50'
               }`}
             >
@@ -89,11 +88,11 @@ export default function Documentos() {
         <main className="flex-1 space-y-3">
           {/* BREADCRUMB */}
           <div className="text-xs text-slate-500 flex items-center gap-1">
-            <Link to="/admin" className="hover:text-teal-600 transition-colors">
+            <Link to="/admin" className="hover:text-[#ff8b00] transition-colors">
               Painel
             </Link>
             <span>&gt;</span>
-            <span className="text-teal-600 font-medium">Espelho</span>
+            <span className="text-[#ff8b00] font-medium">Espelho</span>
           </div>
 
           {/* CARD DO CONTEÚDO */}
@@ -105,7 +104,7 @@ export default function Documentos() {
                   onClick={() => setActiveTab('espelhos')}
                   className={`pb-3 text-xs font-bold transition-colors border-b-2 ${
                     activeTab === 'espelhos'
-                      ? 'border-teal-600 text-teal-600'
+                      ? 'border-[#ff8b00] text-[#ff8b00]'
                       : 'border-transparent text-slate-500 hover:text-slate-800'
                   }`}
                 >
@@ -115,7 +114,7 @@ export default function Documentos() {
                   onClick={() => setActiveTab('downloads')}
                   className={`pb-3 text-xs font-bold transition-colors border-b-2 ${
                     activeTab === 'downloads'
-                      ? 'border-teal-600 text-teal-600'
+                      ? 'border-[#ff8b00] text-[#ff8b00]'
                       : 'border-transparent text-slate-500 hover:text-slate-800'
                   }`}
                 >
@@ -146,7 +145,7 @@ export default function Documentos() {
                   {loading ? (
                     <tr>
                       <td colSpan="4" className="py-12 text-center text-slate-400">
-                        <Loader2 className="w-6 h-6 animate-spin mx-auto mb-2 text-teal-600" />
+                        <Loader2 className="w-6 h-6 animate-spin mx-auto mb-2 text-[#ff8b00]" />
                         Carregando documentos...
                       </td>
                     </tr>

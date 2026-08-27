@@ -339,17 +339,6 @@ export default function Documentos() {
                       }`}
                     >
                       Espelhos
-                    </button>
-                    <button
-                      onClick={() => setActiveTab('downloads')}
-                      className={`pb-3 text-xs font-bold transition-colors border-b-2 ${
-                        activeTab === 'downloads'
-                          ? 'border-[#ff8b00] text-[#ff8b00]'
-                          : 'border-transparent text-slate-500 hover:text-slate-800'
-                      }`}
-                    >
-                      Downloads
-                    </button>
                   </div>
 
                   {isManager && (

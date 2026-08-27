@@ -10,21 +10,31 @@ import {
   Upload, 
   CheckCircle2, 
   Trash2, 
-  FileCheck, 
   Plus, 
   X,
   ExternalLink,
-  ShieldCheck
+  ShieldCheck,
+  ChevronDown,
+  Search
 } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
 export default function Documentos() {
   const [activeMenu, setActiveMenu] = useState('espelho'); // 'espelho' | 'pdf' | 'avisos'
-  const [activeTab, setActiveTab] = useState('espelhos'); // 'espelhos' | 'downloads'
+  const [activeTab, setActiveTab] = useState('espelhos'); // 'espelhos' (Pendentes) | 'downloads' (Assinados)
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [loading, setLoading] = useState(false);
 
   // Estados dos Dados
   const [employees, setEmployees] = useState([]);
+  const [selectedUser, setSelectedUser] = useState(null); // Colaborador selecionado no filtro (null = Todos)
+  const [userSearchTerm, setUserSearchTerm] = useState('');
+
   const [mirrors, setMirrors] = useState([]);
   const [attachments, setAttachments] = useState([]);
   const [announcements, setAnnouncements] = useState([]);
@@ -54,7 +64,7 @@ export default function Documentos() {
 
   useEffect(() => {
     fetchInitialData();
-  }, [activeMenu, activeTab]);
+  }, [activeMenu, activeTab, selectedUser]);
 
   const fetchInitialData = async () => {
     if (!supabase) return;
@@ -71,16 +81,25 @@ export default function Documentos() {
       // 2. Carrega conforme Menu Ativo
       if (activeMenu === 'espelho') {
         let query = supabase.from('time_card_mirrors').select('*, Employees(full_name, email)').order('created_at', { ascending: false });
+        
+        // Filtro de permissão do usuário
         if (!isManager && sessionUser.id) {
           query = query.eq('employee_id', sessionUser.id);
+        } else if (selectedUser) {
+          query = query.eq('employee_id', selectedUser.id);
         }
+
         const { data } = await query;
         if (data) setMirrors(data);
       } else if (activeMenu === 'pdf') {
         let query = supabase.from('employee_attachments').select('*, Employees(full_name)').order('created_at', { ascending: false });
+        
         if (!isManager && sessionUser.id) {
           query = query.eq('employee_id', sessionUser.id);
+        } else if (selectedUser) {
+          query = query.eq('employee_id', selectedUser.id);
         }
+
         const { data } = await query;
         if (data) setAttachments(data);
       } else if (activeMenu === 'avisos') {
@@ -113,7 +132,7 @@ export default function Documentos() {
         const { data: publicUrlData } = supabase.storage.from('documents').getPublicUrl(fileName);
         filePublicUrl = publicUrlData.publicUrl;
       } else {
-        filePublicUrl = URL.createObjectURL(selectedFile); // Fallback local/simulado
+        filePublicUrl = URL.createObjectURL(selectedFile);
       }
 
       await supabase.from('time_card_mirrors').insert([
@@ -147,8 +166,6 @@ export default function Documentos() {
     try {
       const signedDate = new Date().toISOString();
       const certificateHash = `CERT-WIA-${Date.now()}-${Math.random().toString(36).substring(2, 9).toUpperCase()}`;
-
-      // Tenta obter IP local via Web API
       let ipAddress = 'IP: 189.100.22.15 (Viamão/RS)';
       
       await supabase
@@ -262,6 +279,81 @@ export default function Documentos() {
     }
   };
 
+  // Filtro interno para colaboradores do Dropdown
+  const filteredEmployeesList = employees.filter(u => 
+    u.full_name?.toLowerCase().includes(userSearchTerm.toLowerCase())
+  );
+
+  // Componente Reutilizável de Escolha de Colaborador (idêntico à página /espelho)
+  const UserDropdownSelector = () => {
+    if (!isManager) return null;
+
+    return (
+      <div className="flex items-center space-x-2">
+        <span className="text-xs font-semibold text-slate-600">Usuário</span>
+        <DropdownMenu modal={false}>
+          <DropdownMenuTrigger className="flex items-center justify-between border border-slate-300 rounded px-3 py-1 bg-white text-xs text-slate-700 hover:border-[#2a3c7e] transition-colors min-w-[170px] focus:outline-none shadow-xs">
+            <span className="truncate pr-2">{selectedUser ? selectedUser.full_name : 'Todos os colaboradores'}</span>
+            <ChevronDown className="w-3.5 h-3.5 text-slate-400 shrink-0 ml-2" />
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start" className="w-64 p-1.5 bg-white rounded-md shadow-xl border border-slate-200 z-50">
+            <div className="relative mb-1">
+              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
+              <input 
+                type="text"
+                placeholder="Buscar usuário..."
+                value={userSearchTerm}
+                onChange={(e) => setUserSearchTerm(e.target.value)}
+                className="w-full pl-8 pr-2 py-1 text-xs border border-slate-200 rounded text-slate-700 focus:outline-none focus:border-[#2a3c7e]"
+                onClick={(e) => e.stopPropagation()}
+              />
+            </div>
+
+            <div className="max-h-48 overflow-y-auto space-y-0.5">
+              <DropdownMenuItem 
+                onClick={() => {
+                  setSelectedUser(null);
+                  setUserSearchTerm('');
+                }}
+                className={`cursor-pointer text-xs px-2.5 py-2 rounded transition-colors ${!selectedUser ? 'bg-[#2a3c7e] text-white font-semibold' : 'text-slate-700 hover:bg-[#2a3c7e] hover:text-white'}`}
+              >
+                Todos os colaboradores
+              </DropdownMenuItem>
+
+              {filteredEmployeesList.length > 0 ? (
+                filteredEmployeesList.map((user) => (
+                  <DropdownMenuItem 
+                    key={user.id}
+                    onClick={() => {
+                      setSelectedUser(user);
+                      setUserSearchTerm('');
+                    }}
+                    className={`cursor-pointer text-xs px-2.5 py-2 rounded transition-colors ${selectedUser?.id === user.id ? 'bg-[#2a3c7e] text-white font-semibold' : 'text-slate-700 hover:bg-[#2a3c7e] hover:text-white'}`}
+                  >
+                    {user.full_name}
+                  </DropdownMenuItem>
+                ))
+              ) : (
+                <div className="px-2 py-3 text-xs text-center text-slate-400">
+                  Nenhum usuário encontrado
+                </div>
+              )}
+            </div>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+    );
+  };
+
+  // Filtragem local dos espelhos por status (Pendentes vs Assinados)
+  const filteredMirrors = mirrors.filter((m) => {
+    if (activeTab === 'espelhos') {
+      return m.status !== 'Assinado'; // Espelhos Pendentes
+    } else {
+      return m.status === 'Assinado'; // Espelhos Assinados
+    }
+  });
+
   return (
     <div className="min-h-screen bg-[#f0f4f7] flex flex-col font-sans text-slate-700">
       <Navbar selectedCompany="Empresa Teste 11738" />
@@ -328,34 +420,39 @@ export default function Documentos() {
             {/* SESSÃO 1: ESPELHO */}
             {activeMenu === 'espelho' && (
               <>
-                <div className="px-6 pt-4 border-b border-slate-200 flex justify-between items-center">
-                  <div className="flex gap-6">
-                    <button
-                      onClick={() => setActiveTab('espelhos')}
-                      className={`pb-3 text-xs font-bold transition-colors border-b-2 ${
-                        activeTab === 'espelhos'
-                          ? 'border-[#ff8b00] text-[#ff8b00]'
-                          : 'border-transparent text-slate-500 hover:text-slate-800'
-                      }`}
-                    >
-                      Espelhos
+                <div className="px-6 py-3 border-b border-slate-200 flex flex-wrap justify-between items-center gap-4">
+                  <div className="flex items-center gap-6">
+                    <div className="flex gap-6 border-b border-transparent">
+                      <button
+                        onClick={() => setActiveTab('espelhos')}
+                        className={`pb-1.5 text-xs font-bold transition-colors border-b-2 ${
+                          activeTab === 'espelhos'
+                            ? 'border-[#ff8b00] text-[#ff8b00]'
+                            : 'border-transparent text-slate-500 hover:text-slate-800'
+                        }`}
+                      >
+                        Espelhos (Pendentes)
                       </button>
-                    <button
-                      onClick={() => setActiveTab('downloads')}
-                      className={`pb-3 text-xs font-bold transition-colors border-b-2 ${
-                        activeTab === 'downloads'
-                          ? 'border-[#ff8b00] text-[#ff8b00]'
-                          : 'border-transparent text-slate-500 hover:text-slate-800'
-                      }`}
-                    >
-                      Downloads
-                    </button>
+                      <button
+                        onClick={() => setActiveTab('downloads')}
+                        className={`pb-1.5 text-xs font-bold transition-colors border-b-2 ${
+                          activeTab === 'downloads'
+                            ? 'border-[#ff8b00] text-[#ff8b00]'
+                            : 'border-transparent text-slate-500 hover:text-slate-800'
+                        }`}
+                      >
+                        Espelhos assinados
+                      </button>
+                    </div>
+
+                    {/* Botão de Escolha de Colaborador */}
+                    <UserDropdownSelector />
                   </div>
 
                   {isManager && (
                     <button
                       onClick={() => setShowUploadMirrorModal(true)}
-                      className="mb-3 bg-[#fc9314] hover:bg-[#ff8b00] text-white text-xs font-semibold px-4 py-2 rounded transition-colors shadow-sm flex items-center gap-1.5"
+                      className="bg-[#fc9314] hover:bg-[#ff8b00] text-white text-xs font-semibold px-4 py-2 rounded transition-colors shadow-sm flex items-center gap-1.5"
                     >
                       <Upload className="w-3.5 h-3.5" />
                       Enviar espelho
@@ -383,14 +480,14 @@ export default function Documentos() {
                             Carregando espelhos...
                           </td>
                         </tr>
-                      ) : mirrors.length === 0 ? (
+                      ) : filteredMirrors.length === 0 ? (
                         <tr>
                           <td colSpan="6" className="py-16 text-center text-slate-500 font-medium text-xs">
-                            Nenhum espelho de ponto anexado
+                            Nenhum espelho de ponto nesta aba
                           </td>
                         </tr>
                       ) : (
-                        mirrors.map((m) => (
+                        filteredMirrors.map((m) => (
                           <tr key={m.id} className="hover:bg-slate-50 transition-colors">
                             <td className="py-3.5 px-6 font-semibold text-slate-800">
                               <a href={m.file_url} target="_blank" rel="noreferrer" className="flex items-center gap-1.5 hover:text-[#ff8b00]">
@@ -459,10 +556,16 @@ export default function Documentos() {
             {/* SESSÃO 2: ARQUIVOS EM PDF DO COLABORADOR */}
             {activeMenu === 'pdf' && (
               <>
-                <div className="px-6 py-4 border-b border-slate-200 flex justify-between items-center">
-                  <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider">
-                    Documentos e Holerites do Colaborador
-                  </h3>
+                <div className="px-6 py-3 border-b border-slate-200 flex flex-wrap justify-between items-center gap-4">
+                  <div className="flex items-center gap-6">
+                    <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider">
+                      Documentos e Holerites do Colaborador
+                    </h3>
+                    
+                    {/* Botão de Escolha de Colaborador */}
+                    <UserDropdownSelector />
+                  </div>
+
                   {isManager && (
                     <button
                       onClick={() => setShowUploadPdfModal(true)}
@@ -496,7 +599,7 @@ export default function Documentos() {
                       ) : attachments.length === 0 ? (
                         <tr>
                           <td colSpan="5" className="py-16 text-center text-slate-500 font-medium text-xs">
-                            Nenhum documento anexado
+                            Nenhum documento anexado para o filtro selecionado
                           </td>
                         </tr>
                       ) : (

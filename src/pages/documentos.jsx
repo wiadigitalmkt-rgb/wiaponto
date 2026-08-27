@@ -48,37 +48,37 @@ export default function Documentos() {
           <nav className="space-y-1">
             <button
               onClick={() => setActiveMenu('espelho')}
-              className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded text-xs font-medium transition-colors ${
+              className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded text-xs transition-colors ${
                 activeMenu === 'espelho'
                   ? 'bg-white text-[#ff8b00] shadow-sm border border-slate-200/60 font-semibold'
-                  : 'text-slate-600 hover:bg-slate-200/50'
+                  : 'text-slate-600 hover:bg-slate-200/50 font-medium'
               }`}
             >
-              <Clock className="w-4 h-4 text-[#ff8b00]" />
+              <Clock className={`w-4 h-4 ${activeMenu === 'espelho' ? 'text-[#ff8b00]' : 'text-slate-500'}`} />
               <span>Espelho</span>
             </button>
 
             <button
               onClick={() => setActiveMenu('pdf')}
-              className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded text-xs font-medium transition-colors ${
+              className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded text-xs transition-colors ${
                 activeMenu === 'pdf'
                   ? 'bg-white text-[#ff8b00] shadow-sm border border-slate-200/60 font-semibold'
-                  : 'text-slate-600 hover:bg-slate-200/50'
+                  : 'text-slate-600 hover:bg-slate-200/50 font-medium'
               }`}
             >
-              <FileText className="w-4 h-4 text-slate-500" />
+              <FileText className={`w-4 h-4 ${activeMenu === 'pdf' ? 'text-[#ff8b00]' : 'text-slate-500'}`} />
               <span>Arquivos em PDF</span>
             </button>
 
             <button
               onClick={() => setActiveMenu('avisos')}
-              className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded text-xs font-medium transition-colors ${
+              className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded text-xs transition-colors ${
                 activeMenu === 'avisos'
                   ? 'bg-white text-[#ff8b00] shadow-sm border border-slate-200/60 font-semibold'
-                  : 'text-slate-600 hover:bg-slate-200/50'
+                  : 'text-slate-600 hover:bg-slate-200/50 font-medium'
               }`}
             >
-              <MessageSquare className="w-4 h-4 text-slate-500" />
+              <MessageSquare className={`w-4 h-4 ${activeMenu === 'avisos' ? 'text-[#ff8b00]' : 'text-slate-500'}`} />
               <span>Avisos</span>
             </button>
           </nav>

@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Loader2, CheckCircle, XCircle, Clock } from 'lucide-react';
 import { toast } from 'sonner';
 import { PUNCH_LABELS } from '@/lib/clockUtils';
+import { supabase } from '@/lib/supabase';
 
 const STATUS_MAP = {
   pending: { label: 'Pendente', color: 'bg-amber-100 text-amber-700', icon: Clock },
@@ -29,11 +30,21 @@ export default function Requests() {
 
   const load = useCallback(async () => {
     setLoading(true);
-    const all = isAdmin
-      ? await base44.entities.TimeClockRequest.list('-created_date', 100)
-      : await base44.entities.TimeClockRequest.filter({ employee_email: user.email }, '-created_date', 50);
-    setRequests(all);
-    setLoading(false);
+    try {
+      let query = supabase.from('time_clock_requests').select('*').order('created_at', { ascending: false });
+      if (!isAdmin && user?.email) {
+        query = query.eq('employee_email', user.email);
+      }
+      const { data, error } = await query;
+      if (error) throw error;
+      setRequests(data || []);
+    } catch (err) {
+      console.error('Erro ao carregar solicitações:', err);
+      toast.error('Erro ao carregar solicitações.');
+      setRequests([]);
+    } finally {
+      setLoading(false);
+    }
   }, [isAdmin, user]);
 
   useEffect(() => { load(); }, [load]);
@@ -44,23 +55,40 @@ export default function Requests() {
       return;
     }
     setProcessing(true);
-    await base44.entities.TimeClockRequest.update(reviewItem.id, {
-      status,
-      admin_notes: adminNotes,
-    });
+    try {
+      const { error: updateError } = await supabase
+        .from('time_clock_requests')
+        .update({
+          status,
+          admin_notes: adminNotes,
+        })
+        .eq('id', reviewItem.id);
 
-    // If approved correction, update TimeClock
-    if (status === 'approved' && reviewItem.request_type === 'correction' && reviewItem.timeclock_id) {
-      await base44.entities.TimeClock.update(reviewItem.timeclock_id, {
-        [`${reviewItem.clock_type}_time`]: reviewItem.new_time,
-      });
+      if (updateError) throw updateError;
+
+      // Se for correção aprovada, atualiza no time_records
+      if (status === 'approved' && reviewItem.request_type === 'correction' && reviewItem.timeclock_id) {
+        const fieldToUpdate = reviewItem.clock_type === 'saida' ? 'saida' : 'entrada';
+        const { error: clockError } = await supabase
+          .from('time_records')
+          .update({
+            [fieldToUpdate]: reviewItem.new_time,
+          })
+          .eq('id', reviewItem.timeclock_id);
+
+        if (clockError) throw clockError;
+      }
+
+      toast.success(`Solicitação ${status === 'approved' ? 'aprovada' : 'rejeitada'}!`);
+      setReviewItem(null);
+      setAdminNotes('');
+      load();
+    } catch (err) {
+      console.error('Erro ao processar solicitação:', err);
+      toast.error('Erro ao processar solicitação.');
+    } finally {
+      setProcessing(false);
     }
-
-    setProcessing(false);
-    setReviewItem(null);
-    setAdminNotes('');
-    toast.success(`Solicitação ${status === 'approved' ? 'aprovada' : 'rejeitada'}!`);
-    load();
   };
 
   const pendingList = requests.filter(r => r.status === 'pending');

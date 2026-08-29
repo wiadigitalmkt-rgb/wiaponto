@@ -527,6 +527,13 @@ export default function PunchClock() {
                 <FileText size={14} className="text-slate-500" />
                 <span>Ver documentos</span>
               </button>
+
+              <a
+                href="https://wiaponto.vercel.app/solicitacoes"
+                className="w-full border border-slate-300 text-slate-700 hover:bg-slate-100 font-bold text-xs py-2.5 rounded-md transition duration-150 flex items-center justify-center gap-2 cursor-pointer block text-center"
+              >
+                Solicitar ajuste
+              </a>
             </div>
           </div>
         </main>

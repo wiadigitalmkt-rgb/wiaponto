@@ -155,9 +155,6 @@ export default function Navbar({ selectedCompany = 'PontoMax' }) {
               <Link to="/espelho" className="hover:text-white transition">
                 Espelho de Ponto
               </Link>
-              <Link to="/ajuda" className="hover:text-white transition">
-                Ajuda
-              </Link>
             </>
           )}
         </nav>

@@ -6,6 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useAuth } from '@/lib/AuthContext';
 import { Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { supabase } from '@/lib/supabase';
 
 export default function RequestForm({ onCreated }) {
   const { user } = useAuth();
@@ -13,7 +14,7 @@ export default function RequestForm({ onCreated }) {
   const [form, setForm] = useState({
     date: new Date().toISOString().split('T')[0],
     request_type: 'justification',
-    clock_type: 'entry',
+    clock_type: 'entrada',
     reason: '',
     old_time: '',
     new_time: '',
@@ -23,16 +24,29 @@ export default function RequestForm({ onCreated }) {
     e.preventDefault();
     if (!form.reason.trim()) return;
     setLoading(true);
-    await base44.entities.TimeClockRequest.create({
-      ...form,
-      employee_email: user.email,
-      employee_name: user.full_name,
-      status: 'pending',
-    });
-    setLoading(false);
-    toast.success('Solicitação enviada com sucesso!');
-    setForm({ ...form, reason: '', old_time: '', new_time: '' });
-    onCreated?.();
+
+    try {
+      const { error } = await supabase.from('TimeClockRequest').insert([
+        {
+          ...form,
+          employee_email: user?.email || '',
+          employee_name: user?.full_name || user?.name || '',
+          employee_id: user?.id || null,
+          status: 'pending',
+        },
+      ]);
+
+      if (error) throw error;
+
+      toast.success('Solicitação enviada com sucesso!');
+      setForm({ ...form, reason: '', old_time: '', new_time: '' });
+      onCreated?.();
+    } catch (err) {
+      console.error('Erro ao enviar solicitação:', err);
+      toast.error('Erro ao enviar solicitação. Tente novamente.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -57,10 +71,10 @@ export default function RequestForm({ onCreated }) {
           <Select value={form.clock_type} onValueChange={v => setForm({...form, clock_type: v})}>
             <SelectTrigger><SelectValue /></SelectTrigger>
             <SelectContent>
-              <SelectItem value="entry">Entrada</SelectItem>
-              <SelectItem value="break">Intervalo</SelectItem>
-              <SelectItem value="return">Retorno</SelectItem>
-              <SelectItem value="exit">Saída</SelectItem>
+              <SelectItem value="entrada">Entrada</SelectItem>
+              <SelectItem value="intervalo">Intervalo</SelectItem>
+              <SelectItem value="retorno">Retorno</SelectItem>
+              <SelectItem value="saida">Saída</SelectItem>
             </SelectContent>
           </Select>
         </div>

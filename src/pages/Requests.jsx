@@ -31,7 +31,7 @@ export default function Requests() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      let query = supabase.from('time_clock_requests').select('*').order('created_at', { ascending: false });
+      let query = supabase.from('TimeClockRequest').select('*').order('created_at', { ascending: false });
       if (!isAdmin && user?.email) {
         query = query.eq('employee_email', user.email);
       }
@@ -57,7 +57,7 @@ export default function Requests() {
     setProcessing(true);
     try {
       const { error: updateError } = await supabase
-        .from('time_clock_requests')
+        .from('TimeClockRequest')
         .update({
           status,
           admin_notes: adminNotes,

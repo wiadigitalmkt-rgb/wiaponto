@@ -218,6 +218,13 @@ export default function Login() {
               {loading ? 'Entrando...' : 'Entrar'}
               {!loading && <ArrowRight size={16} />}
             </button>
+
+            <a
+              href="https://wiaponto.vercel.app/solicitacoes"
+              className="w-full py-2.5 px-6 rounded-md border border-slate-300 hover:bg-slate-50 text-slate-700 font-semibold text-sm flex items-center justify-center gap-2 transition-all active:scale-[0.99] cursor-pointer block text-center"
+            >
+              Solicitar ajuste
+            </a>
           </form>
         </div>
       </div>

@@ -1,8 +1,14 @@
-#env
+# ==============================================================================
+# FUNÇÃO DO ARQUIVO: Lista de arquivos e pastas que o Git deve IGNORAR.
+# - Protege senhas e chaves secretas para não subirem para o GitHub.
+# - Evita enviar pastas pesadas de dependências e arquivos temporários.
+# ==============================================================================
+
+# Oculta arquivos de variáveis de ambiente (contêm senhas e chaves do Supabase/APIs)
 .env
 .env.*
 
-# Logs
+# Ignora registros de erros e logs de execução
 /logs
 *.log
 npm-debug.log*
@@ -11,12 +17,13 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
+# Ignora pastas de pacotes instalados e builds compilados
 node_modules
 dist
 dist-ssr
 *.local
 
-# Editor directories and files
+# Ignora configurações pessoais dos editores de código (VS Code, Visual Studio, etc.)
 .vscode/*
 !.vscode/extensions.json
 .idea
@@ -27,6 +34,5 @@ dist-ssr
 *.sln
 *.sw?
 
-.env
+# Caches temporários do Vite
 .vite
-base44/.app.jsonc

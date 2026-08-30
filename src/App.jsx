@@ -12,7 +12,6 @@ import ResetPassword from './pages/ResetPassword';
 import PunchClock from './pages/PunchClock';
 import TimeClockMirror from './pages/TimeClockMirror';
 import Requests from './pages/Requests';
-import Payslip from './pages/Payslip';
 
 // Imports do Novo Painel Admin
 import AdminDashboard from './pages/admin/Dashboard';
@@ -75,8 +74,6 @@ const AuthenticatedApp = () => {
         {/* Rotas Legadas */}
         <Route element={<Layout />}>
           <Route path="/solicitacoes" element={<Requests />} />
-          <Route path="/contracheque" element={<Payslip />} />
-          <Route path="/prolabore" element={<ProLabore />} />
         </Route>
 
         {/* Rotas Exclusivas para Gestores/Admins */}

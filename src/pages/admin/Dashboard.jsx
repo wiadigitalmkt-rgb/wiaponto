@@ -11,13 +11,9 @@ import {
   MessageSquare, 
   Briefcase, 
   ShieldCheck, 
-  Calendar, 
-  X
+  Calendar
 } from 'lucide-react';
 
-// ============================================================================
-// FUNÇÕES UTILITÁRIAS DE CÁLCULO DE HORAS (Mesma regra do Espelho de Ponto)
-// ============================================================================
 const timeToMinutes = (timeStr) => {
   if (!timeStr || timeStr === '-' || timeStr.trim() === '') return null;
   const parts = timeStr.trim().split(':');
@@ -36,17 +32,15 @@ const minutesToDisplayHours = (mins) => {
 };
 
 export default function Dashboard() {
-  const [selectedCompany, setSelectedCompany] = useState('Sua Empresa');
-  const [activeModal, setActiveModal] = useState(null);
+  const [selectedCompany] = useState('Sua Empresa');
+  const [, setActiveModal] = useState(null);
 
-  // Estados dinâmicos do Ponto Eletrônico Hoje
   const [pontoHoje, setPontoHoje] = useState({
     presentes: 0,
     totalColaboradores: 0,
     pendentesJustificativa: 0
   });
 
-  // Estado para armazenar os usuários com horas extras
   const [overtimeUsers, setOvertimeUsers] = useState([]);
 
   useEffect(() => {
@@ -55,12 +49,10 @@ export default function Dashboard() {
 
       const todayStr = new Date().toISOString().split('T')[0];
 
-      // Busca total de funcionários e pega dados para cruzar os nomes
       const { data: employeesData, count: totalEmp } = await supabase
         .from('Employees')
         .select('id, full_name', { count: 'exact' });
 
-      // Busca registros de ponto do dia
       const { data: todayRecords } = await supabase
         .from('time_records')
         .select('*')
@@ -74,7 +66,6 @@ export default function Dashboard() {
         pendentesJustificativa: 0
       });
 
-      // Lógica para calcular horas extras do dia
       const extraList = [];
       const recordsByEmp = {};
       
@@ -95,13 +86,11 @@ export default function Dashboard() {
            }
          });
          
-         // Base diária esperada = 480 minutos (8h)
          const extraMinutes = Math.max(0, totalDayMinutes - 480);
          if (extraMinutes > 0) {
            const emp = employeesData?.find(e => e.id === empId);
            const fullName = emp ? emp.full_name : 'Usuário Desconhecido';
            
-           // Extrair iniciais formatadas
            const nameParts = fullName.split(' ');
            let initials = 'US';
            if (nameParts.length > 1) {
@@ -122,10 +111,8 @@ export default function Dashboard() {
       setOvertimeUsers(extraList);
     }
 
-    // Carrega estatísticas imediatamente
     loadTodayStats();
 
-    // Inscreve no canal realtime para atualizar ao bater o ponto
     const channel = supabase
       .channel('dashboard_time_records')
       .on(
@@ -172,12 +159,6 @@ export default function Dashboard() {
       modalType: 'perfil-seguro' 
     },
   ];
-
-  const modalImages = {
-    comunicacao: 'https://images.unsplash.com/photo-1577563908411-5077b6dc7624?q=80&w=1000&auto=format&fit=crop',
-    assistente: 'https://images.unsplash.com/photo-1486312338219-ce68d2c6f44d?q=80&w=1000&auto=format&fit=crop',
-    'perfil-seguro': 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?q=80&w=1000&auto=format&fit=crop'
-  };
 
   return (
     <div className="min-h-screen bg-slate-100/70 text-slate-800 pb-12 relative">
@@ -231,7 +212,7 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* PAINEL GERAL (4 CARDS) */}
+        {/* PAINEL GERAL */}
         <div className="space-y-6">
           <div className="flex items-center gap-2">
             <div className="w-3 h-[2px] bg-slate-400"></div>
@@ -269,7 +250,7 @@ export default function Dashboard() {
               </div>
             </div>
 
-            {/* Card Hora Extra - ATUALIZADO EM TEMPO REAL */}
+            {/* CARD HORA EXTRA */}
             <div className="bg-white rounded-lg border border-slate-200/80 shadow-sm flex flex-col justify-between overflow-hidden">
               <div className="p-6 pb-0 flex-1 flex flex-col">
                 <h4 className="font-bold text-[#1a2c6a] text-base mb-4">Hora Extra</h4>
@@ -301,10 +282,9 @@ export default function Dashboard() {
               </div>
 
               <div className="p-4 border-t border-slate-100 mt-6 bg-slate-50/50">
-                {/* Redirecionamento exato conforme requisitado */}
-                <a href="https://wiaponto.vercel.app/espelho" className="text-xs font-bold text-[#ff8b00] hover:underline">
+                <Link to="/espelho" className="text-xs font-bold text-[#ff8b00] hover:underline">
                   Ver todos
-                </a>
+                </Link>
               </div>
             </div>
 

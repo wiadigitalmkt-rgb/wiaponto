@@ -1,9 +1,12 @@
 {
+  "_comentario_o_que_e": "O package.json é o manifesto principal de um projeto Node.js/React. Ele define as configurações, dependências, bibliotecas e scripts de execução do projeto.",
+  "_comentario_o_que_faz": "Este arquivo gerencia a aplicação 'wiaponto', mapeando todas as ferramentas utilizadas (React, Supabase, Tailwind, Radix UI, Vite), além de disponibilizar comandos para rodar o ambiente de desenvolvimento, compilar o projeto para produção e verificar a qualidade do código.",
   "name": "wiaponto",
   "private": true,
   "version": "1.0.0",
   "type": "module",
   "scripts": {
+    "_comentario": "Atalhos de comandos para automação e execução do projeto via npm run",
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint . --quiet",
@@ -12,6 +15,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "_comentario": "Bibliotecas de produção necessárias para a aplicação rodar",
     "@hello-pangea/dnd": "^17.0.0",
     "@hookform/resolvers": "^4.1.2",
     "@radix-ui/react-accordion": "^1.2.3",
@@ -73,6 +77,7 @@
     "zod": "^3.24.2"
   },
   "devDependencies": {
+    "_comentario": "Ferramentas utilizadas apenas no ambiente de desenvolvimento e build",
     "@eslint/js": "^9.19.0",
     "@types/node": "^22.13.5",
     "@types/react": "^18.2.66",

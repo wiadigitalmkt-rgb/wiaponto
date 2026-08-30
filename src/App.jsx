@@ -9,7 +9,6 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
-import Home from './pages/Home';
 import PunchClock from './pages/PunchClock';
 import TimeClockMirror from './pages/TimeClockMirror';
 import Requests from './pages/Requests';

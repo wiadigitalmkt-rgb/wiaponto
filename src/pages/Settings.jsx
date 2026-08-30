@@ -6,7 +6,6 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Navigate } from 'react-router-dom';
 import { Loader2, Save, Shield, Upload, Award } from 'lucide-react';
-import SalariosSection from '@/components/SalariosSection';
 import { toast } from 'sonner';
 
 export default function Settings() {

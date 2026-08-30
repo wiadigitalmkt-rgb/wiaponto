@@ -1,4 +1,6 @@
 {
+  "_comentario_o_que_e": "Este é um arquivo de configuração de roteamento para serviços de hospedagem (como Vercel ou Firebase Hosting), codificado em JSON.",
+  "_comentario_o_que_faz": "Ele estabelece uma regra de 'rewrite' (reescrita de URL), onde todas as requisições enviadas ao servidor são redirecionadas internamente para o arquivo '/index.html'. Isso é essencial para aplicações SPA (Single Page Application) construídas em React, pois permite que o roteamento de páginas pelo navegador (React Router) funcione sem dar erro 404 ao atualizar a página.",
   "rewrites": [
     {
       "source": "/(.*)",

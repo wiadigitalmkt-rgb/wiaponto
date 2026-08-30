@@ -81,7 +81,6 @@ const AuthenticatedApp = () => {
           <Route path="/contracheque" element={<Payslip />} />
           <Route path="/configuracoes" element={<Settings />} />
           <Route path="/prolabore" element={<ProLabore />} />
-          <Route path="/admin-old" element={<Admin />} />
         </Route>
 
         {/* Rotas Exclusivas para Gestores/Admins */}

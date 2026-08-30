@@ -14,8 +14,6 @@ import TimeClockMirror from './pages/TimeClockMirror';
 import Requests from './pages/Requests';
 import Payslip from './pages/Payslip';
 import Settings from './pages/Settings';
-import ProLabore from './pages/ProLabore';
-import Admin from './pages/Admin';
 
 // Imports do Novo Painel Admin
 import AdminDashboard from './pages/admin/Dashboard';

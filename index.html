@@ -1,38 +1,8 @@
 <!doctype html>
 <html lang="pt-BR">
   <head>
-    <script>
-      // Intercepta chamadas do Fetch API (requisições de configuração do Base44)
-      const originalFetch = window.fetch;
-      window.fetch = async function(...args) {
-        const url = typeof args[0] === 'string' ? args[0] : args[0]?.url || '';
-        if (url.includes('/public-settings-by-id/') || url.includes('/api/apps/public/')) {
-          return new Response(JSON.stringify({ id: 'wiaponto', name: 'Wiaponto', settings: {}, status: 'active' }), {
-            status: 200,
-            headers: { 'Content-Type': 'application/json' }
-          });
-        }
-        return originalFetch.apply(this, args);
-      };
-
-      // Intercepta chamadas do XMLHttpRequest (Axios / Base44 SDK)
-      const originalOpen = XMLHttpRequest.prototype.open;
-      XMLHttpRequest.prototype.open = function(method, url) {
-        if (typeof url === 'string' && (url.includes('/public-settings-by-id/') || url.includes('/api/apps/public/'))) {
-          this.addEventListener('readystatechange', function() {
-            if (this.readyState === 1) { // OPENED
-              Object.defineProperty(this, 'status', { value: 200, writable: false });
-              Object.defineProperty(this, 'responseText', { value: JSON.stringify({ id: 'wiaponto', name: 'Wiaponto', settings: {}, status: 'active' }), writable: false });
-              Object.defineProperty(this, 'response', { value: JSON.stringify({ id: 'wiaponto', name: 'Wiaponto', settings: {}, status: 'active' }), writable: false });
-            }
-          });
-        }
-        return originalOpen.apply(this, arguments);
-      };
-    </script>
-
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="https://base44.com/logo_v2.svg" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Wiaponto</title>
   </head>

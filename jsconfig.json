@@ -1,4 +1,5 @@
 {
+  "_descricao": "FUNÇÃO DO ARQUIVO: Configuração do JavaScript no editor (VS Code) e no bundler. Define o atalho '@/' para apontar para a pasta 'src', ativa o suporte ao React JSX e ajusta o autocomplete de módulos.",
   "compilerOptions": {
     "baseUrl": ".",
     "paths": {
@@ -18,4 +19,4 @@
   },
   "include": ["src/components/**/*.js", "src/pages/**/*.jsx", "src/Layout.jsx"],
   "exclude": ["node_modules", "dist", "src/vite-plugins", "src/components/ui", "src/api", "src/lib"]
-} 
+}

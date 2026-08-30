@@ -7,10 +7,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Navigate } from 'react-router-dom';
 import { Loader2, Save, Shield, Upload, Award } from 'lucide-react';
 import { toast } from 'sonner';
+import { supabase } from '@/lib/supabase';
 
 export default function Settings() {
   const { user } = useAuth();
-  const isAdmin = user?.role === 'admin';
+  const isAdmin = user?.role === 'admin' || user?.role === 'gestor';
   const [settings, setSettings] = useState(null);
   const [settingsId, setSettingsId] = useState(null);
   const [users, setUsers] = useState([]);
@@ -19,53 +20,107 @@ export default function Settings() {
 
   useEffect(() => {
     if (!isAdmin) return;
-    Promise.all([
-      base44.entities.AppSettings.list(),
-      base44.entities.User.list(),
-    ]).then(([s, u]) => {
-      setUsers(u);
-      if (s.length > 0) {
-        setSettings(s[0]);
-        setSettingsId(s[0].id);
-      } else {
-        setSettings({
-          work_start_time: '08:00', work_end_time: '17:00',
-          lunch_duration_minutes: 60, tolerance_minutes: 10,
-          saturday_schedule_start: '',
-          employee_of_month_name: '', employee_of_month_photo: '',
-          employee_of_month_role: '', employee_of_month_reason: '',
-        });
+
+    async function loadData() {
+      try {
+        const [settingsRes, usersRes] = await Promise.all([
+          supabase.from('app_settings').select('*').limit(1),
+          supabase.from('Employees').select('*')
+        ]);
+
+        if (usersRes.data) {
+          setUsers(usersRes.data);
+        }
+
+        if (settingsRes.data && settingsRes.data.length > 0) {
+          setSettings(settingsRes.data[0]);
+          setSettingsId(settingsRes.data[0].id);
+        } else {
+          setSettings({
+            work_start_time: '08:00',
+            work_end_time: '17:00',
+            lunch_duration_minutes: 60,
+            tolerance_minutes: 10,
+            saturday_schedule_start: '',
+            employee_of_month_name: '',
+            employee_of_month_photo: '',
+            employee_of_month_role: '',
+            employee_of_month_reason: '',
+          });
+        }
+      } catch (error) {
+        console.error('Erro ao carregar configurações:', error);
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
-    });
+    }
+
+    loadData();
   }, [isAdmin]);
 
   if (!isAdmin) return <Navigate to="/" replace />;
 
   const handleSave = async () => {
     setSaving(true);
-    if (settingsId) {
-      await base44.entities.AppSettings.update(settingsId, settings);
-    } else {
-      const created = await base44.entities.AppSettings.create(settings);
-      setSettingsId(created.id);
+    try {
+      if (settingsId) {
+        const { error } = await supabase
+          .from('app_settings')
+          .update(settings)
+          .eq('id', settingsId);
+        if (error) throw error;
+      } else {
+        const { data, error } = await supabase
+          .from('app_settings')
+          .insert([settings])
+          .select();
+        if (error) throw error;
+        if (data && data.length > 0) {
+          setSettingsId(data[0].id);
+        }
+      }
+      toast.success('Configurações salvas com sucesso!');
+    } catch (err) {
+      console.error('Erro ao salvar:', err);
+      toast.error('Erro ao salvar as configurações.');
+    } finally {
+      setSaving(false);
     }
-    setSaving(false);
-    toast.success('Configurações salvas com sucesso!');
   };
 
   const handlePhotoUpload = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    const { file_url } = await base44.integrations.Core.UploadFile({ file });
-    setSettings({ ...settings, employee_of_month_photo: file_url });
-    toast.success('Foto atualizada!');
+
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${Math.random()}.${fileExt}`;
+      const filePath = `employee_of_month/${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('avatars')
+        .upload(filePath, file);
+
+      if (uploadError) throw uploadError;
+
+      const { data } = supabase.storage.from('avatars').getPublicUrl(filePath);
+      setSettings({ ...settings, employee_of_month_photo: data.publicUrl });
+      toast.success('Foto atualizada!');
+    } catch (err) {
+      console.error('Erro no upload:', err);
+      toast.error('Erro ao fazer upload da imagem.');
+    }
   };
 
   const handleEmployeeSelect = (email) => {
     const u = users.find(x => x.email === email);
     if (!u) return;
-    setSettings({ ...settings, employee_of_month_name: u.full_name, employee_of_month_email: email });
+    setSettings({ 
+      ...settings, 
+      employee_of_month_name: u.full_name, 
+      employee_of_month_email: email,
+      employee_of_month_role: u.role || ''
+    });
   };
 
   const update = (key, val) => setSettings({ ...settings, [key]: val });
@@ -90,29 +145,28 @@ export default function Settings() {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="text-xs font-medium text-slate-600 mb-1 block">Início da Jornada</label>
-              <Input type="time" value={settings.work_start_time || ''} onChange={e => update('work_start_time', e.target.value)} />
+              <Input type="time" value={settings?.work_start_time || ''} onChange={e => update('work_start_time', e.target.value)} />
             </div>
             <div>
               <label className="text-xs font-medium text-slate-600 mb-1 block">Fim da Jornada</label>
-              <Input type="time" value={settings.work_end_time || ''} onChange={e => update('work_end_time', e.target.value)} />
+              <Input type="time" value={settings?.work_end_time || ''} onChange={e => update('work_end_time', e.target.value)} />
             </div>
             <div>
               <label className="text-xs font-medium text-slate-600 mb-1 block">Intervalo (minutos)</label>
-              <Input type="number" value={settings.lunch_duration_minutes || 60} onChange={e => update('lunch_duration_minutes', Number(e.target.value))} />
+              <Input type="number" value={settings?.lunch_duration_minutes || 60} onChange={e => update('lunch_duration_minutes', Number(e.target.value))} />
             </div>
             <div>
               <label className="text-xs font-medium text-slate-600 mb-1 block">Tolerância CLT (minutos)</label>
-              <Input type="number" value={settings.tolerance_minutes || 10} onChange={e => update('tolerance_minutes', Number(e.target.value))} />
+              <Input type="number" value={settings?.tolerance_minutes || 10} onChange={e => update('tolerance_minutes', Number(e.target.value))} />
             </div>
           </div>
           <div>
             <label className="text-xs font-medium text-slate-600 mb-1 block">Referência Escala de Sábados</label>
-            <Input type="date" value={settings.saturday_schedule_start || ''} onChange={e => update('saturday_schedule_start', e.target.value)} />
+            <Input type="date" value={settings?.saturday_schedule_start || ''} onChange={e => update('saturday_schedule_start', e.target.value)} />
             <p className="text-[11px] text-slate-400 mt-1">Informe a data de um sábado trabalhado para calcular a alternância da escala.</p>
           </div>
         </div>
       </section>
-
 
       {/* Employee of Month */}
       <section className="bg-white rounded-xl border border-slate-200 overflow-hidden">
@@ -125,7 +179,7 @@ export default function Settings() {
           <div>
             <label className="text-xs font-medium text-slate-600 mb-1 block">Selecionar Colaborador</label>
             <Select
-              value={settings.employee_of_month_email || ''}
+              value={settings?.employee_of_month_email || ''}
               onValueChange={handleEmployeeSelect}
             >
               <SelectTrigger>
@@ -133,7 +187,7 @@ export default function Settings() {
               </SelectTrigger>
               <SelectContent>
                 {users.map(u => (
-                  <SelectItem key={u.email} value={u.email}>{u.full_name} — {u.email}</SelectItem>
+                  <SelectItem key={u.id} value={u.email}>{u.full_name} — {u.email}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -141,17 +195,17 @@ export default function Settings() {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="text-xs font-medium text-slate-600 mb-1 block">Nome (editável)</label>
-              <Input value={settings.employee_of_month_name || ''} onChange={e => update('employee_of_month_name', e.target.value)} />
+              <Input value={settings?.employee_of_month_name || ''} onChange={e => update('employee_of_month_name', e.target.value)} />
             </div>
             <div>
               <label className="text-xs font-medium text-slate-600 mb-1 block">Cargo</label>
-              <Input value={settings.employee_of_month_role || ''} onChange={e => update('employee_of_month_role', e.target.value)} />
+              <Input value={settings?.employee_of_month_role || ''} onChange={e => update('employee_of_month_role', e.target.value)} />
             </div>
           </div>
           <div>
             <label className="text-xs font-medium text-slate-600 mb-1 block">Foto</label>
             <div className="flex items-center gap-3">
-              {settings.employee_of_month_photo && (
+              {settings?.employee_of_month_photo && (
                 <img src={settings.employee_of_month_photo} alt="" className="w-12 h-12 rounded-lg object-cover border-2 border-[#ff8b00]/30" />
               )}
               <label className="cursor-pointer flex items-center gap-2 px-3 py-2 rounded-lg border border-dashed border-slate-300 text-sm text-slate-500 hover:border-[#ff8b00] hover:text-[#ff8b00] transition-colors">
@@ -162,7 +216,7 @@ export default function Settings() {
           </div>
           <div>
             <label className="text-xs font-medium text-slate-600 mb-1 block">Elogio / Motivo do Reconhecimento</label>
-            <Textarea value={settings.employee_of_month_reason || ''} onChange={e => update('employee_of_month_reason', e.target.value)} rows={2} placeholder="Ex: Superou todas as metas do mês com excelência..." />
+            <Textarea value={settings?.employee_of_month_reason || ''} onChange={e => update('employee_of_month_reason', e.target.value)} rows={2} placeholder="Ex: Superou todas as metas do mês com excelência..." />
           </div>
         </div>
       </section>

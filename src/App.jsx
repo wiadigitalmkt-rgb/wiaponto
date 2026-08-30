@@ -72,8 +72,7 @@ const AuthenticatedApp = () => {
         <Route path="/ajuda" element={<Ajuda />} />
 
         {/* Rotas Legadas */}
-          <Route path="/solicitacoes" element={<Requests />} />
-        </Route>
+        <Route path="/solicitacoes" element={<Requests />} />
 
         {/* Rotas Exclusivas para Gestores/Admins */}
         <Route element={<ProtectedRoute allowedRoles={['gestor', 'admin', 'administrador']} />}>

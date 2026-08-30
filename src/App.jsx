@@ -77,7 +77,6 @@ const AuthenticatedApp = () => {
 
         {/* Rotas Legadas */}
         <Route element={<Layout />}>
-          <Route path="/home-old" element={<Home />} />
           <Route path="/solicitacoes" element={<Requests />} />
           <Route path="/contracheque" element={<Payslip />} />
           <Route path="/configuracoes" element={<Settings />} />

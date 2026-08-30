@@ -13,7 +13,6 @@ import PunchClock from './pages/PunchClock';
 import TimeClockMirror from './pages/TimeClockMirror';
 import Requests from './pages/Requests';
 import Payslip from './pages/Payslip';
-import Settings from './pages/Settings';
 
 // Imports do Novo Painel Admin
 import AdminDashboard from './pages/admin/Dashboard';
@@ -77,7 +76,6 @@ const AuthenticatedApp = () => {
         <Route element={<Layout />}>
           <Route path="/solicitacoes" element={<Requests />} />
           <Route path="/contracheque" element={<Payslip />} />
-          <Route path="/configuracoes" element={<Settings />} />
           <Route path="/prolabore" element={<ProLabore />} />
         </Route>
 

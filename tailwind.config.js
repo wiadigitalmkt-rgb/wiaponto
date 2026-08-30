@@ -1,3 +1,21 @@
+/**
+ * O QUE É ESTE ARQUIVO:
+ * Arquivo de configuração principal do Tailwind CSS (tailwind.config.js).
+ * Ele define o tema visual, tokens de design, variações de cores, fontes, 
+ * animações e regras de varredura (purge/content) para o framework CSS do projeto.
+ *
+ * O QUE ELE FAZ:
+ * 1. darkMode: Configura a alternância de tema escuro via classe CSS (`.dark`).
+ * 2. content: Mapeia todos os arquivos HTML, JS, JSX, TS e TSX da pasta `src/` 
+ *    para o Tailwind identificar quais classes estão em uso e eliminar o CSS não utilizado.
+ * 3. theme.extend:
+ *    - borderRadius: Mapeia arredondamentos dinâmicos a partir da variável CSS `--radius`.
+ *    - colors: Integra o Tailwind ao sistema de temas Shadcn UI/Radix UI usando variáveis HSL 
+ *      para cores dinâmicas (fundo, texto, primary, secondary, sidebar, gráficos, etc.).
+ *    - keyframes & animation: Define as animações de abertura e fechamento para componentes de sanfona (accordion).
+ * 4. plugins: Ativa o plugin `tailwindcss-animate` para suporte a animações utilitárias no CSS.
+ */
+
 /** @type {import('tailwindcss').Config} */
 module.exports = {
     darkMode: ["class"],

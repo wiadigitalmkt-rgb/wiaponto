@@ -1,3 +1,11 @@
+/**
+ * ==============================================================================
+ * FUNÇÃO DO ARQUIVO: Configuração do ESLint (Linter do projeto)
+ * - Analisa o código em busca de erros de sintaxe, boas práticas e React Hooks.
+ * - Remove ou alerta sobre imports e variáveis que não estão sendo utilizados.
+ * ==============================================================================
+ */
+
 import globals from "globals";
 import pluginJs from "@eslint/js";
 import pluginReact from "eslint-plugin-react";
@@ -6,11 +14,13 @@ import pluginUnusedImports from "eslint-plugin-unused-imports";
 
 export default [
   {
+    // Arquivos que o linter deve analisar
     files: [
       "src/components/**/*.{js,mjs,cjs,jsx}",
       "src/pages/**/*.{js,mjs,cjs,jsx}",
       "src/Layout.jsx",
     ],
+    // Pastas ignoradas para evitar alertas desnecessários em código de terceiros/UI
     ignores: ["src/lib/**/*", "src/components/ui/**/*"],
     ...pluginJs.configs.recommended,
     ...pluginReact.configs.flat.recommended,

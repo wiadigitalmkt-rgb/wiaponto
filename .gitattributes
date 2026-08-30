@@ -1,2 +1,8 @@
-# Auto detect text files and perform LF normalization
+# ==============================================================================
+# FUNÇÃO DO ARQUIVO: Configura o comportamento do Git no projeto
+# - Padroniza as quebras de linha (LF) entre Windows e Linux/Mac
+# - Evita conflitos de código e erros de build durante o deploy na Vercel
+# ==============================================================================
+
+# Detecta arquivos de texto e normaliza quebras de linha para LF
 * text=auto

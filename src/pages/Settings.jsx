@@ -113,8 +113,6 @@ export default function Settings() {
         </div>
       </section>
 
-      {/* Salários dos Colaboradores */}
-      <SalariosSection users={users} />
 
       {/* Employee of Month */}
       <section className="bg-white rounded-xl border border-slate-200 overflow-hidden">

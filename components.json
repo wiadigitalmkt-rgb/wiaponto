@@ -1,4 +1,5 @@
 {
+  "_descricao": "FUNÇÃO DO ARQUIVO: Configura o Shadcn UI no projeto. Define estilo, biblioteca de ícones (lucide) e os caminhos de pastas (aliases) para salvar novos componentes de interface.",
   "$schema": "https://ui.shadcn.com/schema.json",
   "style": "new-york",
   "rsc": false,

@@ -72,7 +72,6 @@ const AuthenticatedApp = () => {
         <Route path="/ajuda" element={<Ajuda />} />
 
         {/* Rotas Legadas */}
-        <Route element={<Layout />}>
           <Route path="/solicitacoes" element={<Requests />} />
         </Route>
 

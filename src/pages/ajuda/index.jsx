@@ -7,7 +7,7 @@ import {
   UserCheck, 
   Clock, 
   FileText, 
-  Smartphone, 
+  Smartphone,  
   ShieldCheck, 
   ChevronRight,
   Users,

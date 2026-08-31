@@ -21,18 +21,16 @@ export default function Ajuda() {
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [recentArticles, setRecentArticles] = useState([]);
   
-  // Perfil do usuário logado: 'gestor' ou 'colaborador'
-  // (Pode vir de um contexto global de autenticação ou prop)
   const [userRole, setUserRole] = useState('gestor'); 
-  const [activeTab, setActiveTab] = useState('gestor'); // Alternador para gestores
+  const [activeTab, setActiveTab] = useState('gestor');
 
-  // Categorias separadas por permissão
+  // Categorias alinhadas com os IDs e nomes do sistema
   const categoriesByRole = {
     colaborador: [
       { id: 'primeiros-passos', title: 'Primeiros Passos', icon: BookOpen, desc: 'Acessando a plataforma pela primeira vez' },
-      { id: 'tutoriais', title: 'Bate Ponto', icon: UserCheck, desc: 'Guias básicos de uso e registro' },
-      { id: 'app', title: 'Documentos', icon: Smartphone, desc: 'Como marcar ponto pelo celular' },
-      { id: 'espelho', title: 'Espelho de Ponto', icon: FileText, desc: 'Consulta de horas e marcações' },
+      { id: 'bate-ponto', title: 'Bate Ponto', icon: UserCheck, desc: 'Guias básicos de uso e registro' },
+      { id: 'documentos-avisos', title: 'Documentos e Avisos', icon: Smartphone, desc: 'Assinaturas e comunicados' },
+      { id: 'espelho-ponto', title: 'Espelho de Ponto', icon: FileText, desc: 'Consulta de horas e solicitações de ajuste' },
     ],
     gestor: [
       { id: 'primeiros-passos', title: 'Primeiros Passos Gestão', icon: BookOpen, desc: 'Configurações iniciais do sistema' },
@@ -51,6 +49,7 @@ export default function Ajuda() {
   const defaultArticles = [
     {
       id: '1',
+      categoryId: 'primeiros-passos',
       category: 'PRIMEIROS PASSOS',
       title: 'Como acessar o Wiaponto pelo navegador (computador e celular)',
       time: 'há 4 dias',
@@ -58,27 +57,39 @@ export default function Ajuda() {
     },
     {
       id: '2',
-      category: 'PRIMEIROS PASSOS',
-      title: 'Como usar o Assistente Trabalhista (IA de dúvidas sobre legislação)',
-      time: 'há 4 dias',
-      role: 'gestor'
+      categoryId: 'bate-ponto',
+      category: 'REGISTROS',
+      title: 'Como registrar o ponto com foto e localização',
+      time: '1 min de leitura',
+      role: 'todos'
     },
     {
       id: '3',
+      categoryId: 'documentos-avisos',
+      category: 'DOCUMENTOS E AVISOS',
+      title: 'Como assinar folhas de ponto, visualizar documentos e acompanhar avisos',
+      time: '2 min de leitura',
+      role: 'todos'
+    },
+    {
+      id: '4',
+      categoryId: 'espelho-ponto',
+      category: 'ESPELHO DE PONTO',
+      title: 'Como consultar o histórico de registros e solicitar ajustes de ponto',
+      time: '2 min de leitura',
+      role: 'todos'
+    },
+    {
+      id: '5',
+      categoryId: 'cerca-virtual',
       category: 'CERCA VIRTUAL',
       title: 'Como impedir o colaborador de bater ponto fora da empresa',
       time: 'há 4 dias',
       role: 'gestor'
     },
     {
-      id: '4',
-      category: 'TUTORIAL DO COLABORADOR',
-      title: 'Como registrar o ponto pelo aplicativo e anexar atestado',
-      time: 'há 2 dias',
-      role: 'colaborador'
-    },
-    {
-      id: '5',
+      id: '6',
+      categoryId: 'admissao',
       category: 'ADMISSÃO',
       title: 'Como usar o Perfil Seguro (consulta de cadastro e antecedentes)',
       time: 'há 4 dias',
@@ -91,7 +102,10 @@ export default function Ajuda() {
   }, []);
 
   const fetchHelpArticles = async () => {
-    if (!supabase) return;
+    if (!supabase) {
+      setRecentArticles(defaultArticles);
+      return;
+    }
     try {
       const { data, error } = await supabase
         .from('help_articles')
@@ -109,18 +123,14 @@ export default function Ajuda() {
     }
   };
 
-  // Navegação para novos arquivos/páginas
   const handleArticleClick = (articleId) => {
-    // Exemplo: router.push(`/ajuda/artigo/${articleId}`);
     window.location.href = `/ajuda/artigo/${articleId}`;
   };
 
   const handleCategoryClick = (categoryId) => {
-    // Exemplo: router.push(`/ajuda/categoria/${categoryId}`);
     setSelectedCategory(selectedCategory === categoryId ? null : categoryId);
   };
 
-  // Filtra categorias e artigos com base no perfil ativo
   const currentCategories = activeTab === 'gestor' 
     ? categoriesByRole.gestor 
     : categoriesByRole.colaborador;
@@ -128,14 +138,14 @@ export default function Ajuda() {
   const filteredArticles = recentArticles.filter((item) => {
     const matchesSearch = item.title.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesRole = activeTab === 'gestor' || item.role === 'colaborador' || item.role === 'todos';
-    return matchesSearch && matchesRole;
+    const matchesCategory = selectedCategory ? item.categoryId === selectedCategory : true;
+    return matchesSearch && matchesRole && matchesCategory;
   });
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col font-sans text-slate-700">
       <Navbar selectedCompany="Empresa Teste" />
 
-      {/* BANNER SUPERIOR REESTRUTURADO */}
       <div className="bg-gradient-to-r from-[#fc9314] to-[#ff8b00] py-14 px-4 relative overflow-hidden flex flex-col items-center justify-center text-center shadow-md">
         <div className="max-w-3xl w-full z-10 space-y-4">
           <span className="bg-white/20 text-white text-xs font-semibold px-3 py-1 rounded-full uppercase tracking-wider">
@@ -158,16 +168,13 @@ export default function Ajuda() {
         </div>
       </div>
 
-      {/* CONTEÚDO PRINCIPAL */}
       <main className="flex-1 max-w-6xl w-full mx-auto px-4 py-8 space-y-8">
-        
-        {/* SELETOR DE PERFIL (Exibido apenas se o usuário for Gestor) */}
         {userRole === 'gestor' && (
           <div className="flex justify-center">
             <div className="bg-slate-200/80 p-1 rounded-xl flex gap-1 text-sm font-medium">
               <button
                 onClick={() => { setActiveTab('gestor'); setSelectedCategory(null); }}
-                className={`px-5 py-2.5 rounded-lg transition-all flex items-center gap-2 ${
+                className={`px-5 py-2.5 rounded-lg transition-all flex items-center gap-2 cursor-pointer ${
                   activeTab === 'gestor'
                     ? 'bg-white text-[#fc9314] shadow-sm font-semibold'
                     : 'text-slate-600 hover:text-slate-900'
@@ -178,7 +185,7 @@ export default function Ajuda() {
               </button>
               <button
                 onClick={() => { setActiveTab('colaborador'); setSelectedCategory(null); }}
-                className={`px-5 py-2.5 rounded-lg transition-all flex items-center gap-2 ${
+                className={`px-5 py-2.5 rounded-lg transition-all flex items-center gap-2 cursor-pointer ${
                   activeTab === 'colaborador'
                     ? 'bg-white text-[#fc9314] shadow-sm font-semibold'
                     : 'text-slate-600 hover:text-slate-900'
@@ -191,7 +198,6 @@ export default function Ajuda() {
           </div>
         )}
 
-        {/* CARDS DE CATEGORIAS */}
         <section className="space-y-4">
           <div className="flex justify-between items-baseline">
             <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2">
@@ -228,7 +234,6 @@ export default function Ajuda() {
           </div>
         </section>
 
-        {/* LISTA DE ARTIGOS / PASSO A PASSO */}
         <section className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm space-y-4">
           <div className="flex justify-between items-center border-b border-slate-100 pb-4">
             <h2 className="text-base font-bold text-slate-800">
@@ -237,7 +242,7 @@ export default function Ajuda() {
             {selectedCategory && (
               <button
                 onClick={() => setSelectedCategory(null)}
-                className="text-xs text-[#fc9314] hover:underline font-semibold"
+                className="text-xs text-[#fc9314] hover:underline font-semibold cursor-pointer"
               >
                 Ver todos os artigos
               </button>
@@ -270,7 +275,7 @@ export default function Ajuda() {
             ) : (
               <div className="py-12 text-center text-sm text-slate-400 space-y-2">
                 <HelpCircle className="w-8 h-8 mx-auto text-slate-300" />
-                <p>Nenhum artigo encontrado para sua busca.</p>
+                <p>Nenhum artigo encontrado para esta seleção.</p>
               </div>
             )}
           </div>

@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { useRouter } from 'next/router';
+import { useNavigate, useParams } from 'react-router-dom';
 import Navbar from '@/components/Navbar';
 import { supabase } from '@/lib/supabase';
-import { ArrowLeft, Clock, Tag, MessageSquare, ThumbsUp, CheckCircle } from 'lucide-react';
+import { ArrowLeft, Clock, ThumbsUp, CheckCircle } from 'lucide-react';
 
 export default function ArtigoDetalhes() {
-  const router = useRouter();
-  const { id } = router.query;
+  const navigate = useNavigate();
+  const { id } = useParams();
   const [article, setArticle] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -35,7 +35,7 @@ export default function ArtigoDetalhes() {
       }
     }
 
-    // Fallback de demonstração caso não encontre no banco
+    // Fallback de demonstração
     setArticle({
       id: id,
       category: 'PRIMEIROS PASSOS',
@@ -75,8 +75,8 @@ export default function ArtigoDetalhes() {
 
       <main className="flex-1 max-w-4xl w-full mx-auto px-4 py-8 space-y-6">
         <button
-          onClick={() => router.back()}
-          className="flex items-center gap-2 text-xs font-semibold text-[#fc9314] hover:underline"
+          onClick={() => navigate('/ajuda')}
+          className="flex items-center gap-2 text-xs font-semibold text-[#fc9314] hover:underline cursor-pointer"
         >
           <ArrowLeft className="w-4 h-4" />
           Voltar para a Central de Ajuda
@@ -119,7 +119,7 @@ export default function ArtigoDetalhes() {
             <div className="border-t border-slate-100 pt-6 flex flex-col sm:flex-row justify-between items-center gap-4">
               <span className="text-xs text-slate-500">Este artigo foi útil?</span>
               <div className="flex gap-2">
-                <button className="px-3 py-1.5 border border-slate-200 rounded-lg text-xs hover:bg-slate-50 flex items-center gap-1">
+                <button className="px-3 py-1.5 border border-slate-200 rounded-lg text-xs hover:bg-slate-50 flex items-center gap-1 cursor-pointer">
                   <ThumbsUp className="w-3.5 h-3.5 text-slate-500" /> Sim
                 </button>
               </div>

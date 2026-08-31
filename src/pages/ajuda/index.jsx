@@ -30,8 +30,8 @@ export default function Ajuda() {
   const categoriesByRole = {
     colaborador: [
       { id: 'primeiros-passos', title: 'Primeiros Passos', icon: BookOpen, desc: 'Acessando a plataforma pela primeira vez' },
-      { id: 'tutoriais', title: 'Tutorial do Colaborador', icon: UserCheck, desc: 'Guias básicos de uso e registro' },
-      { id: 'app', title: 'Aplicativo de Celular', icon: Smartphone, desc: 'Como marcar ponto pelo celular' },
+      { id: 'tutoriais', title: 'Bate Ponto', icon: UserCheck, desc: 'Guias básicos de uso e registro' },
+      { id: 'app', title: 'Documentos', icon: Smartphone, desc: 'Como marcar ponto pelo celular' },
       { id: 'espelho', title: 'Espelho de Ponto', icon: FileText, desc: 'Consulta de horas e marcações' },
     ],
     gestor: [

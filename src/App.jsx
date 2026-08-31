@@ -44,7 +44,9 @@ import Banco from './pages/admin/Banco';
 
 // Import da Página de Documentos do Colaborador
 import Documentos from './pages/documentos';
-import Ajuda from './pages/Ajuda';
+import Ajuda from './pages/ajuda';
+import ArtigoDetalhes from './pages/ajuda/artigo/[id]';
+import CategoriaDetalhes from './pages/ajuda/categoria/[slug]';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, authError, navigateToLogin } = useAuth();
@@ -88,6 +90,8 @@ const AuthenticatedApp = () => {
         <Route path="/espelho" element={<TimeClockMirror />} />
         <Route path="/documentos" element={<Documentos />} />
         <Route path="/ajuda" element={<Ajuda />} />
+        <Route path="/ajuda/artigo/:id" element={<ArtigoDetalhes />} />
+        <Route path="/ajuda/categoria/:slug" element={<CategoriaDetalhes />} />
 
         {/* Rotas Legadas */}
         <Route path="/solicitacoes" element={<Requests />} />

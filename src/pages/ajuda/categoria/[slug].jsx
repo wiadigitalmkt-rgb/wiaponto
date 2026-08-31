@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { useRouter } from 'next/router';
+import { useNavigate, useParams } from 'react-router-dom';
 import Navbar from '@/components/Navbar';
 import { supabase } from '@/lib/supabase';
 import { ArrowLeft, BookOpen, ChevronRight, HelpCircle } from 'lucide-react';
 
 export default function CategoriaDetalhes() {
-  const router = useRouter();
-  const { slug } = router.query;
+  const navigate = useNavigate();
+  const { slug } = useParams();
   const [articles, setArticles] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -58,8 +58,8 @@ export default function CategoriaDetalhes() {
 
       <main className="flex-1 max-w-5xl w-full mx-auto px-4 py-8 space-y-6">
         <button
-          onClick={() => router.push('/ajuda')}
-          className="flex items-center gap-2 text-xs font-semibold text-[#fc9314] hover:underline"
+          onClick={() => navigate('/ajuda')}
+          className="flex items-center gap-2 text-xs font-semibold text-[#fc9314] hover:underline cursor-pointer"
         >
           <ArrowLeft className="w-4 h-4" />
           Voltar para a Central de Ajuda
@@ -90,7 +90,7 @@ export default function CategoriaDetalhes() {
                 articles.map((item) => (
                   <div
                     key={item.id}
-                    onClick={() => router.push(`/ajuda/artigo/${item.id}`)}
+                    onClick={() => navigate(`/ajuda/artigo/${item.id}`)}
                     className="py-4 px-2 hover:bg-slate-50 rounded-lg transition-colors flex items-center justify-between cursor-pointer group"
                   >
                     <div className="space-y-1">

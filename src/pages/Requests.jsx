@@ -7,7 +7,6 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Loader2, CheckCircle, XCircle, Clock } from 'lucide-react';
 import { toast } from 'sonner';
-import { PUNCH_LABELS } from '@/lib/clockUtils';
 import { supabase } from '@/lib/supabase';
 
 const STATUS_MAP = {

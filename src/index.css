@@ -1,3 +1,23 @@
+/**
+ * O QUE É ESTE ARQUIVO:
+ * Arquivo global de estilos CSS (index.css ou global.css).
+ * Ele define a base visual, variáveis de cor do sistema e integra o Tailwind CSS à aplicação.
+ *
+ * O QUE ELE FAZ:
+ * 1. Diretivas do Tailwind (@tailwind base, components, utilities):
+ *    Carrega e habilita a biblioteca inteira do Tailwind no projeto. Sem essas 3 linhas, 
+ *    nenhuma classe utilitária (como 'flex', 'p-4', 'bg-blue-500', 'text-white') funciona nas suas páginas.
+ *
+ * 2. Variáveis de Tema em HSL (:root e .dark):
+ *    Define a paleta global de cores da sua aplicação para o modo claro (:root) e modo escuro (.dark).
+ *    É aqui que estão mapeadas as cores principais (primary, secondary, accent, destructive, background, etc.) 
+ *    usadas por componentes e bibliotecas visuais como Shadcn UI e Radix UI.
+ *
+ * 3. Camada Base (@layer base):
+ *    Aplica estilos universais nos elementos HTML. Garante que todos os elementos respeitem a cor das 
+ *    bordas (--border) e que o <body> assuma automaticamente o fundo (--background) e a cor de texto (--foreground).
+ */
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -56,7 +76,6 @@
     --chart-3: 30 80% 55%;
     --chart-4: 280 65% 60%;
     --chart-5: 340 75% 55%;
-   
   }
 }
 

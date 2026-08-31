@@ -1,3 +1,21 @@
+/**
+ * O QUE É ESTE ARQUIVO:
+ * Arquivo principal de rotas e componentes da aplicação React (App.jsx).
+ * Ele atua como o ponto central de navegação, provedores de contexto global e controle de acesso do sistema "wiaponto".
+ *
+ * O QUE ELE FAZ:
+ * 1. Encapsula a aplicação com os provedores globais de autenticação (AuthProvider), 
+ *    gerenciamento de requisições de dados (QueryClientProvider do React Query) e roteamento (BrowserRouter).
+ * 2. Gerencia os estados de autenticação do usuário (exibe tela de carregamento/spinner durante a validação ou 
+ *    redireciona para o login quando necessário).
+ * 3. Mapeia e protege as rotas da aplicação:
+ *    - Rotas Públicas: Login, Cadastro e Recuperação de Senha.
+ *    - Rotas de Colaborador (Protegidas): Bate-ponto (/ponto), Espelho de Ponto (/espelho), Documentos e Ajuda.
+ *    - Rotas do Painel Administrativo (Protegidas por perfil 'gestor'/'admin'): Dashboard, Gestão de Colaboradores, 
+ *      Configurações da Empresa, Admissão, Contratos e Banco de Horas.
+ * 4. Exibe avisos do sistema (Toaster) e captura URLs inválidas redirecionando para a página 404 (PageNotFound).
+ */
+
 import { Toaster } from "@/components/ui/toaster"
 import { QueryClientProvider } from '@tanstack/react-query'
 import { queryClientInstance } from '@/lib/query-client'

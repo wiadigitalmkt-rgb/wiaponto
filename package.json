@@ -4,7 +4,6 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "_comentario": "Atalhos de comandos para automação e execução do projeto via npm run",
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint . --quiet",
@@ -13,7 +12,6 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "_comentario": "Bibliotecas de produção necessárias para a aplicação rodar",
     "@hello-pangea/dnd": "^17.0.0",
     "@hookform/resolvers": "^4.1.2",
     "@radix-ui/react-accordion": "^1.2.3",
@@ -75,7 +73,6 @@
     "zod": "^3.24.2"
   },
   "devDependencies": {
-    "_comentario": "Ferramentas utilizadas apenas no ambiente de desenvolvimento e build",
     "@eslint/js": "^9.19.0",
     "@types/node": "^22.13.5",
     "@types/react": "^18.2.66",

@@ -10,6 +10,41 @@ export default function CategoriaDetalhes() {
   const [articles, setArticles] = useState([]);
   const [loading, setLoading] = useState(true);
 
+  const fallbackCategoryArticles = {
+    'bate-ponto': [
+      {
+        id: '2',
+        category: 'REGISTROS',
+        title: 'Como registrar o ponto com foto e localização',
+        time: '1 min de leitura'
+      }
+    ],
+    'documentos-avisos': [
+      {
+        id: '3',
+        category: 'DOCUMENTOS E AVISOS',
+        title: 'Como assinar folhas de ponto, visualizar documentos e acompanhar avisos',
+        time: '2 min de leitura'
+      }
+    ],
+    'espelho-ponto': [
+      {
+        id: '4',
+        category: 'ESPELHO DE PONTO',
+        title: 'Como consultar o histórico de registros e solicitar ajustes de ponto',
+        time: '2 min de leitura'
+      }
+    ],
+    'primeiros-passos': [
+      {
+        id: '1',
+        category: 'PRIMEIROS PASSOS',
+        title: 'Como acessar o Wiaponto pelo navegador (computador e celular)',
+        time: 'há 4 dias'
+      }
+    ]
+  };
+
   useEffect(() => {
     if (!slug) return;
     fetchCategoryArticles();
@@ -22,7 +57,7 @@ export default function CategoriaDetalhes() {
         const { data, error } = await supabase
           .from('help_articles')
           .select('*')
-          .ilike('category', `%${slug}%`);
+          .ilike('categoryId', `%${slug}%`);
 
         if (!error && data && data.length > 0) {
           setArticles(data);
@@ -34,21 +69,18 @@ export default function CategoriaDetalhes() {
       }
     }
 
-    // Fallback de demonstração
-    setArticles([
-      {
-        id: '1',
-        category: slug?.toString().toUpperCase(),
-        title: `Guia de utilização - ${slug}`,
-        time: 'há 2 dias'
-      },
-      {
-        id: '2',
-        category: slug?.toString().toUpperCase(),
-        title: `Configurações avançadas de ${slug}`,
-        time: 'há 5 dias'
-      }
-    ]);
+    if (fallbackCategoryArticles[slug]) {
+      setArticles(fallbackCategoryArticles[slug]);
+    } else {
+      setArticles([
+        {
+          id: '1',
+          category: slug?.toString().toUpperCase(),
+          title: `Guia de utilização - ${slug}`,
+          time: 'há 2 dias'
+        }
+      ]);
+    }
     setLoading(false);
   };
 

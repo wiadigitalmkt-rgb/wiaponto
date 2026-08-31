@@ -1,6 +1,4 @@
 {
-  "_comentario_o_que_e": "O package.json é o manifesto principal de um projeto Node.js/React. Ele define as configurações, dependências, bibliotecas e scripts de execução do projeto.",
-  "_comentario_o_que_faz": "Este arquivo gerencia a aplicação 'wiaponto', mapeando todas as ferramentas utilizadas (React, Supabase, Tailwind, Radix UI, Vite), além de disponibilizar comandos para rodar o ambiente de desenvolvimento, compilar o projeto para produção e verificar a qualidade do código.",
   "name": "wiaponto",
   "private": true,
   "version": "1.0.0",

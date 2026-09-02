@@ -36,7 +36,7 @@ export default function ArtigoDetalhes() {
       content: `Para registrar a sua jornada diária com facilidade e segurança, siga o passo a passo abaixo através da página principal de registro do WiaPonto:
 
 Acesse a página de registro:
-Entre no endereço wiaponto.vercel.app/ponto (ou clique em Ponto no menu principal).
+Entre no endereço wiaponto.vercel.app/ponto (ou clique em Bater Ponto no menu principal).
 
 Inicie o registro:
 Na tela inicial, clique no botão laranja principal com a escrita "Bater ponto".
@@ -59,7 +59,7 @@ Clique em "CONFIRMAR PONTO" para salvar seu registro.`,
       category: 'DOCUMENTOS E AVISOS',
       title: 'Como assinar folhas de ponto, visualizar documentos e acompanhar avisos',
       updated_at: '2 min de leitura',
-      content: `Na área de Documentos, o colaborador centraliza a assinatura de espelhos de ponto, visualiza arquivos enviados pelo RH e acompanha comunicados da empresa em tempo real.
+      content: `Na área de Documentos, o RH centraliza a assinatura de espelhos de ponto e arquivos e o colaborador visualiza arquivos enviados pelo RH e acompanha comunicados da empresa em tempo real.
 
 Como acessar a área de Documentos:
 Você pode acessar esta seção de duas formas simples:

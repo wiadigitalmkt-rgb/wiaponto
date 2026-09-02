@@ -13,105 +13,145 @@ export default function ArtigoDetalhes() {
   const fallbackArticles = {
     '1': {
       id: '1',
-      category: 'PRIMEIROS PASSOS',
-      title: 'Como acessar o Wiaponto pelo navegador (computador e celular)',
-      updated_at: 'há 4 dias',
-      content: `Para acessar o sistema Wiaponto de qualquer dispositivo com navegação web, siga as orientações gerais de acesso:
+      category: 'ESPELHO DE PONTO',
+      title: 'Como consultar, tratar inconsistências e fechar o Espelho de Ponto dos colaboradores',
+      updated_at: 'há 1 dia',
+      content: `O Espelho de Ponto é a ferramenta central do gestor para acompanhamento do cumprimento de jornada, tratamento de marcações incorretas e fechamento mensal para envio à folha de pagamento.
 
-1. Abra o seu navegador de preferência (Google Chrome, Safari, Edge ou Firefox).
-2. Acesse o endereço oficial da plataforma fornecido pela sua empresa.
-3. Informe suas credenciais de acesso (E-mail ou CPF) e a senha cadastrada.
-4. Caso seja o seu primeiro acesso, realize a confirmação de senha exigida por segurança.`,
+Acesse a página do Espelho de Ponto pelo menu de Módulos de Gestão e siga as etapas de conferência e tratamento abaixo:`,
       steps: [
-        'Acesse o site oficial pelo seu navegador.',
-        'Insira seu usuário e senha nos campos indicados.',
-        'Clique em "Entrar" para acessar o painel principal.'
+        'Acesse o menu Espelho de Ponto no painel principal do Gestor.',
+        'Selecione a empresa, departamento ou pesquise o nome do colaborador e defina o período de apuração desejado.',
+        'Analise a grade de registros do colaborador, identificando marcações faltantes, horas extras, atrasos e faltas.',
+        'Para realizar ajustes ou abonar justificativas, clique sobre o dia desejado, insira o horário correto/motivo e salve as alterações.',
+        'Após a verificação dos dados do período, clique em Exportar/Fechar Ponto para gerar os arquivos de folha de pagamento e liberar a assinatura do colaborador.'
       ]
     },
     '2': {
       id: '2',
-      category: 'TUTORIAL DO COLABORADOR / REGISTROS',
-      title: 'Como registrar o ponto com foto e localização',
-      updated_at: '1 min de leitura',
-      content: `Para registrar a sua jornada diária com facilidade e segurança, siga o passo a passo abaixo através da página principal de registro do WiaPonto:
+      category: 'MÓDULO USUÁRIOS',
+      title: 'Como gerenciar perfis, dados pessoais e permissões de acesso dos colaboradores',
+      updated_at: 'há 1 dia',
+      content: `No módulo de Usuários, o gestor possui controle total sobre os dados cadastrais, jornadas atribuídas, locais de marcação (cercas virtuais), férias e permissões do sistema.
 
-Acesse a página de registro:
-Entre no endereço wiaponto.vercel.app/ponto (ou clique em Bater Ponto no menu principal).
-
-Inicie o registro:
-Na tela inicial, clique no botão laranja principal com a escrita "Bater ponto".
-
-Validação de foto e localização:
-O sistema verificará automaticamente sua Localização (GPS). Certifique-se de permitir a permissão de localização no seu navegador/celular.
-Na opção Selfie de Confirmação, clique em "Tirar Foto" para capturar sua imagem de validação.
-
-Finalize a marcação:
-Após a validação da localização e a foto ser capturada, o botão "CONFIRMAR PONTO" ficará ativo.
-Clique em "CONFIRMAR PONTO" para salvar seu registro.`,
+Para navegar pelas seções e atualizar as informações do colaborador, siga as etapas:`,
       steps: [
-        'Acesse a página /ponto e clique no botão laranja "Bater ponto".',
-        'Verifique se o GPS foi validado e clique em "Tirar Foto" para registrar a selfie.',
-        'Clique no botão "CONFIRMAR PONTO" para concluir o registro.'
+        'No painel do Gestor, clique no módulo Usuários.',
+        'Localize e selecione o colaborador na lista ou clique em Novo Usuário para realizar um cadastro.',
+        'Navegue pela barra lateral esquerda para editar as seções: Informações, Jornada de trabalho, Cercas, Férias, Dependentes e Acesso ao sistema.',
+        'Na aba Dados do perfil, atualize informações pessoais como Nome, CPF, RG, E-mail, Telefone, Endereço e Cargo.',
+        'Clique no botão Salvar alterações no canto inferior direito para atualizar o cadastro no sistema.'
       ]
     },
     '3': {
       id: '3',
-      category: 'DOCUMENTOS E AVISOS',
-      title: 'Como assinar folhas de ponto, visualizar documentos e acompanhar avisos',
-      updated_at: '2 min de leitura',
-      content: `Na área de Documentos, o RH centraliza a assinatura de espelhos de ponto e arquivos e o colaborador visualiza arquivos enviados pelo RH e acompanha comunicados da empresa em tempo real.
+      category: 'ADMISSÃO & DOCUMENTOS',
+      title: 'Como iniciar o processo de admissão digital para novos colaboradores',
+      updated_at: 'há 1 dia',
+      content: `A funcionalidade de Admissão Digital permite coletar dados e documentos de novos colaboradores de forma automatizada via modelos pré-definidos (Templates).
 
-Como acessar a área de Documentos:
-Você pode acessar esta seção de duas formas simples:
-- Opção 1: Clique no item "Documentos" localizado no menu superior (navbar).
-- Opção 2: Na página inicial de bater ponto (/ponto), clique no botão "Ver documentos".
-
-1. Assinando os Espelhos de Ponto:
-No menu lateral esquerdo da tela de documentos, clique em Espelho.
-Na aba Espelhos (Pendentes), localize a folha de ponto referente ao mês/período desejado.
-Clique sobre o documento ou na opção de ação para revisar seus horários.
-Após conferir os dados, siga as instruções na tela para efetuar a assinatura digital.
-Assim que assinado, o documento será movido automaticamente para a aba Espelhos assinados.
-
-2. Visualizando Arquivos Gerais:
-No menu lateral esquerdo, clique em Arquivos em GERAL.
-Nesta seção você encontrará comprovantes, contratos, manuais ou outros documentos disponibilizados diretamente pela empresa ou setor de RH.
-
-3. Acompanhando Comunicados e Avisos:
-No menu lateral esquerdo, selecione a opção Avisos.
-Acompanhe em tempo real todos os comunicados, lembretes e notícias importantes publicados pela empresa para manter-se sempre atualizado.`,
+Acompanhe os passos necessários para disparar e monitorar um processo admissional:`,
       steps: [
-        'Acesso: Utilize a opção "Documentos" na barra superior ou o botão "Ver documentos" na tela de registro.',
-        'Assinaturas: Acesse a aba Espelho, revise os registros pendentes e realize a assinatura.',
-        'Avisos e Arquivos: Navegue pelas abas do menu lateral para conferir informativos da empresa e arquivos em geral.'
+        'Certifique-se de possuir um modelo configurado na aba Templates dentro do menu Admissão.',
+        'Na página principal de Admissão, clique no botão Iniciar admissão.',
+        'Pesquise e marque a caixa ao lado do nome do colaborador cadastrado e clique em Continuar.',
+        'Selecione o modelo de template desejado para a coleta de dados/documentos e clique em Usar template.',
+        'Acompanhe o progresso do preenchimento do colaborador pelas abas Em andamento e Concluídas, e baixe o relatório final em Relatórios > Dados Admissão.'
       ]
     },
     '4': {
       id: '4',
-      category: 'ESPELHO DE PONTO',
-      title: 'Como consultar o histórico de registros e solicitar ajustes de ponto',
-      updated_at: '2 min de leitura',
-      content: `O Espelho de Ponto permite acompanhar todo o seu histórico de batidas, verificar resumos de horas e solicitar correções ou justificativas em casos de esquecimento ou divergências.
+      category: 'CONTRATOS',
+      title: 'Como gerenciar e vincular contratos de trabalho aos colaboradores',
+      updated_at: 'há 2 dias',
+      content: `O módulo de Contratos centraliza o controle de acordos individuais de trabalho, tipos de contratação e histórico de vínculos da empresa.
 
-Como acessar o Espelho de Ponto e Histórico:
-Você pode navegar até essa seção através de duas formas:
-- Opção 1: Clique em "Espelho de Ponto" no menu superior (navbar).
-- Opção 2: Na página principal de registro (/ponto), clique no botão "Ver histórico de pontos".
-
-1. Consultado o Histórico e Resumos:
-Ao acessar a página, você verá o detalhamento completo de todas as marcações do mês selecionado.
-É possível conferir o resumo de horas trabalhadas, banco de horas e eventuais atrasos ou horas extras acumuladas no período.
-
-2. Como Solicitar Correção ou Ajuste de Ponto:
-Caso tenha esquecido de bater o ponto em algum horário ou precise anexar um atestado/justificativa:
-- Acesse a tela principal de registro (/ponto).
-- Clique no botão "Solicitar ajuste".
-- Preencha as informações necessárias: Data e horário do ajuste necessário, Tipo de solicitação (inclusão de ponto, alteração ou justificativa/atestado) e Motivo/Observação explicando o ocorrido.
-- Clique em Enviar para que a sua solicitação seja encaminhada ao setor de RH ou ao seu gestor para aprovação.`,
+Siga as etapas abaixo para criar ou vincular novos contratos no sistema:`,
       steps: [
-        'Consulta: Acesse via navbar em "Espelho de Ponto" ou pelo botão "Ver histórico de pontos".',
-        'Acompanhamento: Verifique suas marcações diárias e o saldo geral de horas.',
-        'Solicitação de Ajuste: Clique em "Solicitar ajuste" na tela inicial para enviar justificativas ou pedir correções de horários ao RH.'
+        'Acesse o módulo Contratos no menu de gestão do Wiaponto.',
+        'Selecione o tipo de contrato desejado (CLT, Estágio, PJ, Menor Aprendiz ou Experiência).',
+        'Clique em Novo Contrato ou selecione um modelo preexistente na lista.',
+        'Preencha os termos contratuais, carga horária associada e dados do contratado.',
+        'Envie o contrato para assinatura digital do colaborador ou realize o arquivamento no cadastro do usuário.'
+      ]
+    },
+    '5': {
+      id: '5',
+      category: 'BANCO DE HORAS',
+      title: 'Como acompanhar o saldo, realizar lançamentos e compensar banco de horas',
+      updated_at: 'há 2 dias',
+      content: `Gerencie os saldos positivos e negativos do banco de horas da sua equipe e faça acertos manuais quando necessário.
+
+Acompanhe como realizar os lançamentos no sistema:`,
+      steps: [
+        'Clique na opção Banco de Horas no menu de módulos de gestão.',
+        'Selecione o colaborador ou equipe para visualizar o saldo acumulado (créditos ou débitos).',
+        'Para realizar baixas ou compensações manuais, clique em Adicionar Lançamento.',
+        'Defina o tipo de movimento (Débito/Crédito), a quantidade de horas e adicione uma justificativa.',
+        'Clique em Confirmar para atualizar instantaneamente o saldo do banco de horas do colaborador.'
+      ]
+    },
+    '6': {
+      id: '6',
+      category: 'DISTRIBUIÇÃO DE DOCS',
+      title: 'Como enviar holerites, informes e comunicados individuais ou em massa',
+      updated_at: 'há 2 dias',
+      content: `A Distribuição de Documentos facilita o envio direto de recibos de pagamento, informativos de rendimento e notificações aos colaboradores.
+
+Siga o passo a passo para disponibilizar novos arquivos:`,
+      steps: [
+        'Acesse o menu Distribuição de Docs no painel do Gestor.',
+        'Clique em Novo Envio / Enviar Documentos.',
+        'Escolha a categoria do arquivo (Holerite, Informe de Rendimentos, Aviso de Férias ou Comunicado Geral).',
+        'Selecione os destinatários (um colaborador específico, um departamento inteiro ou todos os usuários).',
+        'Faça o upload do arquivo (PDF ou imagem) e clique em Enviar Documento para disponibilizá-lo para assinatura e consulta no perfil dos colaboradores.'
+      ]
+    },
+    '7': {
+      id: '7',
+      category: 'COMUNICAÇÃO INTERNA',
+      title: 'Como criar e gerenciar avisos e comunicados no painel dos colaboradores',
+      updated_at: 'há 3 dias',
+      content: `A Módulo de Comunicação Interna permite que o gestor publique informativos gerais e monitore as confirmações de leitura da equipe.
+
+Para publicar um novo comunicado, siga as instruções:`,
+      steps: [
+        'No menu principal de gestão, selecione Comunicação interna.',
+        'Clique em Novo Comunicado para redigir um aviso para a equipe.',
+        'Preencha o título, texto do comunicado e defina o público-alvo (departamento ou empresa inteira).',
+        'Defina se o comunicado exige confirmação de leitura por parte do colaborador.',
+        'Clique em Publicar para que o aviso seja exibido no painel e aplicativo dos colaboradores.'
+      ]
+    },
+    '8': {
+      id: '8',
+      category: 'ASSISTENTE TRABALHISTA',
+      title: 'Como utilizar o Assistente Trabalhista para consultas legais e normas da CLT',
+      updated_at: 'há 3 dias',
+      content: `O Assistente Trabalhista é um guia prático para auxiliar gestores e equipes de RH no cumprimento das diretrizes da CLT e Portarias do MTE.
+
+Acesse o assistente seguindo os passos abaixo:`,
+      steps: [
+        'Clique no card Assistente Trabalhista no menu de gestão.',
+        'Utilize o campo de busca ou os tópicos recomendados para pesquisar dúvidas sobre regramentos trabalhistas (ex: limites de jornada, regras de banco de horas, prazos de pagamento de férias).',
+        'Visualize as orientações fundamentadas na legislação vigente (CLT e Portarias MTE).',
+        'Aplique as boas práticas e diretrizes sugeridas no tratamento do ponto e gestão da sua equipe.'
+      ]
+    },
+    '9': {
+      id: '9',
+      category: 'PERFIL SEGURO',
+      title: 'Como realizar a verificação de antecedentes e integridade cadastral de colaboradores',
+      updated_at: 'há 3 dias',
+      content: `O Perfil Seguro é a ferramenta do sistema focada em Compliance e validação rápida de dados cadastrais e checagens documentais.
+
+Veja como solicitar uma verificação:`,
+      steps: [
+        'Acesse o módulo Perfil Seguro no painel de gestão.',
+        'Digite o CPF ou selecione o colaborador cadastrado que deseja consultar.',
+        'Escolha o tipo de checagem a ser realizada (validação de dados cadastrais, verificação de documentos ou certidões).',
+        'Clique em Solicitar Consulta para processar as informações com segurança.',
+        'Visualize o relatório gerado na tela com os status de validação cadastral para acompanhamento de Compliance e RH.'
       ]
     }
   };

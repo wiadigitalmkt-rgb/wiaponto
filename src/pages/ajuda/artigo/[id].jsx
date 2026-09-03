@@ -3,7 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import Navbar from '@/components/Navbar';
 import { supabase } from '@/lib/supabase';
 import { ArrowLeft, Clock, ThumbsUp, CheckCircle } from 'lucide-react';
-import { articlesData } from './articlesData';
+import { articlesData } from '../articlesData';
 
 export default function ArtigoDetalhes() {
   const navigate = useNavigate();

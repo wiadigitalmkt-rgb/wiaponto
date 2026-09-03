@@ -76,19 +76,74 @@ export const articlesData = [
       'Ative o bloqueio de marcação fora do perímetro e salve.'
     ]
   },
+
+  // --- MÓDULO ADMISSÃO ---
   {
-    id: '6',
+    id: 'como-usar-o-perfil-seguro-consulta-de-cadastro-processos-e-antecedentes',
     categoryId: 'admissao',
     category: 'ADMISSÃO',
-    title: 'Como usar o Perfil Seguro (consulta de cadastro e antecedentes)',
-    time: 'há 4 dias',
-    updated_at: 'há 4 dias',
     role: 'gestor',
-    content: `O Perfil Seguro permite consultar e validar os dados dos novos colaboradores antes de efetivar a admissão.`,
+    time: 'há 1 dia',
+    updated_at: 'há 1 dia',
+    title: 'Como usar o Perfil Seguro (consulta de cadastro, processos e antecedentes)',
+    content: `O recurso Perfil Seguro permite consultar e verificar a veracidade das informações cadastrais, processos e histórico de antecedentes antes de concluir o processo de admissão do colaborador.`,
     steps: [
-      'Acesse o módulo de Admissão & Documentos.',
-      'Selecione o candidato e clique em Consultar Perfil Seguro.',
-      'Revise as informações retornadas antes de liberar a admissão.'
+      'Acesse o módulo Admissão no painel do Gestor.',
+      'Clique na opção "Perfil Seguro" no menu superior ou lateral do módulo.',
+      'Insira o CPF do candidato e clique em "Consultar Perfil".',
+      'Revise o relatório retornado contendo a validação cadastral e antecedentes.',
+      'Anexe a consulta ao processo de admissão para acompanhamento do RH.'
+    ]
+  },
+  {
+    id: 'como-editar-um-template-de-admissao-ja-criado',
+    categoryId: 'admissao',
+    category: 'ADMISSÃO',
+    role: 'gestor',
+    time: 'há 1 dia',
+    updated_at: 'há 1 dia',
+    title: 'Como editar um template de admissão já criado',
+    content: `Você pode alterar os requisitos de documentos, formulários solicitados ou etapas de um template de admissão existente sempre que os processos da empresa mudarem.`,
+    steps: [
+      'Acesse o menu Admissão > Templates de Admissão.',
+      'Localize o template que deseja atualizar na lista.',
+      'Clique no ícone de "Editar" (lápis) ao lado do nome do template.',
+      'Adicione, remova ou altere a obrigatoriedade dos documentos e campos exigidos.',
+      'Clique em "Salvar Alterações" para atualizar o modelo.'
+    ]
+  },
+  {
+    id: 'como-iniciar-uma-admissao-para-um-novo-colaborador',
+    categoryId: 'admissao',
+    category: 'ADMISSÃO',
+    role: 'gestor',
+    time: 'há 1 dia',
+    updated_at: 'há 1 dia',
+    title: 'Como iniciar uma admissão para um novo colaborador',
+    content: `Envie o convite de admissão prévia diretamente para o e-mail ou WhatsApp do novo funcionário para que ele preencha os dados e envie os documentos solicitados.`,
+    steps: [
+      'Acesse o painel do Gestor e entre na opção "Admissão".',
+      'Clique no botão "+ Nova Admissão".',
+      'Informe o Nome, E-mail, Celular e selecione o Template de Admissão apropriado.',
+      'Clique em "Enviar Convite de Admissão".',
+      'Acompanhe o preenchimento e o envio dos documentos pela dashboard de status.'
+    ]
+  },
+  {
+    id: 'como-criar-um-template-de-admissao',
+    categoryId: 'admissao',
+    category: 'ADMISSÃO',
+    role: 'gestor',
+    time: 'há 1 dia',
+    updated_at: 'há 1 dia',
+    title: 'Como criar um template de admissão',
+    content: `Crie modelos padronizados de solicitação de documentos (Ex: RG, CNH, Comprovante de Residência, Carteira de Trabalho) de acordo com o cargo ou departamento do colaborador.`,
+    steps: [
+      'Acesse o módulo "Admissão" e selecione a aba "Templates".',
+      'Clique em "+ Criar Novo Template".',
+      'Defina um nome para o template (Ex: Admissão Padrão CLT / Operacional).',
+      'Marque os documentos que devem ser obrigatoriamente anexados pelo candidato.',
+      'Clique em "Salvar Template" para liberá-lo nos novos envios.'
     ]
   },
 

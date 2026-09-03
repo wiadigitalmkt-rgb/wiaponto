@@ -3,47 +3,13 @@ import { useNavigate, useParams } from 'react-router-dom';
 import Navbar from '@/components/Navbar';
 import { supabase } from '@/lib/supabase';
 import { ArrowLeft, BookOpen, ChevronRight, HelpCircle } from 'lucide-react';
+import { articlesData } from '../articlesData';
 
 export default function CategoriaDetalhes() {
   const navigate = useNavigate();
   const { slug } = useParams();
   const [articles, setArticles] = useState([]);
   const [loading, setLoading] = useState(true);
-
-  const fallbackCategoryArticles = {
-    'bate-ponto': [
-      {
-        id: '2',
-        category: 'REGISTROS',
-        title: 'Como registrar o ponto com foto e localização',
-        time: '1 min de leitura'
-      }
-    ],
-    'documentos-avisos': [
-      {
-        id: '3',
-        category: 'DOCUMENTOS E AVISOS',
-        title: 'Como assinar folhas de ponto, visualizar documentos e acompanhar avisos',
-        time: '2 min de leitura'
-      }
-    ],
-    'espelho-ponto': [
-      {
-        id: '4',
-        category: 'ESPELHO DE PONTO',
-        title: 'Como consultar o histórico de registros e solicitar ajustes de ponto',
-        time: '2 min de leitura'
-      }
-    ],
-    'primeiros-passos': [
-      {
-        id: '1',
-        category: 'PRIMEIROS PASSOS',
-        title: 'Como acessar o Wiaponto pelo navegador (computador e celular)',
-        time: 'há 4 dias'
-      }
-    ]
-  };
 
   useEffect(() => {
     if (!slug) return;
@@ -69,8 +35,13 @@ export default function CategoriaDetalhes() {
       }
     }
 
-    if (fallbackCategoryArticles[slug]) {
-      setArticles(fallbackCategoryArticles[slug]);
+    // Filtra no fallback local (articlesData) pelo categoryId correspondente ao slug
+    const filteredLocalArticles = articlesData.filter(
+      (item) => item.categoryId.toLowerCase() === slug.toLowerCase()
+    );
+
+    if (filteredLocalArticles.length > 0) {
+      setArticles(filteredLocalArticles);
     } else {
       setArticles([
         {

@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import Navbar from '@/components/Navbar';
 import { supabase } from '@/lib/supabase';
 import { ArrowLeft, Clock, ThumbsUp, CheckCircle } from 'lucide-react';
+import { articlesData } from './articlesData';
 
 export default function ArtigoDetalhes() {
   const navigate = useNavigate();
@@ -382,36 +383,39 @@ export default function ArtigoDetalhes() {
   }, [id]);
 
   const fetchArticleDetails = async () => {
-    setLoading(true);
+  setLoading(true);
 
-    // Consulta no Supabase primeiro
-    if (supabase) {
-      try {
-        const { data, error } = await supabase
-          .from('help_articles')
-          .select('*')
-          .eq('id', id)
-          .single();
+  // 1. Tenta buscar no Supabase se configurado
+  if (supabase) {
+    try {
+      const { data, error } = await supabase
+        .from('help_articles')
+        .select('*')
+        .eq('id', id)
+        .single();
 
-        if (!error && data) {
-          setArticle(data);
-          setLoading(false);
-          return;
-        }
-      } catch (err) {
-        console.error('Erro ao buscar artigo no Supabase:', err);
+      if (!error && data) {
+        setArticle(data);
+        setLoading(false);
+        return;
       }
+    } catch (err) {
+      console.error('Erro ao buscar artigo no Supabase:', err);
     }
+  }
 
-    // Fallback local do Módulo de Usuários
-    if (usersArticles[id]) {
-      setArticle(usersArticles[id]);
-    } else {
-      // Caso não encontre por slug exato, exibe o primeiro artigo do módulo
-      setArticle(usersArticles['como-transferir-um-colaborador-de-departamento']);
-    }
-    setLoading(false);
-  };
+  // 2. Fallback no array unificado (articlesData)
+  const foundArticle = articlesData.find((art) => art.id === id);
+
+  if (foundArticle) {
+    setArticle(foundArticle);
+  } else {
+    // Se não encontrar o ID informado, exibe o primeiro por padrão
+    setArticle(articlesData[0]);
+  }
+
+  setLoading(false);
+};
 
   if (loading) {
     return (

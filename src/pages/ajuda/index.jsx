@@ -42,87 +42,37 @@ export default function Ajuda() {
       { id: 'banco-horas', title: 'Banco de Horas', icon: Clock, desc: 'Ajustes e compensações' },
       { id: 'jornadas', title: 'Jornadas & Escalas', icon: Settings, desc: 'Criação de turnos de trabalho' },
       { id: 'ferias-folgas', title: 'Férias e Folgas', icon: Briefcase, desc: 'Agendamentos e recesso' },
+      { id: 'contratos', title: 'Contratos', icon: FileText, desc: 'Gestão e assinaturas digitais de contratos' },
       { id: 'admissao', title: 'Admissão & Documentos', icon: FileText, desc: 'Envio e verificação de documentos' },
       { id: 'configuracoes', title: 'Outras Configurações', icon: Settings, desc: 'Dispositivos (Control ID, EVO) e integração' },
     ]
   };
-
-  const defaultArticles = [
-    {
-      id: '1',
-      categoryId: 'primeiros-passos',
-      category: 'PRIMEIROS PASSOS',
-      title: 'Como acessar o Wiaponto pelo navegador (computador e celular)',
-      time: 'há 4 dias',
-      role: 'todos'
-    },
-    {
-      id: '2',
-      categoryId: 'bate-ponto',
-      category: 'REGISTROS',
-      title: 'Como registrar o ponto com foto e localização',
-      time: '1 min de leitura',
-      role: 'todos'
-    },
-    {
-      id: '3',
-      categoryId: 'documentos-avisos',
-      category: 'DOCUMENTOS E AVISOS',
-      title: 'Como assinar folhas de ponto, visualizar documentos e acompanhar avisos',
-      time: '2 min de leitura',
-      role: 'todos'
-    },
-    {
-      id: '4',
-      categoryId: 'espelho-ponto',
-      category: 'ESPELHO DE PONTO',
-      title: 'Como consultar o histórico de registros e solicitar ajustes de ponto',
-      time: '2 min de leitura',
-      role: 'todos'
-    },
-    {
-      id: '5',
-      categoryId: 'cerca-virtual',
-      category: 'CERCA VIRTUAL',
-      title: 'Como impedir o colaborador de bater ponto fora da empresa',
-      time: 'há 4 dias',
-      role: 'gestor'
-    },
-    {
-      id: '6',
-      categoryId: 'admissao',
-      category: 'ADMISSÃO',
-      title: 'Como usar o Perfil Seguro (consulta de cadastro e antecedentes)',
-      time: 'há 4 dias',
-      role: 'gestor'
-    }
-  ];
 
   useEffect(() => {
     fetchHelpArticles();
   }, []);
 
   const fetchHelpArticles = async () => {
-  if (!supabase) {
-    setRecentArticles(articlesData);
-    return;
-  }
-  try {
-    const { data, error } = await supabase
-      .from('help_articles')
-      .select('*')
-      .limit(50);
+    if (!supabase) {
+      setRecentArticles(articlesData);
+      return;
+    }
+    try {
+      const { data, error } = await supabase
+        .from('help_articles')
+        .select('*')
+        .limit(50);
 
-    if (!error && data && data.length > 0) {
-      setRecentArticles(data);
-    } else {
+      if (!error && data && data.length > 0) {
+        setRecentArticles(data);
+      } else {
+        setRecentArticles(articlesData);
+      }
+    } catch (err) {
+      console.error('Erro ao buscar artigos de ajuda:', err);
       setRecentArticles(articlesData);
     }
-  } catch (err) {
-    console.error('Erro ao buscar artigos de ajuda:', err);
-    setRecentArticles(articlesData);
-  }
-};
+  };
 
   const handleArticleClick = (articleId) => {
     window.location.href = `/ajuda/artigo/${articleId}`;

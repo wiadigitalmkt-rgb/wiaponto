@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
-import { supabase } from '../lib/supabaseClient'; // ajuste este caminho para o seu client Supabase
+import { supabase } from '@/lib/supabase';
 import {
   Loader2,
   CheckCircle2,

@@ -11,7 +11,9 @@ import {
   ChevronDown,
   ChevronRight,
   MoreHorizontal,
-  Loader2
+  Loader2,
+  Link as LinkIcon,
+  Share2
 } from 'lucide-react';
 
 export default function Admissao() {
@@ -52,6 +54,13 @@ export default function Admissao() {
 
   // Accordion do modo Visualização
   const [expandedField, setExpandedField] = useState(null);
+
+  // Toast simples de feedback (copiar link, etc.)
+  const [toastMessage, setToastMessage] = useState('');
+  const showToast = (message) => {
+    setToastMessage(message);
+    setTimeout(() => setToastMessage(''), 2500);
+  };
 
   useEffect(() => {
     fetchData();
@@ -238,6 +247,26 @@ export default function Admissao() {
   const handleOpenAdmissionView = (adm) => {
     setActiveAdmission(adm);
     setViewState('view_admission');
+  };
+
+  const getAdmissionLink = (adm) => `${window.location.origin}/preencher-admissao/${adm.id}`;
+
+  const handleCopyAdmissionLink = async (adm) => {
+    const link = getAdmissionLink(adm);
+    try {
+      await navigator.clipboard.writeText(link);
+      showToast('Link copiado para a área de transferência!');
+    } catch (err) {
+      console.error('Erro ao copiar link:', err);
+      alert('Não foi possível copiar automaticamente. Copie o link manualmente:\n' + link);
+    }
+  };
+
+  const handleShareWhatsapp = (adm) => {
+    const link = getAdmissionLink(adm);
+    const text = `Olá! Segue o link para preenchimento dos seus dados de admissão na empresa: ${link}`;
+    const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(text)}`;
+    window.open(whatsappUrl, '_blank', 'noopener,noreferrer');
   };
 
   // Helpers de formatação
@@ -460,13 +489,34 @@ export default function Admissao() {
                             <td className="py-3 px-4 text-slate-600">{adm.template_name || 'Admissão Matheus'}</td>
                             <td className="py-3 px-4 text-slate-600">{emp.position || 'Atendente'}</td>
                             <td className="py-3 px-4 text-slate-600">{emp.department || '-'}</td>
-                            <td className="py-3 px-4 text-center">
-                              <button
-                                onClick={() => handleOpenAdmissionView(adm)}
-                                className="p-1 hover:bg-slate-100 rounded text-slate-500 hover:text-slate-800"
-                              >
-                                <MoreHorizontal className="w-4 h-4" />
-                              </button>
+                            <td className="py-3 px-4">
+                              <div className="flex items-center justify-center gap-1">
+                                {adm.status === 'Em andamento' && (
+                                  <>
+                                    <button
+                                      onClick={() => handleCopyAdmissionLink(adm)}
+                                      title="Copiar link de preenchimento"
+                                      className="p-1.5 hover:bg-slate-100 rounded text-slate-500 hover:text-[#ff8b00] transition-colors"
+                                    >
+                                      <LinkIcon className="w-4 h-4" />
+                                    </button>
+                                    <button
+                                      onClick={() => handleShareWhatsapp(adm)}
+                                      title="Enviar link via WhatsApp"
+                                      className="p-1.5 hover:bg-slate-100 rounded text-slate-500 hover:text-[#25D366] transition-colors"
+                                    >
+                                      <Share2 className="w-4 h-4" />
+                                    </button>
+                                  </>
+                                )}
+                                <button
+                                  onClick={() => handleOpenAdmissionView(adm)}
+                                  title="Ver detalhes"
+                                  className="p-1.5 hover:bg-slate-100 rounded text-slate-500 hover:text-slate-800 transition-colors"
+                                >
+                                  <MoreHorizontal className="w-4 h-4" />
+                                </button>
+                              </div>
                             </td>
                           </tr>
                         );
@@ -941,6 +991,14 @@ export default function Admissao() {
           </div>
         )}
       </main>
+
+      {/* TOAST DE FEEDBACK */}
+      {toastMessage && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-slate-800 text-white text-xs font-medium px-4 py-2.5 rounded-md shadow-lg z-50 flex items-center gap-2 animate-in fade-in">
+          <CheckCircle2 className="w-4 h-4 text-[#ff8b00]" />
+          {toastMessage}
+        </div>
+      )}
 
       {/* RODAPÉ GLOBAL */}
       <footer className="text-center py-4 text-[11px] text-slate-400">

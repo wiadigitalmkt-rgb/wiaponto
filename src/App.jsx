@@ -82,7 +82,7 @@ const AuthenticatedApp = () => {
       <Route path="/forgot-password" element={<ForgotPassword />} />
       <Route path="/recuperar-senha" element={<ForgotPassword />} />
       <Route path="/reset-password" element={<ResetPassword />} />
-      <Route path="/preencher-admissao/:id" element={<PreencherAdmissao />}
+      <Route path="/preencher-admissao/:id" element={<PreencherAdmissao />} />
       
 
       {/* Rotas Protegidas (Exige Login) */}

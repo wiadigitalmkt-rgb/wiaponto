@@ -2,25 +2,25 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import Navbar from '@/components/Navbar';
 import { supabase } from '@/lib/supabase';
-import { 
-  Search, 
-  ArrowLeft, 
-  Plus, 
-  CheckCircle2, 
-  XCircle, 
-  ChevronDown, 
-  ChevronRight, 
-  MoreHorizontal, 
-  Loader2 
+import {
+  Search,
+  ArrowLeft,
+  Plus,
+  CheckCircle2,
+  XCircle,
+  ChevronDown,
+  ChevronRight,
+  MoreHorizontal,
+  Loader2
 } from 'lucide-react';
 
 export default function Admissao() {
   const navigate = useNavigate();
 
-  // Fluxos de navegação: 'list' | 'create_template' | 'select_template' | 'view_admission'
-  const [viewState, setViewState] = useState('list'); 
+  // Fluxos de navegação: 'list' | 'select_employees' | 'create_template' | 'select_template' | 'view_admission'
+  const [viewState, setViewState] = useState('list');
   const [activeTab, setActiveTab] = useState('andamento'); // 'andamento' | 'concluidos' | 'templates'
-  
+
   const [searchQuery, setSearchQuery] = useState('');
   const [itemsPerPage, setItemsPerPage] = useState(10);
 
@@ -70,10 +70,11 @@ export default function Admissao() {
       if (tmplData) setTemplates(tmplData);
 
       // Carregar Colaboradores
-      const { data: empData } = await supabase
+      const { data: empData, error: empError } = await supabase
         .from('Employees')
         .select('*')
         .order('full_name', { ascending: true });
+      if (empError) console.error('Erro ao carregar colaboradores:', empError);
       if (empData) setEmployees(empData);
 
       // Carregar Admissões
@@ -158,6 +159,21 @@ export default function Admissao() {
     }
   };
 
+  // Abre a listagem de colaboradores (puxados da tabela Employees do Supabase)
+  const handleOpenEmployeeSelection = () => {
+    setSearchQuery('');
+    setSelectedEmployees([]);
+    setViewState('select_employees');
+  };
+
+  const handleToggleEmployeeSelection = (empId) => {
+    setSelectedEmployees(prev =>
+      prev.includes(empId)
+        ? prev.filter(id => id !== empId)
+        : [...prev, empId]
+    );
+  };
+
   const handleStartAdmissionFlow = () => {
     if (selectedEmployees.length === 0) {
       alert('Selecione ao menos um colaborador.');
@@ -208,6 +224,9 @@ export default function Admissao() {
         setActiveAdmission(data[0]);
         setViewState('view_admission');
         fetchData();
+      } else if (error) {
+        console.error(error);
+        alert('Erro ao iniciar admissão.');
       }
     } catch (err) {
       console.error(err);
@@ -249,14 +268,15 @@ export default function Admissao() {
     return matches;
   });
 
-  const filteredTemplates = templates.filter(t => 
+  const filteredTemplates = templates.filter(t =>
     t.title.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   const filteredEmployees = employees.filter(emp => {
     const name = emp.full_name || `${emp.first_name || ''} ${emp.last_name || ''}`;
     return name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-           (emp.position || '').toLowerCase().includes(searchQuery.toLowerCase());
+           (emp.position || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+           (emp.department || '').toLowerCase().includes(searchQuery.toLowerCase());
   });
 
   return (
@@ -266,28 +286,35 @@ export default function Admissao() {
       <main className="flex-1 p-6 max-w-7xl w-full mx-auto space-y-4">
         {/* BREADCRUMB */}
         <div className="text-xs text-slate-500 flex items-center gap-1">
-          <Link to="/admin" className="hover:text-[#ff8b00]-600 transition-colors">Painel</Link>
+          <Link to="/admin" className="hover:text-[#ff8b00] transition-colors">Painel</Link>
           <span>&gt;</span>
           <span className="text-slate-600 font-medium">
+            {viewState === 'select_employees' && (
+              <>
+                <button onClick={() => setViewState('list')} className="hover:text-[#ff8b00]">Admissão</button>
+                <span> &gt; </span>
+                <span className="text-[#ff8b00]">Selecionar colaboradores</span>
+              </>
+            )}
             {viewState === 'create_template' && (
               <>
-                <button onClick={() => setViewState('list')} className="hover:text-[#ff8b00]-600">Admissão</button>
+                <button onClick={() => setViewState('list')} className="hover:text-[#ff8b00]">Admissão</button>
                 <span> &gt; </span>
-                <span className="text-[#ff8b00]-600">Novo Template</span>
+                <span className="text-[#ff8b00]">Novo Template</span>
               </>
             )}
             {viewState === 'select_template' && (
               <>
-                <button onClick={() => setViewState('list')} className="hover:text-[#ff8b00]-600">Admissão</button>
+                <button onClick={() => setViewState('list')} className="hover:text-[#ff8b00]">Admissão</button>
                 <span> &gt; </span>
-                <span className="text-[#ff8b00]-600">Selecionar template</span>
+                <span className="text-[#ff8b00]">Selecionar template</span>
               </>
             )}
             {viewState === 'view_admission' && (
               <>
-                <button onClick={() => setViewState('list')} className="hover:text-[#ff8b00]-600">Admissão</button>
+                <button onClick={() => setViewState('list')} className="hover:text-[#ff8b00]">Admissão</button>
                 <span> &gt; </span>
-                <span className="text-[#ff8b00]-600">Visualização</span>
+                <span className="text-[#ff8b00]">Visualização</span>
               </>
             )}
             {viewState === 'list' && 'Admissão'}
@@ -312,16 +339,13 @@ export default function Admissao() {
               {activeTab === 'templates' ? (
                 <button
                   onClick={() => setViewState('create_template')}
-                  className="border border-[#ff8b00] text-[#ff8b00 hover:bg-teal-50 text-xs font-semibold px-4 py-2 rounded transition-colors"
+                  className="border border-[#ff8b00] text-[#ff8b00] hover:bg-[#ff8b00]/10 text-xs font-semibold px-4 py-2 rounded transition-colors"
                 >
                   Novo Template
                 </button>
               ) : (
                 <button
-                  onClick={() => {
-                    setSearchQuery('');
-                    setActiveTab('andamento');
-                  }}
+                  onClick={handleOpenEmployeeSelection}
                   className="bg-[#ff8b00] hover:bg-[#00897b] text-white text-xs font-semibold px-4 py-2 rounded transition-colors shadow-sm"
                 >
                   Iniciar admissão
@@ -335,7 +359,7 @@ export default function Admissao() {
                 onClick={() => setActiveTab('andamento')}
                 className={`pb-3 transition-colors ${
                   activeTab === 'andamento'
-                    ? 'border-b-2 border-[#ff8b00]-500 text-[#ff8b00]-600 font-semibold'
+                    ? 'border-b-2 border-[#ff8b00] text-[#ff8b00] font-semibold'
                     : 'text-slate-500 hover:text-slate-700'
                 }`}
               >
@@ -345,7 +369,7 @@ export default function Admissao() {
                 onClick={() => setActiveTab('concluidos')}
                 className={`pb-3 transition-colors ${
                   activeTab === 'concluidos'
-                    ? 'border-b-2 border-[#ff8b00]-500 text-[#ff8b00]-600 font-semibold'
+                    ? 'border-b-2 border-[#ff8b00] text-[#ff8b00] font-semibold'
                     : 'text-slate-500 hover:text-slate-700'
                 }`}
               >
@@ -355,7 +379,7 @@ export default function Admissao() {
                 onClick={() => setActiveTab('templates')}
                 className={`pb-3 transition-colors ${
                   activeTab === 'templates'
-                    ? 'border-b-2 border-[#ff8b00]-500 text-[#ff8b00]-600 font-semibold'
+                    ? 'border-b-2 border-[#ff8b00] text-[#ff8b00] font-semibold'
                     : 'text-slate-500 hover:text-slate-700'
                 }`}
               >
@@ -376,7 +400,7 @@ export default function Admissao() {
                       ? 'Buscar template...'
                       : 'Digite o nome do funcionário, cargo ou departamento'
                   }
-                  className="w-full pl-9 pr-4 py-2 border border-slate-200 rounded text-xs text-slate-700 focus:outline-none focus:border-[#ff8b00]-500"
+                  className="w-full pl-9 pr-4 py-2 border border-slate-200 rounded text-xs text-slate-700 focus:outline-none focus:border-[#ff8b00]"
                 />
               </div>
             </div>
@@ -399,7 +423,7 @@ export default function Admissao() {
                     {loading ? (
                       <tr>
                         <td colSpan="6" className="py-12 text-center text-slate-400">
-                          <Loader2 className="w-6 h-6 animate-spin mx-auto mb-2 text-[#ff8b00]-600" />
+                          <Loader2 className="w-6 h-6 animate-spin mx-auto mb-2 text-[#ff8b00]" />
                           Carregando...
                         </td>
                       </tr>
@@ -428,7 +452,7 @@ export default function Admissao() {
                             <td className="py-3 px-4">
                               <div className="flex items-center gap-2">
                                 <div className="w-24 bg-slate-200 h-2 rounded-full overflow-hidden">
-                                  <div className="bg-[#ff8b00]-600 h-full w-[55%]"></div>
+                                  <div className="bg-[#ff8b00] h-full w-[55%]"></div>
                                 </div>
                                 <span className="text-[11px] font-medium text-slate-500">5/9</span>
                               </div>
@@ -466,7 +490,7 @@ export default function Admissao() {
                     {loading ? (
                       <tr>
                         <td colSpan="3" className="py-12 text-center text-slate-400">
-                          <Loader2 className="w-6 h-6 animate-spin mx-auto mb-2 text-[#ff8b00]-600" />
+                          <Loader2 className="w-6 h-6 animate-spin mx-auto mb-2 text-[#ff8b00]" />
                           Carregando templates...
                         </td>
                       </tr>
@@ -517,6 +541,119 @@ export default function Admissao() {
           </div>
         )}
 
+        {/* MODO 1.5: SELEÇÃO DE COLABORADORES PARA INICIAR ADMISSÃO (tabela Employees do Supabase) */}
+        {viewState === 'select_employees' && (
+          <div className="bg-white rounded-md border border-slate-200 shadow-sm overflow-hidden">
+            <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-white">
+              <button
+                onClick={() => setViewState('list')}
+                className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-700 hover:text-slate-900 transition-colors"
+              >
+                <ArrowLeft className="w-4 h-4" /> Voltar
+              </button>
+
+              <button
+                onClick={handleStartAdmissionFlow}
+                disabled={selectedEmployees.length === 0}
+                className={`text-xs font-semibold px-6 py-2 rounded transition-colors ${
+                  selectedEmployees.length > 0
+                    ? 'bg-[#ff8b00] hover:bg-[#00897b] text-white cursor-pointer'
+                    : 'bg-slate-200 text-slate-400 cursor-not-allowed'
+                }`}
+              >
+                Avançar {selectedEmployees.length > 0 ? `(${selectedEmployees.length})` : ''}
+              </button>
+            </div>
+
+            <div className="p-4 bg-white border-b border-slate-100">
+              <div className="relative max-w-full">
+                <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Digite o nome do funcionário, cargo ou departamento"
+                  className="w-full pl-9 pr-4 py-2 border border-slate-200 rounded text-xs text-slate-700 focus:outline-none focus:border-[#ff8b00]"
+                />
+              </div>
+            </div>
+
+            <div className="overflow-x-auto min-h-[220px]">
+              <table className="w-full text-left text-xs border-collapse">
+                <thead>
+                  <tr className="border-b border-slate-200 text-[11px] font-bold text-slate-700 uppercase tracking-wider bg-slate-50/50">
+                    <th className="py-3 px-6"></th>
+                    <th className="py-3 px-6">NOME</th>
+                    <th className="py-3 px-4">CARGO</th>
+                    <th className="py-3 px-4">DEPARTAMENTO</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {loading ? (
+                    <tr>
+                      <td colSpan="4" className="py-12 text-center text-slate-400">
+                        <Loader2 className="w-6 h-6 animate-spin mx-auto mb-2 text-[#ff8b00]" />
+                        Carregando colaboradores...
+                      </td>
+                    </tr>
+                  ) : filteredEmployees.length === 0 ? (
+                    <tr>
+                      <td colSpan="4" className="py-12 text-center text-slate-500 font-medium">
+                        Nenhum colaborador encontrado
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredEmployees.map((emp) => {
+                      const name = emp.full_name || `${emp.first_name || ''} ${emp.last_name || ''}`.trim() || 'Usuário Sem Nome';
+                      const isSelected = selectedEmployees.includes(emp.id);
+
+                      return (
+                        <tr
+                          key={emp.id}
+                          onClick={() => handleToggleEmployeeSelection(emp.id)}
+                          className={`hover:bg-slate-50 transition-colors cursor-pointer ${
+                            isSelected ? 'bg-[#ff8b00]/5' : ''
+                          }`}
+                        >
+                          <td className="py-3 px-6">
+                            <input
+                              type="checkbox"
+                              checked={isSelected}
+                              onChange={() => handleToggleEmployeeSelection(emp.id)}
+                              onClick={(e) => e.stopPropagation()}
+                              className="text-[#ff8b00] focus:ring-[#ff8b00] cursor-pointer"
+                            />
+                          </td>
+                          <td className="py-3 px-6">
+                            <div className="flex items-center gap-3">
+                              <div className="w-8 h-8 rounded-full bg-slate-200 text-slate-600 font-bold flex items-center justify-center text-xs">
+                                {getInitials(name, emp.first_name, emp.last_name)}
+                              </div>
+                              <span className="font-bold text-slate-800">{name}</span>
+                            </div>
+                          </td>
+                          <td className="py-3 px-4 text-slate-600">{emp.position || '-'}</td>
+                          <td className="py-3 px-4 text-slate-600">{emp.department || '-'}</td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            <div className="p-4 border-t border-slate-100 flex justify-between items-center text-xs text-slate-500">
+              <span>{filteredEmployees.length} Resultado</span>
+              <div className="flex items-center gap-2">
+                <span>Itens por página</span>
+                <select className="border border-slate-200 rounded p-1 text-xs focus:outline-none">
+                  <option value={10}>10</option>
+                </select>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* MODO 2: CRIAR NOVO TEMPLATE */}
         {viewState === 'create_template' && (
           <div className="space-y-4">
@@ -537,7 +674,7 @@ export default function Admissao() {
                   value={newTemplateName}
                   onChange={(e) => setNewTemplateName(e.target.value)}
                   placeholder="Digite o nome do template"
-                  className="w-full p-2 border border-slate-200 rounded text-xs focus:outline-none focus:border-[#ff8b00]-500"
+                  className="w-full p-2 border border-slate-200 rounded text-xs focus:outline-none focus:border-[#ff8b00]"
                 />
               </div>
             </div>
@@ -565,7 +702,7 @@ export default function Admissao() {
                         onChange={() => handleToggleStep(step.id)}
                         className="sr-only peer"
                       />
-                      <div className="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-[#ff8b00]-600"></div>
+                      <div className="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-[#ff8b00]"></div>
                       <span className="ml-2 text-xs font-medium text-slate-600">Etapa ativa</span>
                     </label>
                   </div>
@@ -603,7 +740,7 @@ export default function Admissao() {
             <div className="flex justify-between items-center pt-2">
               <button
                 onClick={handleAddCustomStep}
-                className="border border-[#ff8b00] text-[#ff8b00] hover:bg-[#ff8b00]-50 text-xs font-semibold px-4 py-2 rounded transition-colors"
+                className="border border-[#ff8b00] text-[#ff8b00] hover:bg-[#ff8b00]/10 text-xs font-semibold px-4 py-2 rounded transition-colors"
               >
                 Criar nova etapa
               </button>
@@ -624,7 +761,7 @@ export default function Admissao() {
           <div className="bg-white rounded-md border border-slate-200 shadow-sm overflow-hidden">
             <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-white">
               <button
-                onClick={() => setViewState('list')}
+                onClick={() => setViewState('select_employees')}
                 className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-700 hover:text-slate-900 transition-colors"
               >
                 <ArrowLeft className="w-4 h-4" /> Voltar
@@ -651,7 +788,7 @@ export default function Admissao() {
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="Buscar template..."
-                  className="w-full pl-9 pr-4 py-2 border border-slate-200 rounded text-xs text-slate-700 focus:outline-none focus:border-[#ff8b00]-500"
+                  className="w-full pl-9 pr-4 py-2 border border-slate-200 rounded text-xs text-slate-700 focus:outline-none focus:border-[#ff8b00]"
                 />
               </div>
             </div>
@@ -715,7 +852,7 @@ export default function Admissao() {
                 onClick={() => setViewState('list')}
                 className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-700 hover:text-slate-900 transition-colors"
               >
-                <ArrowLeft className="w-4 h-4" /> 
+                <ArrowLeft className="w-4 h-4" />
                 {activeAdmission.Employees?.full_name || 'Joquebede de Oliveira'} - Template "{activeAdmission.template_name || 'Admissão Matheus'}"
               </button>
 
@@ -733,7 +870,7 @@ export default function Admissao() {
                 Progresso atual 56% (5 de 9 campos preenchidos)
               </span>
               <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
-                <div className="bg-[#ff8b00]-600 h-full w-[56%] transition-all"></div>
+                <div className="bg-[#ff8b00] h-full w-[56%] transition-all"></div>
               </div>
             </div>
 
@@ -775,7 +912,7 @@ export default function Admissao() {
                       <div className="flex items-center gap-3">
                         <span className="text-slate-500 text-[11px]">{item.status}</span>
                         {item.sent ? (
-                          <CheckCircle2 className="w-4 h-4 text-[#ff8b00]-600" />
+                          <CheckCircle2 className="w-4 h-4 text-[#ff8b00]" />
                         ) : (
                           <XCircle className="w-4 h-4 text-slate-300" />
                         )}

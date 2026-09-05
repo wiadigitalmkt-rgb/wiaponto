@@ -77,6 +77,44 @@ export const articlesData = [
     ]
   },
 
+  // --- MÓDULO CONTRATOS ---
+  {
+    id: 'como-o-gestor-faz-a-assinatura-do-contrato',
+    categoryId: 'contratos',
+    category: 'CONTRATOS',
+    role: 'gestor',
+    time: 'há 1 dia',
+    updated_at: 'há 1 dia',
+    title: 'Como o gestor faz a assinatura do contrato',
+    content: `A assinatura de contratos de trabalho e termos aditivos pelo gestor é feita de forma totalmente digital pelo painel administrativo, garantindo validade jurídica e agilidade no processo de contratação.`,
+    steps: [
+      'Acesse o módulo "Contratos" ou navegue até o menu "Usuários > Contratos".',
+      'Localize a lista de contratos pendentes de assinatura do gestor.',
+      'Clique sobre o contrato desejado para visualizar a minuta completa.',
+      'Clique no botão "Assinar Digitalmente".',
+      'Informe a sua senha de verificação de segurança do gestor ou utilize a autenticação via certificado configurado.',
+      'Confirme a assinatura para concluir a validação do documento.'
+    ]
+  },
+  {
+    id: 'como-criar-e-enviar-um-contrato-digital-para-o-colaborador',
+    categoryId: 'contratos',
+    category: 'CONTRATOS',
+    role: 'gestor',
+    time: 'há 1 dia',
+    updated_at: 'há 1 dia',
+    title: 'Como criar e enviar um contrato digital para o colaborador',
+    content: `Gere e envie contratos de trabalho, aditivos e termos de compromisso diretamente para o e-mail ou aplicativo do colaborador para coleta de assinatura eletrônica.`,
+    steps: [
+      'Acesse o menu "Contratos" no painel do Gestor.',
+      'Clique no botão "+ Novo Contrato".',
+      'Selecione o colaborador desejado ou utilize um modelo de contrato pré-definido.',
+      'Preencha as cláusulas personalizadas ou revise os campos automáticos da minuta.',
+      'Clique em "Gerar e Enviar para Assinatura".',
+      'O colaborador receberá uma notificação via e-mail e aplicativo para realizar o aceite e a assinatura digital.'
+    ]
+  },
+
   // --- MÓDULO ADMISSÃO ---
   {
     id: 'como-usar-o-perfil-seguro-consulta-de-cadastro-processos-e-antecedentes',
@@ -400,22 +438,6 @@ export const articlesData = [
       'A geração do ID ocorre em poucos segundos após a validação do CPF.',
       'Verifique se a conexão de rede entre o servidor e o relógio de ponto está ativa.',
       'Se o ID demorar para aparecer no relógio, acesse o painel e solicite a "Forçar Sincronização de Relógio".'
-    ]
-  },
-  {
-    id: 'como-o-gestor-faz-a-assinatura-do-contrato',
-    categoryId: 'modulo-usuarios',
-    category: 'MÓDULO USUÁRIOS',
-    role: 'gestor',
-    time: 'há 1 dia',
-    updated_at: 'há 1 dia',
-    title: 'Como o gestor faz a assinatura do contrato',
-    content: `Assinatura digital de termos e contratos de trabalho pelo painel administrativo.`,
-    steps: [
-      'Acesse o módulo Contratos ou a ficha do colaborador em Usuários > Contratos.',
-      'Clique na pendência de assinatura referente ao contrato gerado.',
-      'Selecione Assinar Digitalmente e insira a senha do gestor ou utilize o certificado configurado.',
-      'Confirme o aceite para consolidar a assinatura no documento.'
     ]
   },
   {

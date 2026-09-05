@@ -6,7 +6,7 @@ import {
   Search,
   ArrowLeft,
   Plus,
-  CheckCircle2,
+  CheckCircle2, 
   XCircle,
   ChevronDown,
   ChevronRight,

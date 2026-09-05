@@ -30,6 +30,8 @@ import ResetPassword from './pages/ResetPassword';
 import PunchClock from './pages/PunchClock';
 import TimeClockMirror from './pages/TimeClockMirror';
 import Requests from './pages/Requests';
+import PreencherAdmissao from './pages/PreencherAdmissao';
+
 
 // Imports do Novo Painel Admin
 import AdminDashboard from './pages/admin/Dashboard';
@@ -80,6 +82,8 @@ const AuthenticatedApp = () => {
       <Route path="/forgot-password" element={<ForgotPassword />} />
       <Route path="/recuperar-senha" element={<ForgotPassword />} />
       <Route path="/reset-password" element={<ResetPassword />} />
+      <Route path="/preencher-admissao/:id" element={<PreencherAdmissao />}
+      
 
       {/* Rotas Protegidas (Exige Login) */}
       <Route element={<ProtectedRoute unauthenticatedElement={<Navigate to="/login" replace />} />}>

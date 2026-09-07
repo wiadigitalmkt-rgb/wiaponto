@@ -35,6 +35,20 @@ function slugify(str = '') {
 // A chave do objeto é o nome do campo normalizado (sem acento, minúsculo).
 // Isso garante que "Número do RG", "número do rg" etc. caiam na mesma regra.
 const KNOWN_FIELD_CONFIG = {
+  'nome completo': {
+    key: 'nome_completo',
+    type: 'text',
+    required: true,
+    placeholder: 'Digite seu nome completo',
+  },
+  sexo: {
+    key: 'sexo',
+    type: 'select',
+    required: true,
+    options: ['Masculino', 'Feminino'],
+    description:
+      'Usado só pra saber se o Certificado de Reservista é obrigatório no seu caso (homens de 18 a 45 anos).',
+  },
   selfie: {
     key: 'selfie',
     type: 'photo',
@@ -75,7 +89,7 @@ const KNOWN_FIELD_CONFIG = {
     key: 'endereco',
     type: 'textarea',
     required: true,
-    placeholder: 'Rua, número, bairro, cidade, estado e CEP',
+    placeholder: 'Rua, número, complemento, bairro, cidade, estado e CEP',
   },
   'dados bancarios': {
     key: 'dados_bancarios',
@@ -139,6 +153,15 @@ const KNOWN_FIELD_CONFIG = {
     type: 'file',
     required: false,
   },
+  // Observações internas: também employeeVisible:false (mesmo mecanismo do
+  // ASO) — só o gestor lê/edita, na tela de visualização da admissão. É um
+  // texto livre, não um upload.
+  'observacoes internas': {
+    key: 'observacoes_internas',
+    type: 'notes',
+    required: false,
+    description: 'Anotações internas do RH sobre este colaborador — o colaborador nunca vê isso.',
+  },
   'vale-transporte': {
     key: 'vale_transporte',
     type: 'select',
@@ -150,6 +173,28 @@ const KNOWN_FIELD_CONFIG = {
     type: 'dependents',
     required: false,
     description: 'Se possuir dependentes, informe nome, CPF e data de nascimento de cada um.',
+  },
+  // Obrigatório só para homens entre 18 e 45 anos — ver
+  // isFieldDynamicallyRequired mais abaixo. `required: false` aqui é só o
+  // valor-base; a obrigatoriedade real depende de `sexo` e
+  // `data_nascimento`, já respondidos antes dessa etapa no formulário.
+  'certificado de reservista': {
+    key: 'certificado_reservista',
+    type: 'file',
+    required: false,
+    conditionalRequired: 'military_reservist',
+    description:
+      'Obrigatório para homens entre 18 e 45 anos (Lei do Serviço Militar). Se não for o seu caso, pode deixar em branco.',
+  },
+  // Obrigatório só se houver algum dependente com menos de 14 anos
+  // cadastrado na etapa "Dependentes" (que vem antes desta no formulário).
+  'certidao de nascimento / declaracao de matricula': {
+    key: 'certidao_declaracao_filhos',
+    type: 'file',
+    required: false,
+    conditionalRequired: 'child_benefit_docs',
+    description:
+      'Obrigatório se você tiver dependente(s) com menos de 14 anos, para o Salário-Família: anexe a Certidão de Nascimento OU a Declaração de Matrícula + Caderneta de Vacinação atualizada. Se não for o seu caso, pode deixar em branco.',
   },
   // ---------------------------------------------------------------
   // Documento com foto (frente/verso) e assinatura — sempre as últimas
@@ -210,6 +255,12 @@ function buildWizardStep(step, index) {
         options: known?.options,
         placeholder: known?.placeholder,
         mask: known?.mask,
+        // Obrigatoriedade que depende de OUTRAS respostas do formulário
+        // (ex.: Certificado de Reservista só é obrigatório para homens de
+        // 18-45 anos). Ver isFieldDynamicallyRequired mais abaixo — quem
+        // decide de fato se bloqueia o avanço é essa função, não o
+        // `required` estático acima.
+        conditionalRequired: known?.conditionalRequired,
         // Campo que só o GESTOR preenche (ex.: ASO), nunca o colaborador.
         // Guardado como flag estrutural — não depende do texto exato do
         // nome bater com uma entrada do KNOWN_FIELD_CONFIG, então continua
@@ -276,5 +327,56 @@ export function isFieldValueEmpty(value) {
   if (value === undefined || value === null || value === '') return true;
   if (Array.isArray(value)) return false;
   if (typeof value === 'object') return !value.url && !value.path;
+  return false;
+}
+
+/**
+ * Calcula a idade em anos completos a partir de uma data (string
+ * "aaaa-mm-dd", como vem de um <input type="date">). Retorna null se a
+ * data for inválida/vazia.
+ */
+export function computeAgeFromBirthDate(birthDateStr) {
+  if (!birthDateStr) return null;
+  const birth = new Date(birthDateStr);
+  if (Number.isNaN(birth.getTime())) return null;
+  const today = new Date();
+  let age = today.getFullYear() - birth.getFullYear();
+  const hadBirthdayThisYear =
+    today.getMonth() > birth.getMonth() ||
+    (today.getMonth() === birth.getMonth() && today.getDate() >= birth.getDate());
+  if (!hadBirthdayThisYear) age -= 1;
+  return age;
+}
+
+/**
+ * Decide se um campo com `conditionalRequired` é obrigatório NESTE caso
+ * específico, olhando pras respostas já dadas em progress_data (mesmo
+ * objeto usado tanto pelo formulário do colaborador — como `formData` —
+ * quanto pela tela de visualização do gestor — como `progress_data`).
+ *
+ * Usado em dois lugares:
+ * - PreencherAdmissao.jsx: pra bloquear (ou não) o avanço do wizard, e pra
+ *   mostrar (ou não) o "*" de obrigatório ao lado do campo.
+ * - admin_Admissao.jsx: pra mostrar "Não aplicável" em vez de "Não
+ *   enviado" quando o campo não era obrigatório para aquele colaborador.
+ */
+export function isFieldDynamicallyRequired(field, progressData) {
+  if (!field?.conditionalRequired) return false;
+  const data = progressData || {};
+
+  if (field.conditionalRequired === 'military_reservist') {
+    const sexo = data.sexo;
+    const age = computeAgeFromBirthDate(data.data_nascimento);
+    return sexo === 'Masculino' && age !== null && age >= 18 && age <= 45;
+  }
+
+  if (field.conditionalRequired === 'child_benefit_docs') {
+    const dependents = Array.isArray(data.dependentes) ? data.dependentes : [];
+    return dependents.some((dep) => {
+      const age = computeAgeFromBirthDate(dep?.birth_date);
+      return age !== null && age < 14;
+    });
+  }
+
   return false;
 }

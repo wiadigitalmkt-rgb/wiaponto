@@ -88,12 +88,76 @@ const KNOWN_FIELD_CONFIG = {
     type: 'date',
     required: true,
   },
+  // ---------------------------------------------------------------
+  // Campos padrão adicionados para atender ao eSocial/RH.
+  // ---------------------------------------------------------------
+  cpf: {
+    key: 'cpf',
+    type: 'text',
+    required: true,
+    placeholder: '000.000.000-00',
+    mask: 'cpf',
+  },
+  'nome da mae': {
+    key: 'nome_da_mae',
+    type: 'text',
+    required: true,
+    placeholder: 'Nome completo da mãe',
+  },
+  nacionalidade: {
+    key: 'nacionalidade',
+    type: 'text',
+    required: true,
+    placeholder: 'Ex.: Brasileira',
+  },
+  naturalidade: {
+    key: 'naturalidade',
+    type: 'text',
+    required: true,
+    placeholder: 'Cidade/UF de nascimento',
+  },
+  'grau de instrucao': {
+    key: 'grau_instrucao',
+    type: 'select',
+    required: true,
+    options: [
+      'Fundamental incompleto',
+      'Fundamental completo',
+      'Médio incompleto',
+      'Médio completo',
+      'Superior incompleto',
+      'Superior completo',
+      'Pós-graduação',
+    ],
+  },
+  // ASO é preenchido pelo GESTOR depois que o exame sai — nunca aparece no
+  // formulário do colaborador. O filtro que remove esse campo do wizard do
+  // colaborador está em mapAdminStepsToWizardSteps, com base na flag
+  // `employeeVisible: false` gravada no step (ver admin_Admissao.jsx).
+  'aso / exame admissional': {
+    key: 'aso',
+    type: 'file',
+    required: false,
+  },
+  'vale-transporte': {
+    key: 'vale_transporte',
+    type: 'select',
+    required: false,
+    options: ['Não utiliza', 'Utiliza - 1 condução', 'Utiliza - 2 conduções', 'Utiliza - Outro'],
+  },
+  dependentes: {
+    key: 'dependentes',
+    type: 'dependents',
+    required: false,
+    description: 'Se possuir dependentes, informe nome, CPF e data de nascimento de cada um.',
+  },
 };
 
 // Para campos que o gestor criar fora da lista padrão (customSteps, tipo
 // "campo personalizado"), usamos o `type` bruto salvo pelo gestor como pista.
 const RAW_TYPE_FALLBACK = {
   'anexo/foto': 'file',
+  'anexo/arquivo': 'file',
   'selecionar opção': 'select',
   'campo texto': 'text',
   'campo data': 'date',
@@ -106,13 +170,15 @@ const RAW_TYPE_FALLBACK = {
  * PreencherAdmissao.jsx consome (uma pergunta por etapa).
  *
  * Ignora etapas com `active: false` (etapas desativadas pelo gestor no
- * template não aparecem no formulário do colaborador).
+ * template não aparecem no formulário do colaborador) e etapas com
+ * `employeeVisible: false` (campos que só o gestor preenche depois, como
+ * o ASO/Exame Admissional — nunca aparecem no formulário do colaborador).
  */
 export function mapAdminStepsToWizardSteps(rawSteps) {
   if (!Array.isArray(rawSteps)) return [];
 
   return rawSteps
-    .filter((step) => step && step.active !== false && step.name)
+    .filter((step) => step && step.active !== false && step.name && step.employeeVisible !== false)
     .map((step, index) => {
       const known = KNOWN_FIELD_CONFIG[normalizeName(step.name)];
       const key = known?.key || slugify(step.name) || `campo_${index + 1}`;
@@ -130,6 +196,7 @@ export function mapAdminStepsToWizardSteps(rawSteps) {
             required: known ? known.required : false,
             options: known?.options,
             placeholder: known?.placeholder,
+            mask: known?.mask,
           },
         ],
       };
@@ -138,10 +205,12 @@ export function mapAdminStepsToWizardSteps(rawSteps) {
 
 /**
  * Mesma regra usada em PreencherAdmissao.jsx para considerar um campo
- * "preenchido": string/número não vazio, ou objeto de upload com `url`.
+ * "preenchido": string/número não vazio, array não vazio (ex.: lista de
+ * dependentes), ou objeto de upload com `url`.
  */
 export function isFieldValueEmpty(value) {
   if (value === undefined || value === null || value === '') return true;
+  if (Array.isArray(value)) return value.length === 0;
   if (typeof value === 'object') return !value.url;
   return false;
 }

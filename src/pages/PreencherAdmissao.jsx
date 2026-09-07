@@ -344,7 +344,7 @@ export default function PreencherAdmissao({ admissionId: admissionIdProp }) {
   const fields = step.fields || [];
 
   return (
-    <div className="min-h-screen bg-slate-50 pb-24">
+    <div className="min-h-screen bg-slate-50">
       {/* Cabeçalho */}
       <header className="bg-white border-b border-slate-200 sticky top-0 z-10">
         <div className="max-w-3xl mx-auto px-4 sm:px-6 py-4">
@@ -397,81 +397,83 @@ export default function PreencherAdmissao({ admissionId: admissionIdProp }) {
 
       {/* Conteúdo da etapa atual */}
       <main className="max-w-3xl mx-auto px-4 sm:px-6 py-6">
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 sm:p-8">
-          <div className="mb-6">
-            <h2 className="text-base sm:text-lg font-semibold text-slate-800">{step.title}</h2>
-            {step.description && <p className="text-sm text-slate-500 mt-1">{step.description}</p>}
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+          <div className="p-5 sm:p-8">
+            <div className="mb-6">
+              <h2 className="text-base sm:text-lg font-semibold text-slate-800">{step.title}</h2>
+              {step.description && <p className="text-sm text-slate-500 mt-1">{step.description}</p>}
+            </div>
+
+            {errorMsg && (
+              <div className="mb-5 flex items-start gap-2 text-sm text-red-600 bg-red-50 border border-red-100 rounded-lg px-3 py-2">
+                <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
+                <span>{errorMsg}</span>
+              </div>
+            )}
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+              {fields.map((field) => (
+                <FieldRenderer
+                  key={field.key}
+                  field={field}
+                  value={formData[field.key]}
+                  error={fieldErrors[field.key]}
+                  uploading={uploadingKey === field.key}
+                  onChange={(val) => updateField(field.key, val)}
+                  onFile={(file) => handleFileSelect(field, file)}
+                  onRemoveFile={() => removeFile(field)}
+                />
+              ))}
+            </div>
           </div>
 
-          {errorMsg && (
-            <div className="mb-5 flex items-start gap-2 text-sm text-red-600 bg-red-50 border border-red-100 rounded-lg px-3 py-2">
-              <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
-              <span>{errorMsg}</span>
-            </div>
-          )}
+          {/* Ações — agora coladas ao próprio card do formulário, em vez de
+              fixas no rodapé da tela (ficavam distantes em telas com pouco
+              conteúdo, como campos de data/seleção única). */}
+          <div className="border-t border-slate-200 bg-slate-50/60 px-5 sm:px-8 py-4 flex items-center justify-between gap-3">
+            <button
+              type="button"
+              onClick={handlePrev}
+              disabled={currentStep === 0 || saving}
+              className="flex items-center gap-1 text-sm font-medium text-slate-500 disabled:opacity-40 disabled:cursor-not-allowed px-3 py-2 rounded-lg hover:bg-white transition"
+            >
+              <ChevronLeft className="w-4 h-4" />
+              Voltar
+            </button>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-            {fields.map((field) => (
-              <FieldRenderer
-                key={field.key}
-                field={field}
-                value={formData[field.key]}
-                error={fieldErrors[field.key]}
-                uploading={uploadingKey === field.key}
-                onChange={(val) => updateField(field.key, val)}
-                onFile={(file) => handleFileSelect(field, file)}
-                onRemoveFile={() => removeFile(field)}
-              />
-            ))}
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={handleSaveDraft}
+                disabled={saving}
+                className="hidden sm:flex items-center gap-1.5 text-sm font-medium text-slate-500 px-3 py-2 rounded-lg hover:bg-white transition disabled:opacity-50"
+              >
+                <Save className="w-4 h-4" />
+                Salvar rascunho
+              </button>
+
+              <button
+                type="button"
+                onClick={handleNext}
+                disabled={saving}
+                className="flex items-center gap-1.5 text-sm font-semibold text-white px-5 py-2.5 rounded-xl shadow-sm disabled:opacity-70 transition active:scale-[0.98]"
+                style={{ background: 'linear-gradient(135deg, #fc9314, #ff8b00)' }}
+              >
+                {saving ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : currentStep === totalSteps - 1 ? (
+                  'Enviar admissão'
+                ) : (
+                  <>
+                    Avançar
+                    <ChevronRight className="w-4 h-4" />
+                  </>
+                )}
+              </button>
+            </div>
           </div>
         </div>
       </main>
-
-      {/* Rodapé fixo com ações */}
-      <footer className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200">
-        <div className="max-w-3xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between gap-3">
-          <button
-            type="button"
-            onClick={handlePrev}
-            disabled={currentStep === 0 || saving}
-            className="flex items-center gap-1 text-sm font-medium text-slate-500 disabled:opacity-40 disabled:cursor-not-allowed px-3 py-2 rounded-lg hover:bg-slate-50 transition"
-          >
-            <ChevronLeft className="w-4 h-4" />
-            Voltar
-          </button>
-
-          <div className="flex items-center gap-3">
-            <button
-              type="button"
-              onClick={handleSaveDraft}
-              disabled={saving}
-              className="hidden sm:flex items-center gap-1.5 text-sm font-medium text-slate-500 px-3 py-2 rounded-lg hover:bg-slate-50 transition disabled:opacity-50"
-            >
-              <Save className="w-4 h-4" />
-              Salvar rascunho
-            </button>
-
-            <button
-              type="button"
-              onClick={handleNext}
-              disabled={saving}
-              className="flex items-center gap-1.5 text-sm font-semibold text-white px-5 py-2.5 rounded-xl shadow-sm disabled:opacity-70 transition active:scale-[0.98]"
-              style={{ background: 'linear-gradient(135deg, #fc9314, #ff8b00)' }}
-            >
-              {saving ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : currentStep === totalSteps - 1 ? (
-                'Enviar admissão'
-              ) : (
-                <>
-                  Avançar
-                  <ChevronRight className="w-4 h-4" />
-                </>
-              )}
-            </button>
-          </div>
-        </div>
-      </footer>
     </div>
   );
 }

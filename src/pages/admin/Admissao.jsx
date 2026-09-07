@@ -28,6 +28,7 @@ import {
   Upload,
   Pencil,
   KeyRound,
+  RefreshCw,
 } from 'lucide-react';
 
 // Mesmo bucket usado em PreencherAdmissao.jsx para o upload de selfie/anexos.
@@ -123,17 +124,17 @@ function ManagerNotesEditor({ fieldKey, value, saving, onSave }) {
 // handleOpenEditTemplate mais abaixo.
 const DEFAULT_TEMPLATE_STEPS = [
   { id: '21', name: 'Nome completo', type: 'campo texto', active: true },
-    { id: '10', name: 'Número do CPF', type: 'campo texto', active: true },
-    { id: '5', name: 'Número do RG', type: 'campo texto', active: true },
-    { id: '9', name: 'Data de nascimento', type: 'campo data', active: true },
-    { id: '2', name: 'Estado civil', type: 'selecionar opção', active: true },
-    { id: '22', name: 'Sexo', type: 'selecionar opção', active: true },
-    { id: '4', name: 'E-mail', type: 'campo texto', active: true },
-    { id: '3', name: 'Telefone', type: 'campo texto', active: true },
-    { id: '7', name: 'Endereço', type: 'campo texto', active: true },
-    { id: '11', name: 'Nome da Mãe', type: 'campo texto', active: true },
+  { id: '22', name: 'Sexo', type: 'selecionar opção', active: true },
+  { id: '2', name: 'Estado civil', type: 'selecionar opção', active: true },
+  { id: '3', name: 'Telefone', type: 'campo texto', active: true },
+  { id: '4', name: 'E-mail', type: 'campo texto', active: true },
+  { id: '5', name: 'Número do RG', type: 'campo texto', active: true },
   { id: '6', name: 'Número do PIS', type: 'campo texto', active: true },
-  { id: '8', name: 'Dados bancários e/ou chaves PIX', type: 'campo texto', active: true },
+  { id: '7', name: 'Endereço', type: 'campo texto', active: true },
+  { id: '8', name: 'Dados bancários', type: 'campo texto', active: true },
+  { id: '9', name: 'Data de nascimento', type: 'campo data', active: true },
+  { id: '10', name: 'CPF', type: 'campo texto', active: true },
+  { id: '11', name: 'Nome da Mãe', type: 'campo texto', active: true },
   { id: '12', name: 'Nacionalidade', type: 'campo texto', active: true },
   { id: '13', name: 'Naturalidade', type: 'campo texto', active: true },
   { id: '14', name: 'Grau de Instrução', type: 'selecionar opção', active: true },
@@ -216,6 +217,8 @@ export default function Admissao() {
   // Upload do ASO feito pelo gestor na tela de visualização
   const [managerUploading, setManagerUploading] = useState(false);
   const [savingNotes, setSavingNotes] = useState(false);
+  const [syncConfirmOpen, setSyncConfirmOpen] = useState(false);
+  const [syncingTemplate, setSyncingTemplate] = useState(false);
 
   // Toast simples de feedback (copiar link, etc.)
   const [toastMessage, setToastMessage] = useState('');
@@ -615,6 +618,65 @@ export default function Admissao() {
       cancelled = true;
     };
   }, [activeAdmission?.id, activeAdmission?.template_id]);
+
+  // Sincronização MANUAL, disparada pelo botão "Sincronizar com template":
+  // regrava `template_steps` (formulário do colaborador) E
+  // `manager_template_steps` (visualização do gestor) a partir do conteúdo
+  // ATUAL do template. Diferente do backfill automático acima (que só roda
+  // uma vez, quando a coluna está vazia/desatualizada), este é sob demanda
+  // — útil quando o gestor edita o template DEPOIS de já ter criado a
+  // admissão, e quer que essa admissão específica passe a refletir a nova
+  // lista de campos/ordem. `progress_data` (as respostas já dadas) nunca é
+  // tocado aqui — só a estrutura de campos é atualizada.
+  const handleSyncWithTemplate = async () => {
+    if (!activeAdmission?.template_id) {
+      setSyncConfirmOpen(false);
+      return;
+    }
+    setSyncingTemplate(true);
+    try {
+      const { data: tmpl, error } = await supabase
+        .from('admission_templates')
+        .select('steps')
+        .eq('id', activeAdmission.template_id)
+        .single();
+      if (error) throw error;
+      if (!tmpl?.steps) throw new Error('Template sem etapas configuradas.');
+
+      const newTemplateSteps = mapAdminStepsToWizardSteps(tmpl.steps);
+      const newManagerSteps = mapAdminStepsToAllFields(tmpl.steps);
+
+      const { error: updateError } = await supabase
+        .from('employee_admissions')
+        .update({
+          template_steps: newTemplateSteps,
+          manager_template_steps: newManagerSteps,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', activeAdmission.id);
+      if (updateError) throw updateError;
+
+      setActiveAdmission((prev) =>
+        prev
+          ? { ...prev, template_steps: newTemplateSteps, manager_template_steps: newManagerSteps }
+          : prev
+      );
+      setAdmissions((prev) =>
+        prev.map((a) =>
+          a.id === activeAdmission.id
+            ? { ...a, template_steps: newTemplateSteps, manager_template_steps: newManagerSteps }
+            : a
+        )
+      );
+      showToast('Admissão sincronizada com o template atual.');
+      setSyncConfirmOpen(false);
+    } catch (err) {
+      console.error('Erro ao sincronizar admissão com o template:', err);
+      alert('Não foi possível sincronizar. Tente novamente.');
+    } finally {
+      setSyncingTemplate(false);
+    }
+  };
 
   // Assim que o gestor expande um campo de arquivo/foto, já dispara a
   // geração da Signed URL (em vez de esperar um clique extra).
@@ -1546,6 +1608,14 @@ export default function Admissao() {
                   </button>
                 )}
                 <button
+                  onClick={() => setSyncConfirmOpen(true)}
+                  title="Atualiza a lista de campos desta admissão para bater com o template atual"
+                  className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-600 border border-slate-200 hover:border-[#fc9314] hover:text-[#c96f0a] px-3 py-2 rounded transition-colors"
+                >
+                  <RefreshCw className="w-3.5 h-3.5" />
+                  Sincronizar com template
+                </button>
+                <button
                   onClick={() =>
                     handleOpenEditTemplate(templates.find((t) => t.id === activeAdmission.template_id))
                   }
@@ -1803,6 +1873,48 @@ export default function Admissao() {
               >
                 {deletingTemplate ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
                 Excluir
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL DE CONFIRMAÇÃO — SINCRONIZAR ADMISSÃO COM O TEMPLATE ATUAL */}
+      {syncConfirmOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-sm w-full p-6">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="w-10 h-10 rounded-full bg-orange-50 flex items-center justify-center shrink-0">
+                <RefreshCw className="w-5 h-5 text-[#ff8b00]" />
+              </div>
+              <h3 className="font-bold text-sm text-slate-800">Sincronizar com o template atual?</h3>
+            </div>
+            <p className="text-xs text-slate-500 mb-6">
+              Isso atualiza a lista e a ordem dos campos desta admissão pra bater com a versão mais
+              recente do template. As respostas que o colaborador já deu <strong>não são apagadas</strong>{' '}
+              — campos novos aparecem como pendentes. Use isso quando editar o template depois de já ter
+              criado a admissão.
+            </p>
+            <div className="flex justify-end gap-2">
+              <button
+                onClick={() => setSyncConfirmOpen(false)}
+                disabled={syncingTemplate}
+                className="px-4 py-2 rounded text-xs font-semibold text-slate-600 border border-slate-200 hover:bg-slate-50 transition-colors disabled:opacity-50"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleSyncWithTemplate}
+                disabled={syncingTemplate}
+                className="px-4 py-2 rounded text-xs font-semibold text-white disabled:opacity-70 flex items-center gap-1.5 transition-colors"
+                style={{ background: 'linear-gradient(135deg, #fc9314, #ff8b00)' }}
+              >
+                {syncingTemplate ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                ) : (
+                  <RefreshCw className="w-3.5 h-3.5" />
+                )}
+                Sincronizar
               </button>
             </div>
           </div>

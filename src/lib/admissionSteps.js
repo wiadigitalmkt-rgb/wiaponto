@@ -151,6 +151,29 @@ const KNOWN_FIELD_CONFIG = {
     required: false,
     description: 'Se possuir dependentes, informe nome, CPF e data de nascimento de cada um.',
   },
+  // ---------------------------------------------------------------
+  // Documento com foto (frente/verso) e assinatura — sempre as últimas
+  // etapas do formulário (nessa ordem): Selfie, Documento, Assinatura.
+  // ---------------------------------------------------------------
+  'documento (rg ou cnh) - frente': {
+    key: 'documento_frente',
+    type: 'file',
+    required: true,
+    description: 'Envie uma foto ou scan nítido da FRENTE do seu RG ou CNH.',
+  },
+  'documento (rg ou cnh) - verso': {
+    key: 'documento_verso',
+    type: 'file',
+    required: true,
+    description: 'Envie uma foto ou scan nítido do VERSO do seu RG ou CNH.',
+  },
+  assinatura: {
+    key: 'assinatura',
+    type: 'signature',
+    required: true,
+    description:
+      'Desenhe sua assinatura com o dedo (ou o mouse), igual à do seu documento. Ela será usada para assinar seu contrato e o espelho de ponto todo mês.',
+  },
 };
 
 // Para campos que o gestor criar fora da lista padrão (customSteps, tipo
@@ -234,17 +257,24 @@ export function mapAdminStepsToAllFields(rawSteps) {
 
 /**
  * Mesma regra usada em PreencherAdmissao.jsx para considerar um campo
- * "preenchido": string/número não vazio, array não vazio (ex.: lista de
- * dependentes), ou objeto de upload com `url` OU `path`.
+ * "preenchido": string/número não vazio, QUALQUER array já gravado (mesmo
+ * vazio — ver nota abaixo), ou objeto de upload com `url` OU `path`.
  *
  * O `path` sozinho conta porque, desde que o preview passou a usar Signed
  * URL, uploads feitos pelo GESTOR (ex.: ASO) gravam só `path` — nunca uma
  * Public URL. Checar só `.url` fazia esses arquivos aparecerem como "Não
  * enviado" mesmo depois de subir com sucesso.
+ *
+ * Array vazio ([]) conta como PREENCHIDO, não vazio: para o campo
+ * "Dependentes", uma lista vazia é a resposta legítima de quem não tem
+ * dependentes — é uma resposta, não um campo em branco. O que continua
+ * contando como "não enviado" é o valor `undefined` (o colaborador nunca
+ * chegou a essa etapa) — ver o preenchimento automático em `handleNext` de
+ * PreencherAdmissao.jsx, que grava `[]` ao avançar se o campo não foi tocado.
  */
 export function isFieldValueEmpty(value) {
   if (value === undefined || value === null || value === '') return true;
-  if (Array.isArray(value)) return value.length === 0;
+  if (Array.isArray(value)) return false;
   if (typeof value === 'object') return !value.url && !value.path;
   return false;
 }

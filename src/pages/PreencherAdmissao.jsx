@@ -26,9 +26,15 @@ import {
 const TABLE_ADMISSIONS = 'employee_admissions';
 const STORAGE_BUCKET = 'admissao-documentos';
 
+// IMPORTANTE: estas strings precisam ser IDÊNTICAS às usadas em
+// admin_Admissao.jsx (na criação da admissão e no filtro das abas
+// "Em andamento" / "Concluídos"). Antes este arquivo usava
+// 'em_preenchimento' / 'preenchido', que não batiam com 'Em andamento' /
+// 'Concluído' do painel — por isso o registro sumia das duas abas assim
+// que o colaborador salvava qualquer etapa.
 const STATUS = {
-  EM_PREENCHIMENTO: 'em_preenchimento',
-  CONCLUIDO: 'preenchido',
+  EM_PREENCHIMENTO: 'Em andamento',
+  CONCLUIDO: 'Concluído',
 };
 
 // Ícone padrão por tipo de campo (ajuda o colaborador a reconhecer o que é
@@ -61,6 +67,14 @@ export default function PreencherAdmissao({ admissionId: admissionIdProp }) {
   // ou /admissao/:admissionId). Ajuste conforme suas rotas.
   const routeParams = useParams ? useParams() : {};
   const admissionId = admissionIdProp || routeParams.admissionId || routeParams.id;
+
+  // Ao fechar o popup de sucesso, redireciona para a tela de bate-ponto.
+  // Usa location.href (em vez de navigate()) porque é o comportamento mais
+  // seguro/garantido independentemente de como as rotas do app estão
+  // montadas, já que a regra de negócio pede especificamente essa URL.
+  function handleGoToClock() {
+    window.location.href = 'https://wiaponto.vercel.app/ponto';
+  }
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -278,7 +292,16 @@ export default function PreencherAdmissao({ admissionId: admissionIdProp }) {
   if (completed) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50 px-4">
-        <div className="max-w-md w-full bg-white rounded-2xl shadow-sm border border-slate-200 p-8 text-center">
+        <div className="relative max-w-md w-full bg-white rounded-2xl shadow-sm border border-slate-200 p-8 text-center">
+          <button
+            type="button"
+            onClick={handleGoToClock}
+            aria-label="Fechar e ir para o bate-ponto"
+            className="absolute top-4 right-4 p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-50 transition"
+          >
+            <X className="w-5 h-5" />
+          </button>
+
           <div
             className="w-14 h-14 rounded-full flex items-center justify-center mx-auto mb-4"
             style={{ background: 'linear-gradient(135deg, #fc9314, #ff8b00)' }}
@@ -286,9 +309,18 @@ export default function PreencherAdmissao({ admissionId: admissionIdProp }) {
             <CheckCircle2 className="w-7 h-7 text-white" />
           </div>
           <h1 className="text-xl font-semibold text-slate-800 mb-1">Admissão enviada!</h1>
-          <p className="text-sm text-slate-500">
+          <p className="text-sm text-slate-500 mb-6">
             Suas informações foram registradas com sucesso. Nosso time de RH vai analisar tudo em breve.
           </p>
+
+          <button
+            type="button"
+            onClick={handleGoToClock}
+            className="w-full text-sm font-semibold text-white px-4 py-3 rounded-xl transition active:scale-[0.98]"
+            style={{ background: 'linear-gradient(135deg, #fc9314, #ff8b00)' }}
+          >
+            Ir para o bate-ponto
+          </button>
         </div>
       </div>
     );

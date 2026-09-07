@@ -187,6 +187,12 @@ function buildWizardStep(step, index) {
         options: known?.options,
         placeholder: known?.placeholder,
         mask: known?.mask,
+        // Campo que só o GESTOR preenche (ex.: ASO), nunca o colaborador.
+        // Guardado como flag estrutural — não depende do texto exato do
+        // nome bater com uma entrada do KNOWN_FIELD_CONFIG, então continua
+        // funcionando mesmo se o gestor renomear o campo ao editar o
+        // template.
+        managerOnly: step.employeeVisible === false,
       },
     ],
   };

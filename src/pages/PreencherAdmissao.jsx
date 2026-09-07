@@ -21,6 +21,7 @@ import {
   Users,
   Plus,
   Trash2,
+  Lock,
 } from 'lucide-react';
 
 // ---------------------------------------------------------------------------
@@ -101,6 +102,14 @@ export default function PreencherAdmissao({ admissionId: admissionIdProp }) {
   const [completed, setCompleted] = useState(false);
   const [lastSavedAt, setLastSavedAt] = useState(null);
 
+  // Gate de código de acesso: quem abre o link precisa confirmar o código
+  // de 6 dígitos enviado pelo gestor antes de ver qualquer campo do
+  // formulário. Protege contra o link ser aberto por outra pessoa que não
+  // o colaborador designado.
+  const [accessGranted, setAccessGranted] = useState(false);
+  const [accessCodeInput, setAccessCodeInput] = useState('');
+  const [accessError, setAccessError] = useState('');
+
   useEffect(() => {
     if (!admissionId) {
       setErrorMsg('Não foi possível identificar o processo de admissão. Verifique o link acessado.');
@@ -165,6 +174,21 @@ export default function PreencherAdmissao({ admissionId: admissionIdProp }) {
       setSteps(loadedSteps);
       setFormData(data.progress_data || {});
       setCompleted(data.status === STATUS.CONCLUIDO);
+
+      // Sem código de acesso salvo (admissão criada antes desse recurso
+      // existir): não bloqueia, mantém compatível com links já enviados.
+      // Com código: só libera se já foi validado nesta mesma aba antes
+      // (sessionStorage), pra não pedir de novo a cada "Salvar rascunho".
+      if (!data.access_code) {
+        setAccessGranted(true);
+      } else {
+        try {
+          const remembered = sessionStorage.getItem(`admissao_access_${id}`);
+          setAccessGranted(remembered === data.access_code);
+        } catch (e) {
+          setAccessGranted(false);
+        }
+      }
     } catch (err) {
       console.error(err);
       setErrorMsg(err.message || 'Erro ao carregar o seu processo de admissão.');
@@ -273,6 +297,27 @@ export default function PreencherAdmissao({ admissionId: admissionIdProp }) {
     await persistProgress(STATUS.EM_PREENCHIMENTO);
   }
 
+  function handleVerifyAccessCode(e) {
+    e.preventDefault();
+    setAccessError('');
+    const normalizedInput = accessCodeInput.replace(/\D/g, '');
+    if (!normalizedInput) {
+      setAccessError('Digite o código de acesso.');
+      return;
+    }
+    if (normalizedInput === admission?.access_code) {
+      setAccessGranted(true);
+      try {
+        sessionStorage.setItem(`admissao_access_${admissionId}`, admission.access_code);
+      } catch (e) {
+        // sessionStorage indisponível (ex.: modo anônimo restrito) — sem
+        // problema, só vai pedir o código de novo se a aba for recarregada.
+      }
+    } else {
+      setAccessError('Código incorreto. Confira o código enviado por quem te mandou o link.');
+    }
+  }
+
   // ---------------------------------------------------------------------
   // ESTADOS DE TELA: carregando / erro / concluído
   // ---------------------------------------------------------------------
@@ -297,6 +342,49 @@ export default function PreencherAdmissao({ admissionId: admissionIdProp }) {
           </div>
           <h1 className="text-lg font-semibold text-slate-800 mb-1">Não foi possível abrir o formulário</h1>
           <p className="text-sm text-slate-500">{errorMsg}</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (admission?.access_code && !accessGranted) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-50 px-4">
+        <div className="max-w-sm w-full bg-white rounded-2xl shadow-sm border border-slate-200 p-8 text-center">
+          <div
+            className="w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-4"
+            style={{ background: 'linear-gradient(135deg, #fc9314, #ff8b00)' }}
+          >
+            <Lock className="w-6 h-6 text-white" />
+          </div>
+          <h1 className="text-lg font-semibold text-slate-800 mb-1">Confirme seu acesso</h1>
+          <p className="text-sm text-slate-500 mb-5">
+            Este formulário é pessoal. Digite o código de acesso que você recebeu junto com o link.
+          </p>
+
+          <form onSubmit={handleVerifyAccessCode} className="space-y-3 text-left">
+            <input
+              type="text"
+              inputMode="numeric"
+              autoFocus
+              placeholder="000000"
+              value={accessCodeInput}
+              onChange={(e) => {
+                setAccessCodeInput(e.target.value);
+                setAccessError('');
+              }}
+              className="w-full text-center tracking-[0.3em] text-lg font-semibold rounded-lg border border-slate-200 px-3 py-2.5 focus:outline-none focus:ring-2 focus:border-transparent transition"
+              style={{ '--tw-ring-color': '#fc9314' }}
+            />
+            {accessError && <p className="text-xs text-red-500 text-center">{accessError}</p>}
+            <button
+              type="submit"
+              className="w-full text-sm font-semibold text-white px-4 py-2.5 rounded-xl transition active:scale-[0.98]"
+              style={{ background: 'linear-gradient(135deg, #fc9314, #ff8b00)' }}
+            >
+              Confirmar
+            </button>
+          </form>
         </div>
       </div>
     );

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
+import { mapAdminStepsToWizardSteps } from '@/lib/admissionSteps';
 import {
   Loader2,
   CheckCircle2,
@@ -96,15 +97,38 @@ export default function PreencherAdmissao({ admissionId: admissionIdProp }) {
       if (error) throw error;
       if (!data) throw new Error('Processo de admissão não encontrado.');
 
-      // O template de etapas pode estar salvo direto na coluna
-      // `template_steps` (array) ou aninhado em outra coluna JSONB, ex.:
-      // `template_snapshot.steps`. Ajuste esta leitura para o formato real
-      // que você grava no banco.
-      const loadedSteps =
-        data.template_steps?.steps ||
-        (Array.isArray(data.template_steps) ? data.template_steps : null) ||
-        data.template_snapshot?.steps ||
-        [];
+      // `template_steps` já vem gravado no formato "wizard" (uma pergunta
+      // por etapa) pelo admin_Admissao.jsx no momento em que a admissão é
+      // criada — ver mapAdminStepsToWizardSteps em '@/lib/admissionSteps'.
+      let loadedSteps =
+        Array.isArray(data.template_steps) && data.template_steps.length > 0
+          ? data.template_steps
+          : null;
+
+      // Fallback para admissões criadas antes desse ajuste (registros sem
+      // template_steps salvo): busca o template original pelo template_id
+      // e monta o snapshot em tempo real a partir dele.
+      if (!loadedSteps && data.template_id) {
+        const { data: tmpl, error: tmplError } = await supabase
+          .from('admission_templates')
+          .select('steps')
+          .eq('id', data.template_id)
+          .single();
+
+        if (!tmplError && tmpl?.steps) {
+          const rebuilt = mapAdminStepsToWizardSteps(tmpl.steps);
+          if (rebuilt.length > 0) {
+            loadedSteps = rebuilt;
+            // Best-effort: grava o snapshot agora para não precisar
+            // recalcular nas próximas vezes que este link for aberto.
+            supabase
+              .from(TABLE_ADMISSIONS)
+              .update({ template_steps: rebuilt })
+              .eq('id', id)
+              .then(() => {});
+          }
+        }
+      }
 
       if (!Array.isArray(loadedSteps) || loadedSteps.length === 0) {
         throw new Error('Este processo ainda não tem etapas configuradas no template.');

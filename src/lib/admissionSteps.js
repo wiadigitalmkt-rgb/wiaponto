@@ -235,11 +235,16 @@ export function mapAdminStepsToAllFields(rawSteps) {
 /**
  * Mesma regra usada em PreencherAdmissao.jsx para considerar um campo
  * "preenchido": string/número não vazio, array não vazio (ex.: lista de
- * dependentes), ou objeto de upload com `url`.
+ * dependentes), ou objeto de upload com `url` OU `path`.
+ *
+ * O `path` sozinho conta porque, desde que o preview passou a usar Signed
+ * URL, uploads feitos pelo GESTOR (ex.: ASO) gravam só `path` — nunca uma
+ * Public URL. Checar só `.url` fazia esses arquivos aparecerem como "Não
+ * enviado" mesmo depois de subir com sucesso.
  */
 export function isFieldValueEmpty(value) {
   if (value === undefined || value === null || value === '') return true;
   if (Array.isArray(value)) return value.length === 0;
-  if (typeof value === 'object') return !value.url;
+  if (typeof value === 'object') return !value.url && !value.path;
   return false;
 }

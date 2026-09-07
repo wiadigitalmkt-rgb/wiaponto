@@ -86,7 +86,6 @@ function ManagerFileUpload({ fieldKey, uploading, onFile, replace }) {
 // reaproveitada também ao EDITAR um template existente — ver
 // handleOpenEditTemplate mais abaixo.
 const DEFAULT_TEMPLATE_STEPS = [
-  { id: '1', name: 'Selfie', type: 'anexo/foto', active: true },
   { id: '2', name: 'Estado civil', type: 'selecionar opção', active: true },
   { id: '3', name: 'Telefone', type: 'campo texto', active: true },
   { id: '4', name: 'E-mail', type: 'campo texto', active: true },
@@ -106,6 +105,12 @@ const DEFAULT_TEMPLATE_STEPS = [
   { id: '15', name: 'ASO / Exame Admissional', type: 'anexo/arquivo', active: true, employeeVisible: false },
   { id: '16', name: 'Vale-Transporte', type: 'selecionar opção', active: true },
   { id: '17', name: 'Dependentes', type: 'lista de dependentes', active: true },
+  // A partir daqui, ordem fixa e proposital: Selfie -> Documento (frente e
+  // verso) -> Assinatura, sempre por último no formulário.
+  { id: '1', name: 'Selfie', type: 'anexo/foto', active: true },
+  { id: '18', name: 'Documento (RG ou CNH) - Frente', type: 'anexo/arquivo', active: true },
+  { id: '19', name: 'Documento (RG ou CNH) - Verso', type: 'anexo/arquivo', active: true },
+  { id: '20', name: 'Assinatura', type: 'assinatura digital', active: true },
 ];
 const DEFAULT_TEMPLATE_STEP_IDS = new Set(DEFAULT_TEMPLATE_STEPS.map((s) => s.id));
 

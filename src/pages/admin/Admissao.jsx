@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import Navbar from '@/components/Navbar';
 import { supabase } from '@/lib/supabase';
+import { mapAdminStepsToWizardSteps, isFieldValueEmpty } from '@/lib/admissionSteps';
 import {
   Search,
   ArrowLeft,
@@ -94,6 +95,7 @@ export default function Admissao() {
           status,
           template_name,
           template_id,
+          template_steps,
           created_at,
           employee_id,
           progress_data,
@@ -200,11 +202,26 @@ export default function Admissao() {
     setLoading(true);
     const chosenTemplate = templates.find(t => t.id === selectedTemplateId);
 
+    // Converte os steps "flat" do template (formato do gestor) para o
+    // formato "wizard" (uma pergunta por etapa) que PreencherAdmissao.jsx
+    // espera, e grava esse snapshot junto com a admissão. Sem isso, o
+    // colaborador via a mensagem "Este processo ainda não tem etapas
+    // configuradas no template." porque só a referência (template_id) era
+    // salva, nunca as etapas em si.
+    const wizardSteps = mapAdminStepsToWizardSteps(chosenTemplate?.steps);
+
+    if (wizardSteps.length === 0) {
+      alert('O template selecionado não possui campos ativos configurados.');
+      setLoading(false);
+      return;
+    }
+
     try {
       const inserts = selectedEmployees.map(empId => ({
         employee_id: empId,
         template_id: chosenTemplate?.id,
         template_name: chosenTemplate?.title || 'Template Padrão',
+        template_steps: wizardSteps,
         status: 'Em andamento',
         progress_data: {}
       }));
@@ -214,6 +231,7 @@ export default function Admissao() {
         status,
         template_name,
         template_id,
+        template_steps,
         created_at,
         employee_id,
         progress_data,
@@ -871,7 +889,9 @@ export default function Admissao() {
                           />
                           <div>
                             <strong className="block text-slate-800 font-bold">{tmpl.title}</strong>
-                            <span className="text-slate-400 text-[11px]">9 campos</span>
+                            <span className="text-slate-400 text-[11px]">
+                              {(tmpl.steps || []).filter((s) => s.active !== false).length} campos
+                            </span>
                           </div>
                         </div>
                       </td>
@@ -914,80 +934,104 @@ export default function Admissao() {
               </button>
             </div>
 
-            {/* BARRA DE PROGRESSO */}
-            <div className="bg-white rounded-md border border-slate-200 p-4 space-y-2">
-              <span className="text-xs font-medium text-slate-600">
-                Progresso atual 56% (5 de 9 campos preenchidos)
-              </span>
-              <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
-                <div className="bg-[#ff8b00] h-full w-[56%] transition-all"></div>
-              </div>
-            </div>
+            {(() => {
+              // Deriva a lista de campos e o status "enviado/não enviado"
+              // diretamente do snapshot gravado em template_steps e das
+              // respostas em progress_data — nada de dados mockados.
+              const admissionFields = (activeAdmission.template_steps || []).flatMap(
+                (s) => s.fields || []
+              );
+              const progressData = activeAdmission.progress_data || {};
+              const fieldItems = admissionFields.map((field) => {
+                const value = progressData[field.key];
+                const sent = !isFieldValueEmpty(value);
+                const displayValue =
+                  value && typeof value === 'object' ? value.name || value.url : value;
+                return { ...field, sent, displayValue };
+              });
+              const sentCount = fieldItems.filter((f) => f.sent).length;
+              const totalCount = fieldItems.length || 1;
+              const progressPercent = Math.round((sentCount / totalCount) * 100);
 
-            {/* LISTA DE CAMPOS PREENCHIDOS E PENDENTES */}
-            <div className="bg-white rounded-md border border-slate-200 p-6 space-y-4">
-              <div>
-                <h3 className="font-bold text-sm text-slate-800">Informações de Cadastro</h3>
-                <p className="text-xs text-slate-500 mt-0.5">
-                  Esses dados irão alterar a informação do perfil do colaborador, após ele preencher
-                </p>
-              </div>
+              return (
+                <>
+                  {/* BARRA DE PROGRESSO */}
+                  <div className="bg-white rounded-md border border-slate-200 p-4 space-y-2">
+                    <span className="text-xs font-medium text-slate-600">
+                      Progresso atual {progressPercent}% ({sentCount} de {fieldItems.length} campos preenchidos)
+                    </span>
+                    <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
+                      <div
+                        className="bg-[#ff8b00] h-full transition-all"
+                        style={{ width: `${progressPercent}%` }}
+                      ></div>
+                    </div>
+                  </div>
 
-              <div className="divide-y divide-slate-100 border-t border-slate-100">
-                {[
-                  { name: 'Selfie', status: 'Não enviado', sent: false },
-                  { name: 'Estado civil', status: 'Enviado 06/08/2026 22:58', sent: true },
-                  { name: 'Telefone', status: 'Enviado 06/08/2026 23:00', sent: true },
-                  { name: 'E-mail', status: 'Enviado 06/08/2026 22:58', sent: true },
-                  { name: 'Número do RG', status: 'Não enviado', sent: false, hasDetails: true },
-                  { name: 'Número do PIS', status: 'Não enviado', sent: false },
-                  { name: 'Endereço', status: 'Enviado 06/08/2026 23:00', sent: true },
-                  { name: 'Dados bancários', status: 'Não enviado', sent: false },
-                  { name: 'Data de nascimento', status: 'Enviado 06/08/2026 22:58', sent: true },
-                ].map((item, idx) => (
-                  <div key={idx} className="py-3">
-                    <div
-                      onClick={() => setExpandedField(expandedField === idx ? null : idx)}
-                      className="flex justify-between items-center text-xs cursor-pointer hover:bg-slate-50/50 p-1 rounded"
-                    >
-                      <div className="flex items-center gap-2">
-                        {expandedField === idx ? (
-                          <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
-                        ) : (
-                          <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
-                        )}
-                        <span className="font-bold text-slate-800">{item.name}</span>
-                      </div>
-
-                      <div className="flex items-center gap-3">
-                        <span className="text-slate-500 text-[11px]">{item.status}</span>
-                        {item.sent ? (
-                          <CheckCircle2 className="w-4 h-4 text-[#ff8b00]" />
-                        ) : (
-                          <XCircle className="w-4 h-4 text-slate-300" />
-                        )}
-                        <MoreHorizontal className="w-4 h-4 text-slate-400" />
-                      </div>
+                  {/* LISTA DE CAMPOS PREENCHIDOS E PENDENTES */}
+                  <div className="bg-white rounded-md border border-slate-200 p-6 space-y-4">
+                    <div>
+                      <h3 className="font-bold text-sm text-slate-800">Informações de Cadastro</h3>
+                      <p className="text-xs text-slate-500 mt-0.5">
+                        Esses dados irão alterar a informação do perfil do colaborador, após ele preencher
+                      </p>
                     </div>
 
-                    {/* Sanfona Expandida de Exemplo */}
-                    {expandedField === idx && (
-                      <div className="mt-3 ml-6 p-4 bg-slate-50 border border-slate-100 rounded space-y-2">
-                        <label className="block text-[11px] font-semibold text-slate-600">
-                          Qual o {item.name.toLowerCase()}?
-                        </label>
-                        <input
-                          type="text"
-                          disabled
-                          value="(Não enviado)"
-                          className="w-full p-2 bg-white border border-slate-200 rounded text-xs text-slate-400"
-                        />
+                    {fieldItems.length === 0 ? (
+                      <p className="text-xs text-slate-400 py-6 text-center">
+                        Nenhum campo configurado neste template.
+                      </p>
+                    ) : (
+                      <div className="divide-y divide-slate-100 border-t border-slate-100">
+                        {fieldItems.map((item, idx) => (
+                          <div key={item.key || idx} className="py-3">
+                            <div
+                              onClick={() => setExpandedField(expandedField === idx ? null : idx)}
+                              className="flex justify-between items-center text-xs cursor-pointer hover:bg-slate-50/50 p-1 rounded"
+                            >
+                              <div className="flex items-center gap-2">
+                                {expandedField === idx ? (
+                                  <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
+                                ) : (
+                                  <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
+                                )}
+                                <span className="font-bold text-slate-800">{item.label}</span>
+                              </div>
+
+                              <div className="flex items-center gap-3">
+                                <span className="text-slate-500 text-[11px]">
+                                  {item.sent ? 'Enviado' : 'Não enviado'}
+                                </span>
+                                {item.sent ? (
+                                  <CheckCircle2 className="w-4 h-4 text-[#ff8b00]" />
+                                ) : (
+                                  <XCircle className="w-4 h-4 text-slate-300" />
+                                )}
+                                <MoreHorizontal className="w-4 h-4 text-slate-400" />
+                              </div>
+                            </div>
+
+                            {expandedField === idx && (
+                              <div className="mt-3 ml-6 p-4 bg-slate-50 border border-slate-100 rounded space-y-2">
+                                <label className="block text-[11px] font-semibold text-slate-600">
+                                  {item.label}
+                                </label>
+                                <input
+                                  type="text"
+                                  disabled
+                                  value={item.sent ? item.displayValue : '(Não enviado)'}
+                                  className="w-full p-2 bg-white border border-slate-200 rounded text-xs text-slate-400"
+                                />
+                              </div>
+                            )}
+                          </div>
+                        ))}
                       </div>
                     )}
                   </div>
-                ))}
-              </div>
-            </div>
+                </>
+              );
+            })()}
           </div>
         )}
       </main>

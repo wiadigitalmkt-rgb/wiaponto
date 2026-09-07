@@ -486,6 +486,20 @@ export default function Admissao() {
                         const name = emp.full_name || `${emp.first_name || ''} ${emp.last_name || ''}`.trim() || 'Usuário Sem Nome';
                         const initials = getInitials(name, emp.first_name, emp.last_name);
 
+                        // Progresso real: campos do snapshot template_steps
+                        // que já têm valor preenchido em progress_data.
+                        // (mesma lógica usada no MODO 4 - VISUALIZAÇÃO, para
+                        // as duas telas nunca ficarem dessincronizadas)
+                        const admFields = (adm.template_steps || []).flatMap((s) => s.fields || []);
+                        const admProgressData = adm.progress_data || {};
+                        const admSentCount = admFields.filter(
+                          (field) => !isFieldValueEmpty(admProgressData[field.key])
+                        ).length;
+                        const admTotalCount = admFields.length;
+                        const admProgressPercent = admTotalCount
+                          ? Math.round((admSentCount / admTotalCount) * 100)
+                          : 0;
+
                         return (
                           <tr key={adm.id} className="hover:bg-slate-50 transition-colors">
                             <td className="py-3 px-6">
@@ -499,9 +513,14 @@ export default function Admissao() {
                             <td className="py-3 px-4">
                               <div className="flex items-center gap-2">
                                 <div className="w-24 bg-slate-200 h-2 rounded-full overflow-hidden">
-                                  <div className="bg-[#ff8b00] h-full w-[55%]"></div>
+                                  <div
+                                    className="bg-[#ff8b00] h-full"
+                                    style={{ width: `${admProgressPercent}%` }}
+                                  ></div>
                                 </div>
-                                <span className="text-[11px] font-medium text-slate-500">5/9</span>
+                                <span className="text-[11px] font-medium text-slate-500">
+                                  {admSentCount}/{admTotalCount}
+                                </span>
                               </div>
                             </td>
                             <td className="py-3 px-4 text-slate-600">{adm.template_name || 'Admissão Matheus'}</td>

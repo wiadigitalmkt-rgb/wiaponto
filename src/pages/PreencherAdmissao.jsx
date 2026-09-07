@@ -18,6 +18,9 @@ import {
   AlertCircle,
   X,
   Save,
+  Users,
+  Plus,
+  Trash2,
 } from 'lucide-react';
 
 // ---------------------------------------------------------------------------
@@ -50,6 +53,7 @@ const ICON_BY_TYPE = {
   file: FileText,
   photo: Camera,
   checkbox: CheckSquare,
+  dependents: Users,
 };
 
 function getFieldIcon(field) {
@@ -58,8 +62,17 @@ function getFieldIcon(field) {
 
 function isValueEmpty(value) {
   if (value === undefined || value === null || value === '') return true;
+  if (Array.isArray(value)) return value.length === 0;
   if (typeof value === 'object') return !value.url;
   return false;
+}
+
+function formatCPF(raw) {
+  const digits = (raw || '').replace(/\D/g, '').slice(0, 11);
+  return digits
+    .replace(/(\d{3})(\d)/, '$1.$2')
+    .replace(/(\d{3})(\d)/, '$1.$2')
+    .replace(/(\d{3})(\d{1,2})$/, '$1-$2');
 }
 
 export default function PreencherAdmissao({ admissionId: admissionIdProp }) {
@@ -468,7 +481,7 @@ export default function PreencherAdmissao({ admissionId: admissionIdProp }) {
 // ---------------------------------------------------------------------------
 function FieldRenderer({ field, value, error, uploading, onChange, onFile, onRemoveFile }) {
   const Icon = getFieldIcon(field);
-  const isWide = field.type === 'textarea' || field.type === 'file' || field.type === 'photo';
+  const isWide = field.type === 'textarea' || field.type === 'file' || field.type === 'photo' || field.type === 'dependents';
 
   return (
     <div className={isWide ? 'sm:col-span-2' : ''}>
@@ -627,6 +640,9 @@ function renderInput(field, value, onChange, onFile, onRemoveFile, uploading) {
         />
       );
 
+    case 'dependents':
+      return <DependentsRepeater value={value} onChange={onChange} />;
+
     case 'text':
     default:
       return (
@@ -636,10 +652,90 @@ function renderInput(field, value, onChange, onFile, onRemoveFile, uploading) {
           style={focusStyle}
           placeholder={field.placeholder || ''}
           value={value || ''}
-          onChange={(e) => onChange(e.target.value)}
+          onChange={(e) => onChange(field.mask === 'cpf' ? formatCPF(e.target.value) : e.target.value)}
         />
       );
   }
+}
+
+// ---------------------------------------------------------------------------
+// DEPENDENTES — lista dinâmica de nome/CPF/data de nascimento. Guardado em
+// progress_data como array: [{ name, cpf, birth_date }, ...]
+// ---------------------------------------------------------------------------
+function DependentsRepeater({ value, onChange }) {
+  const dependents = Array.isArray(value) ? value : [];
+
+  function updateDependent(index, patch) {
+    const next = dependents.map((dep, i) => (i === index ? { ...dep, ...patch } : dep));
+    onChange(next);
+  }
+
+  function addDependent() {
+    onChange([...dependents, { name: '', cpf: '', birth_date: '' }]);
+  }
+
+  function removeDependent(index) {
+    onChange(dependents.filter((_, i) => i !== index));
+  }
+
+  const inputClasses =
+    'w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:border-transparent transition';
+
+  return (
+    <div className="space-y-3">
+      {dependents.length === 0 && (
+        <p className="text-xs text-slate-400">
+          Se você não possui dependentes, pode deixar em branco e avançar.
+        </p>
+      )}
+
+      {dependents.map((dep, index) => (
+        <div key={index} className="rounded-xl border border-slate-200 p-3 space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-slate-500">Dependente {index + 1}</span>
+            <button
+              type="button"
+              onClick={() => removeDependent(index)}
+              className="p-1.5 rounded-lg hover:bg-slate-50 text-slate-400 hover:text-red-500 transition"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+            </button>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+            <input
+              type="text"
+              placeholder="Nome completo"
+              className={inputClasses}
+              value={dep.name || ''}
+              onChange={(e) => updateDependent(index, { name: e.target.value })}
+            />
+            <input
+              type="text"
+              placeholder="CPF"
+              className={inputClasses}
+              value={dep.cpf || ''}
+              onChange={(e) => updateDependent(index, { cpf: formatCPF(e.target.value) })}
+            />
+            <input
+              type="date"
+              className={inputClasses}
+              value={dep.birth_date || ''}
+              onChange={(e) => updateDependent(index, { birth_date: e.target.value })}
+            />
+          </div>
+        </div>
+      ))}
+
+      <button
+        type="button"
+        onClick={addDependent}
+        className="flex items-center gap-1.5 text-sm font-semibold px-3.5 py-2 rounded-lg border border-dashed border-slate-300 text-slate-600 hover:border-[#fc9314] hover:text-[#c96f0a] transition"
+      >
+        <Plus className="w-4 h-4" />
+        Adicionar dependente
+      </button>
+    </div>
+  );
 }
 
 function CheckSquareIndicator({ checked }) {

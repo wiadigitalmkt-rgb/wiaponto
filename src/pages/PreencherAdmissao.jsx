@@ -16,7 +16,7 @@ import {
   AlignLeft,
   CheckSquare,
   AlertCircle,
-  X,
+  X, 
   Save,
   Users,
   Plus,

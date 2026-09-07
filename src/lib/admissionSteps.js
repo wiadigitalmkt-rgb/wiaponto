@@ -165,6 +165,34 @@ const RAW_TYPE_FALLBACK = {
 };
 
 /**
+ * Converte UM step "flat" do template para o formato "wizard" (uma pergunta
+ * por etapa). Função interna reaproveitada pelas duas variantes públicas
+ * abaixo — a única diferença entre elas é o filtro aplicado antes de mapear.
+ */
+function buildWizardStep(step, index) {
+  const known = KNOWN_FIELD_CONFIG[normalizeName(step.name)];
+  const key = known?.key || slugify(step.name) || `campo_${index + 1}`;
+  const type = known?.type || RAW_TYPE_FALLBACK[step.type] || 'text';
+
+  return {
+    id: step.id || key,
+    title: step.name,
+    description: known?.description,
+    fields: [
+      {
+        key,
+        label: step.name,
+        type,
+        required: known ? known.required : false,
+        options: known?.options,
+        placeholder: known?.placeholder,
+        mask: known?.mask,
+      },
+    ],
+  };
+}
+
+/**
  * Converte o array "flat" de etapas do template (admin_Admissao.jsx /
  * admission_templates.steps) para o array de etapas "wizard" que
  * PreencherAdmissao.jsx consome (uma pergunta por etapa).
@@ -173,34 +201,29 @@ const RAW_TYPE_FALLBACK = {
  * template não aparecem no formulário do colaborador) e etapas com
  * `employeeVisible: false` (campos que só o gestor preenche depois, como
  * o ASO/Exame Admissional — nunca aparecem no formulário do colaborador).
+ *
+ * Usado para gravar `employee_admissions.template_steps` (o snapshot que o
+ * FORMULÁRIO DO COLABORADOR lê).
  */
 export function mapAdminStepsToWizardSteps(rawSteps) {
   if (!Array.isArray(rawSteps)) return [];
 
   return rawSteps
     .filter((step) => step && step.active !== false && step.name && step.employeeVisible !== false)
-    .map((step, index) => {
-      const known = KNOWN_FIELD_CONFIG[normalizeName(step.name)];
-      const key = known?.key || slugify(step.name) || `campo_${index + 1}`;
-      const type = known?.type || RAW_TYPE_FALLBACK[step.type] || 'text';
+    .map(buildWizardStep);
+}
 
-      return {
-        id: step.id || key,
-        title: step.name,
-        description: known?.description,
-        fields: [
-          {
-            key,
-            label: step.name,
-            type,
-            required: known ? known.required : false,
-            options: known?.options,
-            placeholder: known?.placeholder,
-            mask: known?.mask,
-          },
-        ],
-      };
-    });
+/**
+ * Mesma conversão, mas SEM remover os campos `employeeVisible: false`
+ * (como o ASO). Usado para gravar `employee_admissions.manager_template_steps`
+ * — o snapshot completo que a TELA DE VISUALIZAÇÃO DO GESTOR lê, para que
+ * campos que só o gestor preenche continuem aparecendo na lista de
+ * informações mesmo não estando no formulário do colaborador.
+ */
+export function mapAdminStepsToAllFields(rawSteps) {
+  if (!Array.isArray(rawSteps)) return [];
+
+  return rawSteps.filter((step) => step && step.active !== false && step.name).map(buildWizardStep);
 }
 
 /**

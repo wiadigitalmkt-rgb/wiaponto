@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
 import { mapAdminStepsToWizardSteps } from '@/lib/admissionSteps';
@@ -574,15 +574,12 @@ function renderInput(field, value, onChange, onFile, onRemoveFile, uploading) {
 
     case 'photo':
       return (
-        <FileUploadBox
+        <SelfieCapture
           field={field}
           value={value}
           uploading={uploading}
           onFile={onFile}
           onRemove={onRemoveFile}
-          accept="image/*"
-          capture="user"
-          isPhoto
         />
       );
 
@@ -628,7 +625,155 @@ function CheckSquareIndicator({ checked }) {
 }
 
 // ---------------------------------------------------------------------------
-// UPLOAD DE ARQUIVO / SELFIE
+// SELFIE — captura ao vivo pela câmera (sem opção de anexar da galeria)
+// ---------------------------------------------------------------------------
+function SelfieCapture({ field, value, uploading, onFile, onRemove }) {
+  const videoRef = useRef(null);
+  const streamRef = useRef(null);
+  const [cameraActive, setCameraActive] = useState(false);
+  const [cameraError, setCameraError] = useState('');
+
+  useEffect(() => {
+    // Garante que a câmera é desligada ao trocar de etapa ou sair da página.
+    return () => stopCamera();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  async function startCamera() {
+    setCameraError('');
+    if (!navigator.mediaDevices?.getUserMedia) {
+      setCameraError('Este navegador não permite acesso à câmera. Tente pelo Chrome ou Safari atualizados.');
+      return;
+    }
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: 'user' },
+        audio: false,
+      });
+      streamRef.current = stream;
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        await videoRef.current.play();
+      }
+      setCameraActive(true);
+    } catch (err) {
+      console.error(err);
+      setCameraError('Não foi possível acessar a câmera. Verifique se você permitiu o uso da câmera para este site.');
+    }
+  }
+
+  function stopCamera() {
+    streamRef.current?.getTracks().forEach((track) => track.stop());
+    streamRef.current = null;
+    setCameraActive(false);
+  }
+
+  function capturePhoto() {
+    const video = videoRef.current;
+    if (!video || !video.videoWidth) return;
+
+    const canvas = document.createElement('canvas');
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    const ctx = canvas.getContext('2d');
+    // Desfaz o espelhamento do preview (câmera frontal) para a foto salva
+    // não sair invertida.
+    ctx.translate(canvas.width, 0);
+    ctx.scale(-1, 1);
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+    canvas.toBlob(
+      (blob) => {
+        if (!blob) return;
+        const file = new File([blob], `selfie-${Date.now()}.jpg`, { type: 'image/jpeg' });
+        onFile(file);
+        stopCamera();
+      },
+      'image/jpeg',
+      0.9
+    );
+  }
+
+  // Selfie já enviada: mostra preview e permite refazer.
+  if (value?.url) {
+    return (
+      <div className="flex items-center gap-3 rounded-xl border border-slate-200 p-3">
+        <img
+          src={value.url}
+          alt={field.label}
+          className="w-14 h-14 rounded-lg object-cover border border-slate-200"
+        />
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-medium text-slate-700 truncate">Selfie enviada</p>
+          <p className="text-xs text-slate-400">Enviada com sucesso</p>
+        </div>
+        <button
+          type="button"
+          onClick={onRemove}
+          className="p-2 rounded-lg hover:bg-slate-50 text-slate-400 hover:text-red-500 transition"
+        >
+          <X className="w-4 h-4" />
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="rounded-xl border-2 border-dashed border-slate-200 p-4">
+      {cameraActive ? (
+        <div className="space-y-3">
+          <div className="relative rounded-lg overflow-hidden bg-black">
+            <video
+              ref={videoRef}
+              className="w-full aspect-[4/3] object-cover"
+              style={{ transform: 'scaleX(-1)' }}
+              playsInline
+              muted
+            />
+          </div>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={capturePhoto}
+              disabled={uploading}
+              className="flex-1 flex items-center justify-center gap-1.5 text-sm font-semibold text-white px-4 py-2.5 rounded-xl disabled:opacity-70 transition active:scale-[0.98]"
+              style={{ background: 'linear-gradient(135deg, #fc9314, #ff8b00)' }}
+            >
+              {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Camera className="w-4 h-4" />}
+              {uploading ? 'Enviando...' : 'Tirar foto'}
+            </button>
+            <button
+              type="button"
+              onClick={stopCamera}
+              disabled={uploading}
+              className="px-4 py-2.5 rounded-xl text-sm font-medium text-slate-500 border border-slate-200 hover:bg-slate-50 transition disabled:opacity-50"
+            >
+              Cancelar
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div className="flex flex-col items-center justify-center gap-2 py-8 px-4 text-center">
+          <Camera className="w-6 h-6 text-slate-400" />
+          <span className="text-sm font-medium text-slate-600">A selfie precisa ser tirada na hora</span>
+          <span className="text-xs text-slate-400 mb-1">Não é possível anexar uma foto da galeria</span>
+          <button
+            type="button"
+            onClick={startCamera}
+            className="mt-1 text-sm font-semibold px-4 py-2 rounded-lg text-white transition active:scale-[0.98]"
+            style={{ background: 'linear-gradient(135deg, #fc9314, #ff8b00)' }}
+          >
+            Abrir câmera
+          </button>
+          {cameraError && <p className="text-xs text-red-500 mt-2 max-w-xs">{cameraError}</p>}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// UPLOAD DE ARQUIVO — usado apenas para campos do tipo "file" (documentos)
 // ---------------------------------------------------------------------------
 function FileUploadBox({ field, value, uploading, onFile, onRemove, accept, capture, isPhoto }) {
   const inputId = `upload-${field.key}`;

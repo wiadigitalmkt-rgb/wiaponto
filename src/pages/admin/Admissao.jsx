@@ -13,7 +13,7 @@ import {
   ChevronRight,
   MoreHorizontal,
   Loader2,
-  Link as LinkIcon, 
+  Link as LinkIcon,
   Share2,
   FileText,
   ExternalLink,
@@ -21,6 +21,7 @@ import {
   AlertTriangle,
   X,
   Upload,
+  Pencil,
 } from 'lucide-react';
 
 // Mesmo bucket usado em PreencherAdmissao.jsx para o upload de selfie/anexos.
@@ -72,6 +73,34 @@ function ManagerFileUpload({ fieldKey, uploading, onFile, replace }) {
   );
 }
 
+// Lista padrão de campos que todo template novo começa com. Extraída como
+// constante (em vez de só o valor inicial do useState) para poder ser
+// reaproveitada também ao EDITAR um template existente — ver
+// handleOpenEditTemplate mais abaixo.
+const DEFAULT_TEMPLATE_STEPS = [
+  { id: '1', name: 'Selfie', type: 'anexo/foto', active: true },
+  { id: '2', name: 'Estado civil', type: 'selecionar opção', active: true },
+  { id: '3', name: 'Telefone', type: 'campo texto', active: true },
+  { id: '4', name: 'E-mail', type: 'campo texto', active: true },
+  { id: '5', name: 'Número do RG', type: 'campo texto', active: true },
+  { id: '6', name: 'Número do PIS', type: 'campo texto', active: true },
+  { id: '7', name: 'Endereço', type: 'campo texto', active: true },
+  { id: '8', name: 'Dados bancários', type: 'campo texto', active: true },
+  { id: '9', name: 'Data de nascimento', type: 'campo data', active: true },
+  { id: '10', name: 'CPF', type: 'campo texto', active: true },
+  { id: '11', name: 'Nome da Mãe', type: 'campo texto', active: true },
+  { id: '12', name: 'Nacionalidade', type: 'campo texto', active: true },
+  { id: '13', name: 'Naturalidade', type: 'campo texto', active: true },
+  { id: '14', name: 'Grau de Instrução', type: 'selecionar opção', active: true },
+  // employeeVisible: false -> este campo nunca aparece no formulário do
+  // colaborador (mapAdminStepsToWizardSteps filtra por essa flag). É
+  // preenchido pelo gestor, no painel, depois que o exame sai.
+  { id: '15', name: 'ASO / Exame Admissional', type: 'anexo/arquivo', active: true, employeeVisible: false },
+  { id: '16', name: 'Vale-Transporte', type: 'selecionar opção', active: true },
+  { id: '17', name: 'Dependentes', type: 'lista de dependentes', active: true },
+];
+const DEFAULT_TEMPLATE_STEP_IDS = new Set(DEFAULT_TEMPLATE_STEPS.map((s) => s.id));
+
 export default function Admissao() {
   const navigate = useNavigate();
 
@@ -93,31 +122,13 @@ export default function Admissao() {
   const [selectedTemplateId, setSelectedTemplateId] = useState(null);
   const [activeAdmission, setActiveAdmission] = useState(null);
 
-  // Estado para a criação de Novo Template
+  // Estado para a criação/edição de Template. `editingTemplateId` é null
+  // quando o fluxo é "Novo Template" (INSERT) e vira o id do template
+  // quando é "Editar Template" (UPDATE) — ver handleOpenEditTemplate.
   const [newTemplateName, setNewTemplateName] = useState('');
-  const [templateSteps, setTemplateSteps] = useState([
-    { id: '1', name: 'Selfie', type: 'anexo/foto', active: true },
-    { id: '2', name: 'Estado civil', type: 'selecionar opção', active: true },
-    { id: '3', name: 'Telefone', type: 'campo texto', active: true },
-    { id: '4', name: 'E-mail', type: 'campo texto', active: true },
-    { id: '5', name: 'Número do RG', type: 'campo texto', active: true },
-    { id: '6', name: 'Número do PIS', type: 'campo texto', active: true },
-    { id: '7', name: 'Endereço', type: 'campo texto', active: true },
-    { id: '8', name: 'Dados bancários', type: 'campo texto', active: true },
-    { id: '9', name: 'Data de nascimento', type: 'campo data', active: true },
-    { id: '10', name: 'CPF', type: 'campo texto', active: true },
-    { id: '11', name: 'Nome da Mãe', type: 'campo texto', active: true },
-    { id: '12', name: 'Nacionalidade', type: 'campo texto', active: true },
-    { id: '13', name: 'Naturalidade', type: 'campo texto', active: true },
-    { id: '14', name: 'Grau de Instrução', type: 'selecionar opção', active: true },
-    // employeeVisible: false -> este campo nunca aparece no formulário do
-    // colaborador (mapAdminStepsToWizardSteps filtra por essa flag). É
-    // preenchido pelo gestor, no painel, depois que o exame sai.
-    { id: '15', name: 'ASO / Exame Admissional', type: 'anexo/arquivo', active: true, employeeVisible: false },
-    { id: '16', name: 'Vale-Transporte', type: 'selecionar opção', active: true },
-    { id: '17', name: 'Dependentes', type: 'lista de dependentes', active: true },
-  ]);
+  const [templateSteps, setTemplateSteps] = useState(DEFAULT_TEMPLATE_STEPS);
   const [customSteps, setCustomSteps] = useState([]);
+  const [editingTemplateId, setEditingTemplateId] = useState(null);
 
   // Accordion do modo Visualização
   const [expandedField, setExpandedField] = useState(null);
@@ -222,6 +233,48 @@ export default function Admissao() {
     }
   };
 
+  // Abre a tela de criação já em modo "Novo Template" (INSERT), limpando
+  // qualquer estado deixado por uma edição anterior.
+  const handleOpenNewTemplate = () => {
+    setEditingTemplateId(null);
+    setTemplateSteps(DEFAULT_TEMPLATE_STEPS);
+    setCustomSteps([]);
+    setNewTemplateName('');
+    setViewState('create_template');
+  };
+
+  // Abre a tela de criação em modo EDIÇÃO, carregando de fato os dados do
+  // template selecionado — antes, "Editar Template" apenas reabria a tela
+  // de "Novo Template" com a lista padrão fixa, ignorando o template real
+  // e criando um duplicado ao salvar. Agora: os campos padrão (ids 1-17)
+  // vão para `templateSteps` (com o `active` real salvo no template), e
+  // qualquer campo extra (ids fora da lista padrão) vai para `customSteps`.
+  const handleOpenEditTemplate = (tmpl) => {
+    if (!tmpl) {
+      alert('Não foi possível localizar o template desta admissão para edição.');
+      return;
+    }
+    const savedSteps = Array.isArray(tmpl.steps) ? tmpl.steps : [];
+    const savedById = new Map(savedSteps.map((s) => [String(s.id), s]));
+
+    const mergedDefaults = DEFAULT_TEMPLATE_STEPS.map((canonical) => {
+      const saved = savedById.get(canonical.id);
+      // Mantém o texto/tipo canônico do campo (garante que ASO etc. sigam
+      // com employeeVisible:false mesmo que o dado salvo seja mais antigo),
+      // só herda o `active` que o gestor realmente configurou.
+      return saved ? { ...canonical, active: saved.active !== false } : { ...canonical, active: false };
+    });
+    const loadedCustom = savedSteps
+      .filter((s) => !DEFAULT_TEMPLATE_STEP_IDS.has(String(s.id)))
+      .map((s) => ({ ...s }));
+
+    setTemplateSteps(mergedDefaults);
+    setCustomSteps(loadedCustom);
+    setNewTemplateName(tmpl.title || '');
+    setEditingTemplateId(tmpl.id);
+    setViewState('create_template');
+  };
+
   const handleSaveTemplate = async () => {
     if (!newTemplateName.trim()) {
       alert('Por favor, informe o nome do template.');
@@ -232,17 +285,19 @@ export default function Admissao() {
     const allSteps = [...templateSteps, ...customSteps];
 
     try {
-      const { error } = await supabase.from('admission_templates').insert([
-        {
-          title: newTemplateName,
-          description: `${allSteps.filter(s => s.active).length} campos configurados`,
-          steps: allSteps,
-          is_active: true
-        }
-      ]);
+      const payload = {
+        title: newTemplateName,
+        description: `${allSteps.filter(s => s.active).length} campos configurados`,
+        steps: allSteps,
+      };
+
+      const { error } = editingTemplateId
+        ? await supabase.from('admission_templates').update(payload).eq('id', editingTemplateId)
+        : await supabase.from('admission_templates').insert([{ ...payload, is_active: true }]);
 
       if (!error) {
         setNewTemplateName('');
+        setEditingTemplateId(null);
         setViewState('list');
         setActiveTab('templates');
         fetchData();
@@ -444,14 +499,20 @@ export default function Admissao() {
   }, [activeAdmission]);
 
   // Backfill automático: admissões criadas antes de `manager_template_steps`
-  // existir não têm campos como o ASO na lista. Ao abrir uma admissão nessa
-  // situação, busca o template original (template_id) e recalcula o
-  // snapshot completo, salvando para não precisar recalcular de novo.
+  // existir não têm campos como o ASO na lista. Também reprocessa snapshots
+  // que já existem mas foram gerados por uma versão anterior do código,
+  // sem a flag `managerOnly` em cada campo (nesse caso o ASO até aparecia
+  // na lista, mas sem o botão de upload do gestor). Ao detectar qualquer
+  // uma das duas situações, busca o template original (template_id) e
+  // recalcula o snapshot completo, salvando para não precisar recalcular
+  // de novo da próxima vez.
   useEffect(() => {
     if (!activeAdmission) return;
-    const hasManagerSteps =
-      Array.isArray(activeAdmission.manager_template_steps) && activeAdmission.manager_template_steps.length > 0;
-    if (hasManagerSteps || !activeAdmission.template_id) return;
+    const steps = activeAdmission.manager_template_steps;
+    const hasManagerSteps = Array.isArray(steps) && steps.length > 0;
+    const isStale =
+      hasManagerSteps && steps.some((s) => (s.fields || []).some((f) => f.managerOnly === undefined));
+    if ((hasManagerSteps && !isStale) || !activeAdmission.template_id) return;
 
     let cancelled = false;
     (async () => {
@@ -706,7 +767,7 @@ export default function Admissao() {
 
               {activeTab === 'templates' ? (
                 <button
-                  onClick={() => setViewState('create_template')}
+                  onClick={handleOpenNewTemplate}
                   className="border border-[#ff8b00] text-[#ff8b00] hover:bg-[#fc9314] hover:text-white hover:border-[#fc9314] text-xs font-semibold px-4 py-2 rounded transition-colors"
                 >
                   Novo Template
@@ -964,6 +1025,16 @@ export default function Admissao() {
                                 />
                                 <div className="absolute right-4 top-full mt-1 z-20 w-44 bg-white border border-slate-200 rounded-md shadow-lg py-1 text-left">
                                   <button
+                                    onClick={() => {
+                                      setOpenTemplateMenuId(null);
+                                      handleOpenEditTemplate(tmpl);
+                                    }}
+                                    className="w-full flex items-center gap-2 px-3 py-2 text-xs font-medium text-slate-600 hover:bg-slate-50 transition-colors"
+                                  >
+                                    <Pencil className="w-3.5 h-3.5" />
+                                    Editar Template
+                                  </button>
+                                  <button
                                     onClick={() => handleRequestDeleteTemplate(tmpl)}
                                     className="w-full flex items-center gap-2 px-3 py-2 text-xs font-medium text-red-600 hover:bg-red-50 transition-colors"
                                   >
@@ -1123,7 +1194,10 @@ export default function Admissao() {
           <div className="space-y-4">
             <div className="bg-white rounded-md border border-slate-200 p-4">
               <button
-                onClick={() => setViewState('list')}
+                onClick={() => {
+                  setEditingTemplateId(null);
+                  setViewState('list');
+                }}
                 className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-700 hover:text-slate-900 transition-colors mb-4"
               >
                 <ArrowLeft className="w-4 h-4" /> Voltar
@@ -1214,7 +1288,13 @@ export default function Admissao() {
                 disabled={loading}
                 className="bg-[#ff8b00] hover:bg-[#fc9314] text-white text-xs font-semibold px-6 py-2 rounded transition-colors shadow-sm"
               >
-                {loading ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : 'Salvar Template'}
+                {loading ? (
+                  <Loader2 className="w-4 h-4 animate-spin mx-auto" />
+                ) : editingTemplateId ? (
+                  'Salvar alterações'
+                ) : (
+                  'Salvar Template'
+                )}
               </button>
             </div>
           </div>
@@ -1323,7 +1403,9 @@ export default function Admissao() {
               </button>
 
               <button
-                onClick={() => setViewState('create_template')}
+                onClick={() =>
+                  handleOpenEditTemplate(templates.find((t) => t.id === activeAdmission.template_id))
+                }
                 className="bg-[#ff8b00] hover:bg-[#fc9314] text-white text-xs font-semibold px-4 py-2 rounded transition-colors"
               >
                 Editar Template
@@ -1409,7 +1491,7 @@ export default function Admissao() {
                                   </label>
 
                                   {!item.sent ? (
-                                    item.key === 'aso' ? (
+                                    (item.managerOnly || item.key === 'aso') ? (
                                       <ManagerFileUpload
                                         fieldKey={item.key}
                                         uploading={managerUploading}
@@ -1468,7 +1550,7 @@ export default function Admissao() {
                                         </button>
                                       )}
 
-                                      {item.key === 'aso' && (
+                                      {(item.managerOnly || item.key === 'aso') && (
                                         <div className="pt-1">
                                           <ManagerFileUpload
                                             fieldKey={item.key}

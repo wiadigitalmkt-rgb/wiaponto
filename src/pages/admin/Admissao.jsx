@@ -2,7 +2,12 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import Navbar from '@/components/Navbar';
 import { supabase } from '@/lib/supabase';
-import { mapAdminStepsToWizardSteps, mapAdminStepsToAllFields, isFieldValueEmpty } from '@/lib/admissionSteps';
+import {
+  mapAdminStepsToWizardSteps,
+  mapAdminStepsToAllFields,
+  isFieldValueEmpty,
+  isFieldDynamicallyRequired,
+} from '@/lib/admissionSteps';
 import {
   Search,
   ArrowLeft,
@@ -56,7 +61,7 @@ function generateAccessCode() {
 // Upload simples usado pelo GESTOR na tela de visualização (hoje só para o
 // ASO). Diferente do FileUploadBox do colaborador: aqui não há preview de
 // arrastar-e-soltar, é só um botão que abre o seletor de arquivo do sistema.
-function ManagerFileUpload({ fieldKey, uploading, onFile, replace }) {
+function ManagerFileUpload({ fieldKey, label = 'arquivo', uploading, onFile, replace }) {
   const inputId = `manager-upload-${fieldKey}`;
   return (
     <label
@@ -64,7 +69,7 @@ function ManagerFileUpload({ fieldKey, uploading, onFile, replace }) {
       className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-lg border border-dashed border-[#ff8b00] text-[#ff8b00] hover:bg-[#ff8b00]/10 cursor-pointer transition"
     >
       {uploading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
-      {uploading ? 'Enviando...' : replace ? 'Substituir arquivo do ASO' : 'Anexar ASO (PDF ou imagem)'}
+      {uploading ? 'Enviando...' : replace ? `Substituir arquivo do ${label}` : `Anexar ${label} (PDF ou imagem)`}
       <input
         id={inputId}
         type="file"
@@ -81,11 +86,44 @@ function ManagerFileUpload({ fieldKey, uploading, onFile, replace }) {
   );
 }
 
+// Editor de texto usado pelo GESTOR na tela de visualização (hoje só para
+// "Observações Internas"). Diferente do upload: aqui é um textarea com
+// botão de salvar, não um arquivo.
+function ManagerNotesEditor({ fieldKey, value, saving, onSave }) {
+  const [text, setText] = useState(value || '');
+  const changed = text !== (value || '');
+
+  return (
+    <div className="space-y-2">
+      <textarea
+        id={`manager-notes-${fieldKey}`}
+        rows={4}
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+        placeholder="Escreva aqui observações internas sobre este colaborador (só o gestor vê)..."
+        className="w-full p-2.5 border border-slate-200 rounded-lg text-xs text-slate-700 focus:outline-none focus:border-[#ff8b00] resize-y"
+      />
+      <button
+        type="button"
+        onClick={() => onSave(text)}
+        disabled={saving || !changed}
+        className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-lg text-white disabled:opacity-50 transition"
+        style={{ background: 'linear-gradient(135deg, #fc9314, #ff8b00)' }}
+      >
+        {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : null}
+        {saving ? 'Salvando...' : 'Salvar observações'}
+      </button>
+    </div>
+  );
+}
+
 // Lista padrão de campos que todo template novo começa com. Extraída como
 // constante (em vez de só o valor inicial do useState) para poder ser
 // reaproveitada também ao EDITAR um template existente — ver
 // handleOpenEditTemplate mais abaixo.
 const DEFAULT_TEMPLATE_STEPS = [
+  { id: '21', name: 'Nome completo', type: 'campo texto', active: true },
+  { id: '22', name: 'Sexo', type: 'selecionar opção', active: true },
   { id: '2', name: 'Estado civil', type: 'selecionar opção', active: true },
   { id: '3', name: 'Telefone', type: 'campo texto', active: true },
   { id: '4', name: 'E-mail', type: 'campo texto', active: true },
@@ -99,12 +137,25 @@ const DEFAULT_TEMPLATE_STEPS = [
   { id: '12', name: 'Nacionalidade', type: 'campo texto', active: true },
   { id: '13', name: 'Naturalidade', type: 'campo texto', active: true },
   { id: '14', name: 'Grau de Instrução', type: 'selecionar opção', active: true },
-  // employeeVisible: false -> este campo nunca aparece no formulário do
-  // colaborador (mapAdminStepsToWizardSteps filtra por essa flag). É
-  // preenchido pelo gestor, no painel, depois que o exame sai.
+  // Obrigatório só para homens de 18-45 anos — a obrigatoriedade real é
+  // calculada em tempo real (ver conditionalRequired em admissionSteps.js),
+  // por isso precisa vir DEPOIS de "Sexo" e "Data de nascimento" no fluxo.
+  { id: '23', name: 'Certificado de Reservista', type: 'anexo/arquivo', active: true },
+  // employeeVisible: false -> nunca aparecem no formulário do colaborador,
+  // só o gestor preenche/edita na tela de visualização (mesmo mecanismo do
+  // ASO já usa pra upload; Observações Internas usa a versão em texto).
   { id: '15', name: 'ASO / Exame Admissional', type: 'anexo/arquivo', active: true, employeeVisible: false },
+  { id: '24', name: 'Observações Internas', type: 'campo de notas', active: true, employeeVisible: false },
   { id: '16', name: 'Vale-Transporte', type: 'selecionar opção', active: true },
   { id: '17', name: 'Dependentes', type: 'lista de dependentes', active: true },
+  // Obrigatório só se algum dependente cadastrado acima tiver menos de 14
+  // anos — por isso precisa vir DEPOIS de "Dependentes" no fluxo.
+  {
+    id: '25',
+    name: 'Certidão de Nascimento / Declaração de Matrícula',
+    type: 'anexo/arquivo',
+    active: true,
+  },
   // A partir daqui, ordem fixa e proposital: Selfie -> Documento (frente e
   // verso) -> Assinatura, sempre por último no formulário.
   { id: '1', name: 'Selfie', type: 'anexo/foto', active: true },
@@ -164,6 +215,7 @@ export default function Admissao() {
 
   // Upload do ASO feito pelo gestor na tela de visualização
   const [managerUploading, setManagerUploading] = useState(false);
+  const [savingNotes, setSavingNotes] = useState(false);
 
   // Toast simples de feedback (copiar link, etc.)
   const [toastMessage, setToastMessage] = useState('');
@@ -626,10 +678,11 @@ export default function Admissao() {
     }
   };
 
-  // Upload feito pelo GESTOR (não pelo colaborador) — usado hoje só para o
-  // ASO, que só existe depois que o colaborador já concluiu a admissão.
-  // Grava em progress_data com a mesma chave ('aso') usada no template, para
-  // reaproveitar toda a lógica de exibição/preview já existente.
+  // Upload feito pelo GESTOR (não pelo colaborador) — usado hoje para
+  // campos com employeeVisible:false do tipo arquivo (ex.: ASO), que só
+  // existem depois que o colaborador já concluiu a admissão. Grava em
+  // progress_data com a mesma chave do template, para reaproveitar toda a
+  // lógica de exibição/preview já existente.
   const handleManagerFileUpload = async (field, file) => {
     if (!activeAdmission || !file) return;
     setManagerUploading(true);
@@ -661,12 +714,40 @@ export default function Admissao() {
       setAdmissions((prev) =>
         prev.map((a) => (a.id === activeAdmission.id ? { ...a, progress_data: nextProgressData } : a))
       );
-      showToast('Arquivo do ASO salvo com sucesso.');
+      showToast(`Arquivo de "${field.label}" salvo com sucesso.`);
     } catch (err) {
-      console.error('Erro ao anexar ASO:', err);
-      alert('Não foi possível salvar o arquivo do ASO. Tente novamente.');
+      console.error(`Erro ao anexar arquivo de "${field.label}":`, err);
+      alert('Não foi possível salvar o arquivo. Tente novamente.');
     } finally {
       setManagerUploading(false);
+    }
+  };
+
+  // Mesma ideia do upload acima, mas para campos de TEXTO que só o gestor
+  // preenche (hoje, só "Observações Internas"). Grava a string direto em
+  // progress_data, sem passar pelo Storage.
+  const handleManagerNotesSave = async (field, text) => {
+    if (!activeAdmission) return;
+    setSavingNotes(true);
+    try {
+      const nextProgressData = { ...(activeAdmission.progress_data || {}), [field.key]: text };
+
+      const { error } = await supabase
+        .from('employee_admissions')
+        .update({ progress_data: nextProgressData, updated_at: new Date().toISOString() })
+        .eq('id', activeAdmission.id);
+      if (error) throw error;
+
+      setActiveAdmission((prev) => (prev ? { ...prev, progress_data: nextProgressData } : prev));
+      setAdmissions((prev) =>
+        prev.map((a) => (a.id === activeAdmission.id ? { ...a, progress_data: nextProgressData } : a))
+      );
+      showToast('Observações salvas com sucesso.');
+    } catch (err) {
+      console.error('Erro ao salvar observações internas:', err);
+      alert('Não foi possível salvar as observações. Tente novamente.');
+    } finally {
+      setSavingNotes(false);
     }
   };
 
@@ -1270,11 +1351,16 @@ export default function Admissao() {
               </div>
 
               <div className="divide-y divide-slate-100">
-                {templateSteps.map((step) => (
+                {templateSteps.map((step, index) => (
                   <div key={step.id} className="py-3 flex justify-between items-center text-xs">
                     <div>
-                      <span className="font-bold text-slate-800">{step.id}. {step.name}</span>
+                      <span className="font-bold text-slate-800">{index + 1}. {step.name}</span>
                       <span className="text-slate-500 ml-2">- {step.type}</span>
+                      {step.employeeVisible === false && (
+                        <span className="ml-2 text-[10px] font-semibold text-slate-400 uppercase tracking-wide">
+                          (só o gestor preenche)
+                        </span>
+                      )}
                     </div>
                     <label className="relative inline-flex items-center cursor-pointer">
                       <input
@@ -1294,9 +1380,12 @@ export default function Admissao() {
             {/* CARD CAMPOS ADICIONAIS */}
             <div className="bg-white rounded-md border border-slate-200 p-6 space-y-4">
               <div>
-                <h3 className="font-bold text-sm text-slate-800">Campos Adicionais</h3>
+                <h3 className="font-bold text-sm text-slate-800">Campo de Notas</h3>
                 <p className="text-xs text-slate-500 mt-0.5">
-                  Campos adicionais alteram dados no perfil do usuário
+                  Precisa de outro campo além dos padrões? Crie aqui. Para anotações internas sobre o
+                  colaborador (que só o gestor vê, nunca o colaborador), use o campo{' '}
+                  <strong>"Observações Internas"</strong> na lista de "Informações de cadastro (Padrão)"
+                  acima — ele já vem pronto pra isso.
                 </p>
               </div>
 
@@ -1510,6 +1599,14 @@ export default function Admissao() {
                           const signedUrl =
                             cachedSigned && cachedSigned.expiresAt > Date.now() ? cachedSigned.url : null;
                           const loadingSignedUrl = filePath ? !!signedUrlLoading[filePath] : false;
+                          // Campos como "Certificado de Reservista" só são obrigatórios em
+                          // certos casos (ver conditionalRequired em admissionSteps.js). Se
+                          // não é obrigatório para ESTE colaborador e ele não enviou, mostra
+                          // "Não aplicável" em vez de "Não enviado" (que pareceria pendência).
+                          const notApplicable =
+                            !item.sent &&
+                            !!item.conditionalRequired &&
+                            !isFieldDynamicallyRequired(item, activeAdmission?.progress_data);
 
                           return (
                             <div key={item.key || idx} className="py-3">
@@ -1528,10 +1625,12 @@ export default function Admissao() {
 
                                 <div className="flex items-center gap-3">
                                   <span className="text-slate-500 text-[11px]">
-                                    {item.sent ? 'Enviado' : 'Não enviado'}
+                                    {item.sent ? 'Enviado' : notApplicable ? 'Não aplicável' : 'Não enviado'}
                                   </span>
                                   {item.sent ? (
                                     <CheckCircle2 className="w-4 h-4 text-[#ff8b00]" />
+                                  ) : notApplicable ? (
+                                    <CheckCircle2 className="w-4 h-4 text-slate-300" />
                                   ) : (
                                     <XCircle className="w-4 h-4 text-slate-300" />
                                   )}
@@ -1545,10 +1644,18 @@ export default function Admissao() {
                                     {item.label}
                                   </label>
 
-                                  {!item.sent ? (
-                                    (item.managerOnly || item.key === 'aso') ? (
+                                  {item.type === 'notes' ? (
+                                    <ManagerNotesEditor
+                                      fieldKey={item.key}
+                                      value={typeof item.rawValue === 'string' ? item.rawValue : ''}
+                                      saving={savingNotes}
+                                      onSave={(text) => handleManagerNotesSave(item, text)}
+                                    />
+                                  ) : !item.sent ? (
+                                    item.managerOnly ? (
                                       <ManagerFileUpload
                                         fieldKey={item.key}
+                                        label={item.label}
                                         uploading={managerUploading}
                                         onFile={(file) => handleManagerFileUpload(item, file)}
                                       />
@@ -1556,7 +1663,7 @@ export default function Admissao() {
                                       <input
                                         type="text"
                                         disabled
-                                        value="(Não enviado)"
+                                        value={notApplicable ? '(Não aplicável para este colaborador)' : '(Não enviado)'}
                                         className="w-full p-2 bg-white border border-slate-200 rounded text-xs text-slate-400"
                                       />
                                     )
@@ -1610,10 +1717,11 @@ export default function Admissao() {
                                         </button>
                                       )}
 
-                                      {(item.managerOnly || item.key === 'aso') && (
+                                      {item.managerOnly && (
                                         <div className="pt-1">
                                           <ManagerFileUpload
                                             fieldKey={item.key}
+                                            label={item.label}
                                             uploading={managerUploading}
                                             onFile={(file) => handleManagerFileUpload(item, file)}
                                             replace

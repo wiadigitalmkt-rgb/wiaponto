@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
-import { mapAdminStepsToWizardSteps } from '@/lib/admissionSteps';
+import { mapAdminStepsToWizardSteps, isFieldDynamicallyRequired } from '@/lib/admissionSteps';
 import {
   Loader2,
   CheckCircle2,
@@ -269,7 +269,8 @@ export default function PreencherAdmissao({ admissionId: admissionIdProp }) {
   function validateStep(stepToValidate) {
     const errs = {};
     (stepToValidate.fields || []).forEach((field) => {
-      if (field.required && isValueEmpty(formData[field.key])) {
+      const required = field.required || isFieldDynamicallyRequired(field, formData);
+      if (required && isValueEmpty(formData[field.key])) {
         errs[field.key] = 'Campo obrigatório.';
       }
     });
@@ -545,6 +546,7 @@ export default function PreencherAdmissao({ admissionId: admissionIdProp }) {
                   value={formData[field.key]}
                   error={fieldErrors[field.key]}
                   uploading={uploadingKey === field.key}
+                  required={field.required || isFieldDynamicallyRequired(field, formData)}
                   onChange={(val) => updateField(field.key, val)}
                   onFile={(file) => handleFileSelect(field, file)}
                   onRemoveFile={() => removeFile(field)}
@@ -607,16 +609,17 @@ export default function PreencherAdmissao({ admissionId: admissionIdProp }) {
 // ---------------------------------------------------------------------------
 // RENDERIZADOR DE CAMPOS — decide o input certo a partir de field.type
 // ---------------------------------------------------------------------------
-function FieldRenderer({ field, value, error, uploading, onChange, onFile, onRemoveFile }) {
+function FieldRenderer({ field, value, error, uploading, required, onChange, onFile, onRemoveFile }) {
   const Icon = getFieldIcon(field);
   const isWide = field.type === 'textarea' || field.type === 'file' || field.type === 'photo' || field.type === 'dependents' || field.type === 'signature';
+  const isRequired = required ?? field.required;
 
   return (
     <div className={isWide ? 'sm:col-span-2' : ''}>
       <label className="flex items-center gap-1.5 text-sm font-medium text-slate-700 mb-1.5">
         <Icon className="w-3.5 h-3.5 text-slate-400" />
         {field.label}
-        {field.required && <span style={{ color: '#ff8b00' }}>*</span>}
+        {isRequired && <span style={{ color: '#ff8b00' }}>*</span>}
       </label>
 
       {renderInput(field, value, onChange, onFile, onRemoveFile, uploading)}

@@ -14,8 +14,42 @@ import {
   MoreHorizontal,
   Loader2,
   Link as LinkIcon,
-  Share2
+  Share2,
+  FileText,
+  ExternalLink,
+  Trash2,
+  AlertTriangle,
 } from 'lucide-react';
+
+// Mesmo bucket usado em PreencherAdmissao.jsx para o upload de selfie/anexos.
+const STORAGE_BUCKET = 'admissao-documentos';
+
+const IMAGE_EXT_REGEX = /\.(jpe?g|png|gif|webp|bmp|heic)(\?.*)?$/i;
+
+// Um valor de campo de anexo pode ser: { url, path, name, type } (formato
+// gravado pelo upload em PreencherAdmissao.jsx). Considera "imagem" quando o
+// campo é do tipo foto, ou quando o arquivo anexado é uma imagem (pelo
+// mime-type salvo ou pela extensão da URL/nome).
+function isImageLikeValue(field, value) {
+  if (!value || typeof value !== 'object') return false;
+  if (field?.type === 'photo') return true;
+  const mime = value.type || '';
+  const nameOrUrl = value.name || value.url || value.path || '';
+  return mime.startsWith('image/') || IMAGE_EXT_REGEX.test(nameOrUrl);
+}
+
+// Gera a URL pública a partir do path salvo no Storage, caso a URL não
+// tenha sido gravada junto (fallback defensivo — normalmente `value.url`
+// já vem pronto do upload feito em PreencherAdmissao.jsx).
+function resolveFileUrl(value) {
+  if (!value || typeof value !== 'object') return null;
+  if (value.url) return value.url;
+  if (value.path) {
+    const { data } = supabase.storage.from(STORAGE_BUCKET).getPublicUrl(value.path);
+    return data?.publicUrl || null;
+  }
+  return null;
+}
 
 export default function Admissao() {
   const navigate = useNavigate();
@@ -50,11 +84,27 @@ export default function Admissao() {
     { id: '7', name: 'Endereço', type: 'campo texto', active: true },
     { id: '8', name: 'Dados bancários', type: 'campo texto', active: true },
     { id: '9', name: 'Data de nascimento', type: 'campo data', active: true },
+    { id: '10', name: 'CPF', type: 'campo texto', active: true },
+    { id: '11', name: 'Nome da Mãe', type: 'campo texto', active: true },
+    { id: '12', name: 'Nacionalidade', type: 'campo texto', active: true },
+    { id: '13', name: 'Naturalidade', type: 'campo texto', active: true },
+    { id: '14', name: 'Grau de Instrução', type: 'selecionar opção', active: true },
+    // employeeVisible: false -> este campo nunca aparece no formulário do
+    // colaborador (mapAdminStepsToWizardSteps filtra por essa flag). É
+    // preenchido pelo gestor, no painel, depois que o exame sai.
+    { id: '15', name: 'ASO / Exame Admissional', type: 'anexo/arquivo', active: true, employeeVisible: false },
+    { id: '16', name: 'Vale-Transporte', type: 'selecionar opção', active: true },
+    { id: '17', name: 'Dependentes', type: 'lista de dependentes', active: true },
   ]);
   const [customSteps, setCustomSteps] = useState([]);
 
   // Accordion do modo Visualização
   const [expandedField, setExpandedField] = useState(null);
+
+  // Menu de ações (⋯) por linha de template, e modal de confirmação de exclusão
+  const [openTemplateMenuId, setOpenTemplateMenuId] = useState(null);
+  const [templateToDelete, setTemplateToDelete] = useState(null);
+  const [deletingTemplate, setDeletingTemplate] = useState(false);
 
   // Toast simples de feedback (copiar link, etc.)
   const [toastMessage, setToastMessage] = useState('');
@@ -167,6 +217,35 @@ export default function Admissao() {
       console.error(err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Abre o modal de confirmação (chamado a partir do menu ⋯ de cada linha)
+  const handleRequestDeleteTemplate = (tmpl) => {
+    setOpenTemplateMenuId(null);
+    setTemplateToDelete(tmpl);
+  };
+
+  // Confirmação efetiva: apaga no Supabase e remove do estado local (sem F5)
+  const handleConfirmDeleteTemplate = async () => {
+    if (!templateToDelete) return;
+    setDeletingTemplate(true);
+    try {
+      const { error } = await supabase
+        .from('admission_templates')
+        .delete()
+        .eq('id', templateToDelete.id);
+
+      if (error) throw error;
+
+      setTemplates((prev) => prev.filter((t) => t.id !== templateToDelete.id));
+      showToast('Template excluído com sucesso.');
+      setTemplateToDelete(null);
+    } catch (err) {
+      console.error('Erro ao excluir template:', err);
+      alert('Não foi possível excluir o template. Tente novamente.');
+    } finally {
+      setDeletingTemplate(false);
     }
   };
 
@@ -592,10 +671,34 @@ export default function Admissao() {
                         <tr key={tmpl.id} className="hover:bg-slate-50 transition-colors">
                           <td className="py-3.5 px-6 font-bold text-slate-800">{tmpl.title}</td>
                           <td className="py-3.5 px-6 text-slate-600">{formatDate(tmpl.created_at)}</td>
-                          <td className="py-3.5 px-4 text-center">
-                            <button className="p-1 hover:bg-slate-100 rounded text-slate-500">
+                          <td className="py-3.5 px-4 text-center relative">
+                            <button
+                              onClick={() =>
+                                setOpenTemplateMenuId((prev) => (prev === tmpl.id ? null : tmpl.id))
+                              }
+                              className="p-1 hover:bg-slate-100 rounded text-slate-500"
+                            >
                               <MoreHorizontal className="w-4 h-4" />
                             </button>
+
+                            {openTemplateMenuId === tmpl.id && (
+                              <>
+                                {/* Camada para fechar o menu ao clicar fora */}
+                                <div
+                                  className="fixed inset-0 z-10"
+                                  onClick={() => setOpenTemplateMenuId(null)}
+                                />
+                                <div className="absolute right-4 top-full mt-1 z-20 w-44 bg-white border border-slate-200 rounded-md shadow-lg py-1 text-left">
+                                  <button
+                                    onClick={() => handleRequestDeleteTemplate(tmpl)}
+                                    className="w-full flex items-center gap-2 px-3 py-2 text-xs font-medium text-red-600 hover:bg-red-50 transition-colors"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                    Excluir Template
+                                  </button>
+                                </div>
+                              </>
+                            )}
                           </td>
                         </tr>
                       ))
@@ -966,7 +1069,9 @@ export default function Admissao() {
                 const sent = !isFieldValueEmpty(value);
                 const displayValue =
                   value && typeof value === 'object' ? value.name || value.url : value;
-                return { ...field, sent, displayValue };
+                const isImage = sent && isImageLikeValue(field, value);
+                const resolvedUrl = sent ? resolveFileUrl(value) : null;
+                return { ...field, sent, displayValue, rawValue: value, isImage, resolvedUrl };
               });
               const sentCount = fieldItems.filter((f) => f.sent).length;
               const totalCount = fieldItems.length || 1;
@@ -1035,12 +1140,70 @@ export default function Admissao() {
                                 <label className="block text-[11px] font-semibold text-slate-600">
                                   {item.label}
                                 </label>
-                                <input
-                                  type="text"
-                                  disabled
-                                  value={item.sent ? item.displayValue : '(Não enviado)'}
-                                  className="w-full p-2 bg-white border border-slate-200 rounded text-xs text-slate-400"
-                                />
+
+                                {!item.sent ? (
+                                  <input
+                                    type="text"
+                                    disabled
+                                    value="(Não enviado)"
+                                    className="w-full p-2 bg-white border border-slate-200 rounded text-xs text-slate-400"
+                                  />
+                                ) : item.isImage && item.resolvedUrl ? (
+                                  <div className="flex items-center gap-3">
+                                    <img
+                                      src={item.resolvedUrl}
+                                      alt={item.label}
+                                      className="w-24 h-24 rounded-lg object-cover border border-slate-200"
+                                    />
+                                    <a
+                                      href={item.resolvedUrl}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-[#ff8b00] hover:underline"
+                                    >
+                                      <ExternalLink className="w-3.5 h-3.5" />
+                                      Abrir em tamanho real
+                                    </a>
+                                  </div>
+                                ) : item.resolvedUrl ? (
+                                  <a
+                                    href={item.resolvedUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="inline-flex items-center gap-1.5 text-xs font-medium text-[#ff8b00] hover:underline"
+                                  >
+                                    <FileText className="w-3.5 h-3.5" />
+                                    {item.displayValue || 'Abrir arquivo'}
+                                  </a>
+                                ) : Array.isArray(item.rawValue) ? (
+                                  item.rawValue.length === 0 ? (
+                                    <p className="text-xs text-slate-400">Nenhum dependente informado.</p>
+                                  ) : (
+                                    <ul className="space-y-1">
+                                      {item.rawValue.map((dep, depIdx) => (
+                                        <li
+                                          key={depIdx}
+                                          className="text-xs text-slate-600 bg-white border border-slate-200 rounded px-2 py-1.5"
+                                        >
+                                          <span className="font-semibold text-slate-800">
+                                            {dep.name || 'Sem nome'}
+                                          </span>
+                                          {dep.cpf && <span className="text-slate-400"> — CPF: {dep.cpf}</span>}
+                                          {dep.birth_date && (
+                                            <span className="text-slate-400"> — Nasc.: {dep.birth_date}</span>
+                                          )}
+                                        </li>
+                                      ))}
+                                    </ul>
+                                  )
+                                ) : (
+                                  <input
+                                    type="text"
+                                    disabled
+                                    value={item.displayValue ?? ''}
+                                    className="w-full p-2 bg-white border border-slate-200 rounded text-xs text-slate-400"
+                                  />
+                                )}
                               </div>
                             )}
                           </div>
@@ -1054,6 +1217,42 @@ export default function Admissao() {
           </div>
         )}
       </main>
+
+      {/* MODAL DE CONFIRMAÇÃO — EXCLUIR TEMPLATE */}
+      {templateToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-sm w-full p-6">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="w-10 h-10 rounded-full bg-red-50 flex items-center justify-center shrink-0">
+                <AlertTriangle className="w-5 h-5 text-red-500" />
+              </div>
+              <h3 className="font-bold text-sm text-slate-800">Excluir template?</h3>
+            </div>
+            <p className="text-xs text-slate-500 mb-6">
+              Tem certeza que deseja excluir o template{' '}
+              <span className="font-semibold text-slate-700">"{templateToDelete.title}"</span>? Essa
+              ação não pode ser desfeita.
+            </p>
+            <div className="flex justify-end gap-2">
+              <button
+                onClick={() => setTemplateToDelete(null)}
+                disabled={deletingTemplate}
+                className="px-4 py-2 rounded text-xs font-semibold text-slate-600 border border-slate-200 hover:bg-slate-50 transition-colors disabled:opacity-50"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleConfirmDeleteTemplate}
+                disabled={deletingTemplate}
+                className="px-4 py-2 rounded text-xs font-semibold text-white bg-red-600 hover:bg-red-700 transition-colors disabled:opacity-70 flex items-center gap-1.5"
+              >
+                {deletingTemplate ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
+                Excluir
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* TOAST DE FEEDBACK */}
       {toastMessage && (

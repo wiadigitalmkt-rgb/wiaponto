@@ -1541,7 +1541,12 @@ export default function Admissao() {
                                         <button
                                           type="button"
                                           onClick={() =>
-                                            setPreviewModal({ url: signedUrl, label: item.displayValue || item.label, isFile: true })
+                                            setPreviewModal({
+                                              url: signedUrl,
+                                              label: item.displayValue || item.label,
+                                              isFile: true,
+                                              mime: item.rawValue?.type || '',
+                                            })
                                           }
                                           className="inline-flex items-center gap-1.5 text-xs font-medium text-[#ff8b00] hover:underline"
                                         >
@@ -1701,19 +1706,45 @@ export default function Admissao() {
             </button>
 
             {previewModal.isFile ? (
-              <div className="bg-white rounded-lg p-8 text-center max-w-sm mx-auto">
-                <FileText className="w-10 h-10 mx-auto text-slate-400 mb-3" />
-                <p className="text-sm text-slate-700 font-medium mb-1 break-all">{previewModal.label}</p>
-                <p className="text-xs text-slate-400 mb-4">O link expira em 1 hora por segurança.</p>
-                <a
-                  href={previewModal.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1.5 text-sm font-semibold text-white px-4 py-2 rounded-lg bg-[#ff8b00] hover:bg-[#fc9314] transition-colors"
-                >
-                  Abrir arquivo
-                </a>
-              </div>
+              previewModal.mime === 'application/pdf' || /\.pdf(\?.*)?$/i.test(previewModal.url) ? (
+                <div className="bg-white rounded-lg overflow-hidden" style={{ height: '85vh' }}>
+                  <div className="flex items-center justify-between px-4 py-2 border-b border-slate-100">
+                    <p className="text-xs font-medium text-slate-600 truncate pr-4">{previewModal.label}</p>
+                    <a
+                      href={previewModal.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-[11px] font-medium text-[#ff8b00] hover:underline shrink-0"
+                    >
+                      Abrir em nova aba
+                    </a>
+                  </div>
+                  {/* Embutido via iframe (não navega a aba pra URL assinada,
+                      então o link não fica visível/copiável na barra de
+                      endereço). O link ainda expira em 1h por segurança. */}
+                  <iframe
+                    src={previewModal.url}
+                    title={previewModal.label}
+                    className="w-full h-full border-0"
+                  />
+                </div>
+              ) : (
+                <div className="bg-white rounded-lg p-8 text-center max-w-sm mx-auto">
+                  <FileText className="w-10 h-10 mx-auto text-slate-400 mb-3" />
+                  <p className="text-sm text-slate-700 font-medium mb-1 break-all">{previewModal.label}</p>
+                  <p className="text-xs text-slate-400 mb-4">
+                    Esse tipo de arquivo não tem preview embutido. O link expira em 1 hora por segurança.
+                  </p>
+                  <a
+                    href={previewModal.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 text-sm font-semibold text-white px-4 py-2 rounded-lg bg-[#ff8b00] hover:bg-[#fc9314] transition-colors"
+                  >
+                    Abrir arquivo
+                  </a>
+                </div>
+              )
             ) : (
               <img
                 src={previewModal.url}

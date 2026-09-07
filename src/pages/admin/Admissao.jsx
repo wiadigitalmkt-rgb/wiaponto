@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import Navbar from '@/components/Navbar';
 import { supabase } from '@/lib/supabase';
@@ -19,6 +19,7 @@ import {
   ExternalLink,
   Trash2,
   AlertTriangle,
+  X,
 } from 'lucide-react';
 
 // Mesmo bucket usado em PreencherAdmissao.jsx para o upload de selfie/anexos.
@@ -38,18 +39,9 @@ function isImageLikeValue(field, value) {
   return mime.startsWith('image/') || IMAGE_EXT_REGEX.test(nameOrUrl);
 }
 
-// Gera a URL pública a partir do path salvo no Storage, caso a URL não
-// tenha sido gravada junto (fallback defensivo — normalmente `value.url`
-// já vem pronto do upload feito em PreencherAdmissao.jsx).
-function resolveFileUrl(value) {
-  if (!value || typeof value !== 'object') return null;
-  if (value.url) return value.url;
-  if (value.path) {
-    const { data } = supabase.storage.from(STORAGE_BUCKET).getPublicUrl(value.path);
-    return data?.publicUrl || null;
-  }
-  return null;
-}
+// Duração da URL temporária de acesso aos arquivos (em segundos). Documentos
+// de admissão são dados pessoais (LGPD) — nunca expostos por URL pública.
+const SIGNED_URL_TTL_SECONDS = 3600; // 1 hora
 
 export default function Admissao() {
   const navigate = useNavigate();
@@ -105,6 +97,12 @@ export default function Admissao() {
   const [openTemplateMenuId, setOpenTemplateMenuId] = useState(null);
   const [templateToDelete, setTemplateToDelete] = useState(null);
   const [deletingTemplate, setDeletingTemplate] = useState(false);
+
+  // Signed URLs (temporárias) dos arquivos de admissão, por `path`, e modal
+  // de preview de imagem/documento na tela de visualização do gestor.
+  const [signedUrls, setSignedUrls] = useState({}); // { [path]: { url, expiresAt } }
+  const [signedUrlLoading, setSignedUrlLoading] = useState({}); // { [path]: boolean }
+  const [previewModal, setPreviewModal] = useState(null); // { url, label, isFile? } | null
 
   // Toast simples de feedback (copiar link, etc.)
   const [toastMessage, setToastMessage] = useState('');
@@ -343,8 +341,72 @@ export default function Admissao() {
 
   const handleOpenAdmissionView = (adm) => {
     setActiveAdmission(adm);
+    setExpandedField(null);
     setViewState('view_admission');
   };
+
+  // Gera (ou reaproveita, se ainda válida) uma Signed URL para o arquivo no
+  // Storage. Nunca usamos getPublicUrl aqui — os documentos de admissão são
+  // dados pessoais e o bucket deve estar configurado como privado.
+  const ensureSignedUrl = async (path) => {
+    if (!path) return null;
+    const cached = signedUrls[path];
+    if (cached && cached.expiresAt > Date.now()) return cached.url;
+
+    setSignedUrlLoading((prev) => ({ ...prev, [path]: true }));
+    try {
+      const { data, error } = await supabase.storage
+        .from(STORAGE_BUCKET)
+        .createSignedUrl(path, SIGNED_URL_TTL_SECONDS);
+      if (error) throw error;
+
+      const url = data?.signedUrl || null;
+      if (url) {
+        // Guarda com uma margem de segurança de 60s antes do vencimento real,
+        // para nunca usar uma URL que expire "no fio" durante o preview.
+        setSignedUrls((prev) => ({
+          ...prev,
+          [path]: { url, expiresAt: Date.now() + (SIGNED_URL_TTL_SECONDS - 60) * 1000 },
+        }));
+      }
+      return url;
+    } catch (err) {
+      console.error('Erro ao gerar link temporário do arquivo:', err);
+      return null;
+    } finally {
+      setSignedUrlLoading((prev) => ({ ...prev, [path]: false }));
+    }
+  };
+
+  // Deriva a lista de campos e o status "enviado/não enviado" da admissão
+  // aberta, a partir do snapshot em template_steps e das respostas em
+  // progress_data. Usado tanto na barra de progresso quanto na lista
+  // expansível de campos.
+  const admissionFieldItems = useMemo(() => {
+    if (!activeAdmission) return [];
+    const admissionFields = (activeAdmission.template_steps || []).flatMap((s) => s.fields || []);
+    const progressData = activeAdmission.progress_data || {};
+    return admissionFields.map((field) => {
+      const value = progressData[field.key];
+      const sent = !isFieldValueEmpty(value);
+      const displayValue = value && typeof value === 'object' ? value.name || value.url : value;
+      const isImage = sent && isImageLikeValue(field, value);
+      return { ...field, sent, displayValue, rawValue: value, isImage };
+    });
+  }, [activeAdmission]);
+
+  // Assim que o gestor expande um campo de arquivo/foto, já dispara a
+  // geração da Signed URL (em vez de esperar um clique extra).
+  useEffect(() => {
+    if (expandedField === null) return;
+    const item = admissionFieldItems[expandedField];
+    const path = item?.rawValue?.path;
+    if (!path) return;
+    const cached = signedUrls[path];
+    if (cached && cached.expiresAt > Date.now()) return;
+    ensureSignedUrl(path);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [expandedField, admissionFieldItems]);
 
   const getAdmissionLink = (adm) => `${window.location.origin}/preencher-admissao/${adm.id}`;
 
@@ -1057,25 +1119,11 @@ export default function Admissao() {
             </div>
 
             {(() => {
-              // Deriva a lista de campos e o status "enviado/não enviado"
-              // diretamente do snapshot gravado em template_steps e das
-              // respostas em progress_data — nada de dados mockados.
-              const admissionFields = (activeAdmission.template_steps || []).flatMap(
-                (s) => s.fields || []
-              );
-              const progressData = activeAdmission.progress_data || {};
-              const fieldItems = admissionFields.map((field) => {
-                const value = progressData[field.key];
-                const sent = !isFieldValueEmpty(value);
-                const displayValue =
-                  value && typeof value === 'object' ? value.name || value.url : value;
-                const isImage = sent && isImageLikeValue(field, value);
-                const resolvedUrl = sent ? resolveFileUrl(value) : null;
-                return { ...field, sent, displayValue, rawValue: value, isImage, resolvedUrl };
-              });
+              // admissionFieldItems já vem calculado no topo do componente
+              // (useMemo), reaproveitado aqui e na tabela da listagem.
+              const fieldItems = admissionFieldItems;
               const sentCount = fieldItems.filter((f) => f.sent).length;
-              const totalCount = fieldItems.length || 1;
-              const progressPercent = Math.round((sentCount / totalCount) * 100);
+              const progressPercent = Math.round((sentCount / (fieldItems.length || 1)) * 100);
 
               return (
                 <>
@@ -1107,107 +1155,131 @@ export default function Admissao() {
                       </p>
                     ) : (
                       <div className="divide-y divide-slate-100 border-t border-slate-100">
-                        {fieldItems.map((item, idx) => (
-                          <div key={item.key || idx} className="py-3">
-                            <div
-                              onClick={() => setExpandedField(expandedField === idx ? null : idx)}
-                              className="flex justify-between items-center text-xs cursor-pointer hover:bg-slate-50/50 p-1 rounded"
-                            >
-                              <div className="flex items-center gap-2">
-                                {expandedField === idx ? (
-                                  <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
-                                ) : (
-                                  <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
-                                )}
-                                <span className="font-bold text-slate-800">{item.label}</span>
-                              </div>
+                        {fieldItems.map((item, idx) => {
+                          const filePath = item.rawValue?.path;
+                          const cachedSigned = filePath ? signedUrls[filePath] : null;
+                          const signedUrl =
+                            cachedSigned && cachedSigned.expiresAt > Date.now() ? cachedSigned.url : null;
+                          const loadingSignedUrl = filePath ? !!signedUrlLoading[filePath] : false;
 
-                              <div className="flex items-center gap-3">
-                                <span className="text-slate-500 text-[11px]">
-                                  {item.sent ? 'Enviado' : 'Não enviado'}
-                                </span>
-                                {item.sent ? (
-                                  <CheckCircle2 className="w-4 h-4 text-[#ff8b00]" />
-                                ) : (
-                                  <XCircle className="w-4 h-4 text-slate-300" />
-                                )}
-                                <MoreHorizontal className="w-4 h-4 text-slate-400" />
-                              </div>
-                            </div>
-
-                            {expandedField === idx && (
-                              <div className="mt-3 ml-6 p-4 bg-slate-50 border border-slate-100 rounded space-y-2">
-                                <label className="block text-[11px] font-semibold text-slate-600">
-                                  {item.label}
-                                </label>
-
-                                {!item.sent ? (
-                                  <input
-                                    type="text"
-                                    disabled
-                                    value="(Não enviado)"
-                                    className="w-full p-2 bg-white border border-slate-200 rounded text-xs text-slate-400"
-                                  />
-                                ) : item.isImage && item.resolvedUrl ? (
-                                  <div className="flex items-center gap-3">
-                                    <img
-                                      src={item.resolvedUrl}
-                                      alt={item.label}
-                                      className="w-24 h-24 rounded-lg object-cover border border-slate-200"
-                                    />
-                                    <a
-                                      href={item.resolvedUrl}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                      className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-[#ff8b00] hover:underline"
-                                    >
-                                      <ExternalLink className="w-3.5 h-3.5" />
-                                      Abrir em tamanho real
-                                    </a>
-                                  </div>
-                                ) : item.resolvedUrl ? (
-                                  <a
-                                    href={item.resolvedUrl}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="inline-flex items-center gap-1.5 text-xs font-medium text-[#ff8b00] hover:underline"
-                                  >
-                                    <FileText className="w-3.5 h-3.5" />
-                                    {item.displayValue || 'Abrir arquivo'}
-                                  </a>
-                                ) : Array.isArray(item.rawValue) ? (
-                                  item.rawValue.length === 0 ? (
-                                    <p className="text-xs text-slate-400">Nenhum dependente informado.</p>
+                          return (
+                            <div key={item.key || idx} className="py-3">
+                              <div
+                                onClick={() => setExpandedField(expandedField === idx ? null : idx)}
+                                className="flex justify-between items-center text-xs cursor-pointer hover:bg-slate-50/50 p-1 rounded"
+                              >
+                                <div className="flex items-center gap-2">
+                                  {expandedField === idx ? (
+                                    <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
                                   ) : (
-                                    <ul className="space-y-1">
-                                      {item.rawValue.map((dep, depIdx) => (
-                                        <li
-                                          key={depIdx}
-                                          className="text-xs text-slate-600 bg-white border border-slate-200 rounded px-2 py-1.5"
-                                        >
-                                          <span className="font-semibold text-slate-800">
-                                            {dep.name || 'Sem nome'}
-                                          </span>
-                                          {dep.cpf && <span className="text-slate-400"> — CPF: {dep.cpf}</span>}
-                                          {dep.birth_date && (
-                                            <span className="text-slate-400"> — Nasc.: {dep.birth_date}</span>
-                                          )}
-                                        </li>
-                                      ))}
-                                    </ul>
-                                  )
-                                ) : (
-                                  <input
-                                    type="text"
-                                    disabled
-                                    value={item.displayValue ?? ''}
-                                    className="w-full p-2 bg-white border border-slate-200 rounded text-xs text-slate-400"
-                                  />
-                                )}
+                                    <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
+                                  )}
+                                  <span className="font-bold text-slate-800">{item.label}</span>
+                                </div>
+
+                                <div className="flex items-center gap-3">
+                                  <span className="text-slate-500 text-[11px]">
+                                    {item.sent ? 'Enviado' : 'Não enviado'}
+                                  </span>
+                                  {item.sent ? (
+                                    <CheckCircle2 className="w-4 h-4 text-[#ff8b00]" />
+                                  ) : (
+                                    <XCircle className="w-4 h-4 text-slate-300" />
+                                  )}
+                                  <MoreHorizontal className="w-4 h-4 text-slate-400" />
+                                </div>
                               </div>
-                            )}
-                          </div>
-                        ))}
+
+                              {expandedField === idx && (
+                                <div className="mt-3 ml-6 p-4 bg-slate-50 border border-slate-100 rounded space-y-2">
+                                  <label className="block text-[11px] font-semibold text-slate-600">
+                                    {item.label}
+                                  </label>
+
+                                  {!item.sent ? (
+                                    <input
+                                      type="text"
+                                      disabled
+                                      value="(Não enviado)"
+                                      className="w-full p-2 bg-white border border-slate-200 rounded text-xs text-slate-400"
+                                    />
+                                  ) : filePath ? (
+                                    loadingSignedUrl && !signedUrl ? (
+                                      <div className="flex items-center gap-2 text-xs text-slate-400 py-1">
+                                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                        Gerando link seguro...
+                                      </div>
+                                    ) : !signedUrl ? (
+                                      <button
+                                        type="button"
+                                        onClick={() => ensureSignedUrl(filePath)}
+                                        className="text-xs font-medium text-[#ff8b00] hover:underline"
+                                      >
+                                        Gerar link para visualizar
+                                      </button>
+                                    ) : item.isImage ? (
+                                      <div className="flex items-center gap-3">
+                                        <img
+                                          src={signedUrl}
+                                          alt={item.label}
+                                          onClick={() => setPreviewModal({ url: signedUrl, label: item.label })}
+                                          className="w-24 h-24 rounded-lg object-cover border border-slate-200 cursor-pointer hover:opacity-90 transition"
+                                        />
+                                        <button
+                                          type="button"
+                                          onClick={() => setPreviewModal({ url: signedUrl, label: item.label })}
+                                          className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-[#ff8b00] hover:underline"
+                                        >
+                                          <ExternalLink className="w-3.5 h-3.5" />
+                                          Abrir em tamanho real
+                                        </button>
+                                      </div>
+                                    ) : (
+                                      <button
+                                        type="button"
+                                        onClick={() =>
+                                          setPreviewModal({ url: signedUrl, label: item.displayValue || item.label, isFile: true })
+                                        }
+                                        className="inline-flex items-center gap-1.5 text-xs font-medium text-[#ff8b00] hover:underline"
+                                      >
+                                        <FileText className="w-3.5 h-3.5" />
+                                        {item.displayValue || 'Abrir arquivo'}
+                                      </button>
+                                    )
+                                  ) : Array.isArray(item.rawValue) ? (
+                                    item.rawValue.length === 0 ? (
+                                      <p className="text-xs text-slate-400">Nenhum dependente informado.</p>
+                                    ) : (
+                                      <ul className="space-y-1">
+                                        {item.rawValue.map((dep, depIdx) => (
+                                          <li
+                                            key={depIdx}
+                                            className="text-xs text-slate-600 bg-white border border-slate-200 rounded px-2 py-1.5"
+                                          >
+                                            <span className="font-semibold text-slate-800">
+                                              {dep.name || 'Sem nome'}
+                                            </span>
+                                            {dep.cpf && <span className="text-slate-400"> — CPF: {dep.cpf}</span>}
+                                            {dep.birth_date && (
+                                              <span className="text-slate-400"> — Nasc.: {dep.birth_date}</span>
+                                            )}
+                                          </li>
+                                        ))}
+                                      </ul>
+                                    )
+                                  ) : (
+                                    <input
+                                      type="text"
+                                      disabled
+                                      value={item.displayValue ?? ''}
+                                      className="w-full p-2 bg-white border border-slate-200 rounded text-xs text-slate-400"
+                                    />
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
                       </div>
                     )}
                   </div>
@@ -1250,6 +1322,47 @@ export default function Admissao() {
                 Excluir
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL DE PREVIEW — FOTO/DOCUMENTO DA ADMISSÃO (via Signed URL) */}
+      {previewModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4"
+          onClick={() => setPreviewModal(null)}
+        >
+          <div className="relative max-w-3xl w-full" onClick={(e) => e.stopPropagation()}>
+            <button
+              type="button"
+              onClick={() => setPreviewModal(null)}
+              aria-label="Fechar"
+              className="absolute -top-10 right-0 sm:top-3 sm:right-3 p-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition sm:z-10"
+            >
+              <X className="w-6 h-6" />
+            </button>
+
+            {previewModal.isFile ? (
+              <div className="bg-white rounded-lg p-8 text-center max-w-sm mx-auto">
+                <FileText className="w-10 h-10 mx-auto text-slate-400 mb-3" />
+                <p className="text-sm text-slate-700 font-medium mb-1 break-all">{previewModal.label}</p>
+                <p className="text-xs text-slate-400 mb-4">O link expira em 1 hora por segurança.</p>
+                <a
+                  href={previewModal.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 text-sm font-semibold text-white px-4 py-2 rounded-lg bg-[#ff8b00] hover:bg-[#00897b] transition-colors"
+                >
+                  Abrir arquivo
+                </a>
+              </div>
+            ) : (
+              <img
+                src={previewModal.url}
+                alt={previewModal.label}
+                className="w-full max-h-[85vh] object-contain rounded-lg bg-white"
+              />
+            )}
           </div>
         </div>
       )}

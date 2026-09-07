@@ -22,6 +22,7 @@ import {
   Plus,
   Trash2,
   Lock,
+  PenLine,
 } from 'lucide-react';
 
 // ---------------------------------------------------------------------------
@@ -55,6 +56,7 @@ const ICON_BY_TYPE = {
   photo: Camera,
   checkbox: CheckSquare,
   dependents: Users,
+  signature: PenLine,
 };
 
 function getFieldIcon(field) {
@@ -63,7 +65,11 @@ function getFieldIcon(field) {
 
 function isValueEmpty(value) {
   if (value === undefined || value === null || value === '') return true;
-  if (Array.isArray(value)) return value.length === 0;
+  // Lista vazia (ex.: "Dependentes" sem nenhum cadastrado) é uma resposta
+  // válida, não um campo em branco — só `undefined` (nunca tocado) conta
+  // como vazio. handleNext() grava explicitamente `[]` ao avançar se o
+  // colaborador não tocou no campo, pra registrar essa resposta.
+  if (Array.isArray(value)) return false;
   if (typeof value === 'object') return !value.url && !value.path;
   return false;
 }
@@ -230,6 +236,24 @@ export default function PreencherAdmissao({ admissionId: admissionIdProp }) {
         type: file.type,
         uploadedAt: new Date().toISOString(),
       });
+
+      // Assinatura: além de ficar em progress_data (como qualquer outro
+      // campo, pro gestor ver na visualização), grava o path também direto
+      // no cadastro do colaborador. É esse registro em Employees que outras
+      // partes do sistema (assinatura do contrato, espelho de ponto mensal)
+      // vão usar futuramente — não faz sentido elas terem que ir buscar
+      // dentro do JSON de uma admissão específica.
+      if (field.key === 'assinatura' && admission?.employee_id) {
+        const { error: empError } = await supabase
+          .from('Employees')
+          .update({ signature_path: path })
+          .eq('id', admission.employee_id);
+        if (empError) {
+          // Best-effort: não bloqueia o formulário do colaborador por causa
+          // disso, só loga pra investigar depois.
+          console.error('Erro ao gravar assinatura no cadastro do colaborador:', empError);
+        }
+      }
     } catch (err) {
       console.error(err);
       setFieldErrors((prev) => ({ ...prev, [field.key]: 'Falha no upload. Tente novamente.' }));
@@ -253,14 +277,14 @@ export default function PreencherAdmissao({ admissionId: admissionIdProp }) {
     return Object.keys(errs).length === 0;
   }
 
-  async function persistProgress(nextStatus) {
+  async function persistProgress(nextStatus, dataOverride) {
     setSaving(true);
     setErrorMsg('');
     try {
       const { error } = await supabase
         .from(TABLE_ADMISSIONS)
         .update({
-          progress_data: formData,
+          progress_data: dataOverride || formData,
           status: nextStatus || admission?.status || STATUS.EM_PREENCHIMENTO,
           updated_at: new Date().toISOString(),
         })
@@ -279,8 +303,22 @@ export default function PreencherAdmissao({ admissionId: admissionIdProp }) {
 
   async function handleNext() {
     if (!validateStep(step)) return;
+
+    // Campos tipo "dependents" (Dependentes) contam como respondidos mesmo
+    // com zero dependentes — uma lista vazia é uma resposta, não um campo
+    // em branco. Se o colaborador passou pela etapa sem tocar no campo,
+    // grava explicitamente uma lista vazia ao avançar.
+    const defaults = {};
+    (step.fields || []).forEach((field) => {
+      if (field.type === 'dependents' && formData[field.key] === undefined) {
+        defaults[field.key] = [];
+      }
+    });
+    const nextFormData = Object.keys(defaults).length > 0 ? { ...formData, ...defaults } : formData;
+    if (nextFormData !== formData) setFormData(nextFormData);
+
     const isLastStep = currentStep === totalSteps - 1;
-    const ok = await persistProgress(isLastStep ? STATUS.CONCLUIDO : STATUS.EM_PREENCHIMENTO);
+    const ok = await persistProgress(isLastStep ? STATUS.CONCLUIDO : STATUS.EM_PREENCHIMENTO, nextFormData);
     if (!ok) return;
     if (isLastStep) {
       setCompleted(true);
@@ -571,7 +609,7 @@ export default function PreencherAdmissao({ admissionId: admissionIdProp }) {
 // ---------------------------------------------------------------------------
 function FieldRenderer({ field, value, error, uploading, onChange, onFile, onRemoveFile }) {
   const Icon = getFieldIcon(field);
-  const isWide = field.type === 'textarea' || field.type === 'file' || field.type === 'photo' || field.type === 'dependents';
+  const isWide = field.type === 'textarea' || field.type === 'file' || field.type === 'photo' || field.type === 'dependents' || field.type === 'signature';
 
   return (
     <div className={isWide ? 'sm:col-span-2' : ''}>
@@ -733,6 +771,11 @@ function renderInput(field, value, onChange, onFile, onRemoveFile, uploading) {
     case 'dependents':
       return <DependentsRepeater value={value} onChange={onChange} />;
 
+    case 'signature':
+      return (
+        <SignaturePad field={field} value={value} uploading={uploading} onFile={onFile} onRemove={onRemoveFile} />
+      );
+
     case 'text':
     default:
       return (
@@ -839,6 +882,157 @@ function CheckSquareIndicator({ checked }) {
     >
       {checked && <CheckCircle2 className="w-3 h-3 text-white" />}
     </span>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// ASSINATURA — desenho livre com o dedo (touch) ou mouse, num canvas. Ao
+// confirmar, vira um PNG e sobe pelo mesmo pipeline de upload dos outros
+// campos (handleFileSelect -> onFile).
+// ---------------------------------------------------------------------------
+function SignaturePad({ field, value, uploading, onFile, onRemove }) {
+  const canvasRef = useRef(null);
+  const drawingRef = useRef(false);
+  const [hasDrawn, setHasDrawn] = useState(false);
+  const [redoing, setRedoing] = useState(false);
+
+  // Prepara o canvas com fundo branco (assinatura precisa ficar legível
+  // depois, impressa no contrato/espelho de ponto — PNG transparente sobre
+  // fundo escuro ficaria ilegível).
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+  }, [redoing]);
+
+  function getCanvasPoint(e) {
+    const canvas = canvasRef.current;
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    return {
+      x: (e.clientX - rect.left) * scaleX,
+      y: (e.clientY - rect.top) * scaleY,
+    };
+  }
+
+  function startDraw(e) {
+    e.preventDefault();
+    const canvas = canvasRef.current;
+    canvas.setPointerCapture?.(e.pointerId);
+    drawingRef.current = true;
+    const ctx = canvas.getContext('2d');
+    const { x, y } = getCanvasPoint(e);
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+  }
+
+  function draw(e) {
+    if (!drawingRef.current) return;
+    e.preventDefault();
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext('2d');
+    const { x, y } = getCanvasPoint(e);
+    ctx.lineWidth = 2.5;
+    ctx.lineCap = 'round';
+    ctx.strokeStyle = '#1e293b';
+    ctx.lineTo(x, y);
+    ctx.stroke();
+    if (!hasDrawn) setHasDrawn(true);
+  }
+
+  function stopDraw(e) {
+    drawingRef.current = false;
+  }
+
+  function handleClear() {
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    setHasDrawn(false);
+  }
+
+  function handleConfirm() {
+    const canvas = canvasRef.current;
+    canvas.toBlob(
+      (blob) => {
+        if (!blob) return;
+        const file = new File([blob], `assinatura-${Date.now()}.png`, { type: 'image/png' });
+        onFile(file);
+      },
+      'image/png',
+      1
+    );
+  }
+
+  // Assinatura já enviada: mostra preview e permite refazer.
+  if (value?.url && !redoing) {
+    return (
+      <div className="flex items-center gap-3 rounded-xl border border-slate-200 p-3">
+        <img
+          src={value.url}
+          alt={field.label}
+          className="w-32 h-16 rounded-lg object-contain border border-slate-200 bg-white"
+        />
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-medium text-slate-700 truncate">Assinatura salva</p>
+          <p className="text-xs text-slate-400">Enviada com sucesso</p>
+        </div>
+        <button
+          type="button"
+          onClick={() => {
+            setRedoing(true);
+            setHasDrawn(false);
+          }}
+          className="p-2 rounded-lg hover:bg-slate-50 text-slate-400 hover:text-red-500 transition"
+        >
+          <X className="w-4 h-4" />
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="rounded-xl border-2 border-dashed border-slate-200 p-4 space-y-3">
+      <p className="text-xs text-slate-500">
+        Desenhe sua assinatura na área abaixo, igual à do seu documento. Ela será usada para assinar
+        seu contrato e o espelho de ponto todo mês.
+      </p>
+      <canvas
+        ref={canvasRef}
+        width={600}
+        height={220}
+        className="w-full rounded-lg border border-slate-200 bg-white touch-none"
+        style={{ touchAction: 'none' }}
+        onPointerDown={startDraw}
+        onPointerMove={draw}
+        onPointerUp={stopDraw}
+        onPointerLeave={stopDraw}
+      />
+      <div className="flex gap-2">
+        <button
+          type="button"
+          onClick={handleClear}
+          disabled={uploading}
+          className="px-4 py-2.5 rounded-xl text-sm font-medium text-slate-500 border border-slate-200 hover:bg-slate-50 transition disabled:opacity-50"
+        >
+          Limpar
+        </button>
+        <button
+          type="button"
+          onClick={handleConfirm}
+          disabled={!hasDrawn || uploading}
+          className="flex-1 flex items-center justify-center gap-1.5 text-sm font-semibold text-white px-4 py-2.5 rounded-xl disabled:opacity-50 transition active:scale-[0.98]"
+          style={{ background: 'linear-gradient(135deg, #fc9314, #ff8b00)' }}
+        >
+          {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <PenLine className="w-4 h-4" />}
+          {uploading ? 'Salvando...' : 'Confirmar assinatura'}
+        </button>
+      </div>
+    </div>
   );
 }
 

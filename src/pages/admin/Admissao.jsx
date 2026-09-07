@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import Navbar from '@/components/Navbar';
 import { supabase } from '@/lib/supabase';
-import { mapAdminStepsToWizardSteps, isFieldValueEmpty } from '@/lib/admissionSteps';
+import { mapAdminStepsToWizardSteps, mapAdminStepsToAllFields, isFieldValueEmpty } from '@/lib/admissionSteps';
 import {
   Search,
   ArrowLeft,
@@ -181,6 +181,7 @@ export default function Admissao() {
           template_name,
           template_id,
           template_steps,
+          manager_template_steps,
           created_at,
           employee_id,
           progress_data,
@@ -317,12 +318,14 @@ export default function Admissao() {
     const chosenTemplate = templates.find(t => t.id === selectedTemplateId);
 
     // Converte os steps "flat" do template (formato do gestor) para o
-    // formato "wizard" (uma pergunta por etapa) que PreencherAdmissao.jsx
-    // espera, e grava esse snapshot junto com a admissão. Sem isso, o
-    // colaborador via a mensagem "Este processo ainda não tem etapas
-    // configuradas no template." porque só a referência (template_id) era
-    // salva, nunca as etapas em si.
+    // formato "wizard" (uma pergunta por etapa). Duas versões são gravadas:
+    // - template_steps: SEM os campos employeeVisible:false (ex. ASO) — é o
+    //   que PreencherAdmissao.jsx usa para montar o formulário do colaborador.
+    // - manager_template_steps: COM todos os campos, inclusive os que só o
+    //   gestor preenche — é o que a tela de visualização do gestor usa, para
+    //   que o ASO apareça na lista mesmo não estando no formulário público.
     const wizardSteps = mapAdminStepsToWizardSteps(chosenTemplate?.steps);
+    const managerSteps = mapAdminStepsToAllFields(chosenTemplate?.steps);
 
     if (wizardSteps.length === 0) {
       alert('O template selecionado não possui campos ativos configurados.');
@@ -336,6 +339,7 @@ export default function Admissao() {
         template_id: chosenTemplate?.id,
         template_name: chosenTemplate?.title || 'Template Padrão',
         template_steps: wizardSteps,
+        manager_template_steps: managerSteps,
         status: 'Em andamento',
         progress_data: {}
       }));
@@ -346,6 +350,7 @@ export default function Admissao() {
         template_name,
         template_id,
         template_steps,
+        manager_template_steps,
         created_at,
         employee_id,
         progress_data,
@@ -416,12 +421,18 @@ export default function Admissao() {
   };
 
   // Deriva a lista de campos e o status "enviado/não enviado" da admissão
-  // aberta, a partir do snapshot em template_steps e das respostas em
-  // progress_data. Usado tanto na barra de progresso quanto na lista
-  // expansível de campos.
+  // aberta. Usa `manager_template_steps` (snapshot COMPLETO, com ASO e
+  // afins) — não `template_steps` (que é só o subconjunto do formulário do
+  // colaborador). Cai para `template_steps` como fallback em admissões
+  // criadas antes dessa coluna existir; o useEffect logo abaixo corrige
+  // esses registros antigos automaticamente na primeira abertura.
   const admissionFieldItems = useMemo(() => {
     if (!activeAdmission) return [];
-    const admissionFields = (activeAdmission.template_steps || []).flatMap((s) => s.fields || []);
+    const steps =
+      Array.isArray(activeAdmission.manager_template_steps) && activeAdmission.manager_template_steps.length > 0
+        ? activeAdmission.manager_template_steps
+        : activeAdmission.template_steps || [];
+    const admissionFields = steps.flatMap((s) => s.fields || []);
     const progressData = activeAdmission.progress_data || {};
     return admissionFields.map((field) => {
       const value = progressData[field.key];
@@ -431,6 +442,47 @@ export default function Admissao() {
       return { ...field, sent, displayValue, rawValue: value, isImage };
     });
   }, [activeAdmission]);
+
+  // Backfill automático: admissões criadas antes de `manager_template_steps`
+  // existir não têm campos como o ASO na lista. Ao abrir uma admissão nessa
+  // situação, busca o template original (template_id) e recalcula o
+  // snapshot completo, salvando para não precisar recalcular de novo.
+  useEffect(() => {
+    if (!activeAdmission) return;
+    const hasManagerSteps =
+      Array.isArray(activeAdmission.manager_template_steps) && activeAdmission.manager_template_steps.length > 0;
+    if (hasManagerSteps || !activeAdmission.template_id) return;
+
+    let cancelled = false;
+    (async () => {
+      const { data: tmpl, error } = await supabase
+        .from('admission_templates')
+        .select('steps')
+        .eq('id', activeAdmission.template_id)
+        .single();
+      if (cancelled || error || !tmpl?.steps) return;
+
+      const rebuilt = mapAdminStepsToAllFields(tmpl.steps);
+      if (rebuilt.length === 0) return;
+
+      const { error: updateError } = await supabase
+        .from('employee_admissions')
+        .update({ manager_template_steps: rebuilt })
+        .eq('id', activeAdmission.id);
+      if (updateError || cancelled) return;
+
+      setActiveAdmission((prev) =>
+        prev && prev.id === activeAdmission.id ? { ...prev, manager_template_steps: rebuilt } : prev
+      );
+      setAdmissions((prev) =>
+        prev.map((a) => (a.id === activeAdmission.id ? { ...a, manager_template_steps: rebuilt } : a))
+      );
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [activeAdmission?.id, activeAdmission?.template_id]);
 
   // Assim que o gestor expande um campo de arquivo/foto, já dispara a
   // geração da Signed URL (em vez de esperar um clique extra).

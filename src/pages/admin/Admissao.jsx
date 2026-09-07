@@ -20,6 +20,7 @@ import {
   Trash2,
   AlertTriangle,
   X,
+  Upload,
 } from 'lucide-react';
 
 // Mesmo bucket usado em PreencherAdmissao.jsx para o upload de selfie/anexos.
@@ -42,6 +43,34 @@ function isImageLikeValue(field, value) {
 // Duração da URL temporária de acesso aos arquivos (em segundos). Documentos
 // de admissão são dados pessoais (LGPD) — nunca expostos por URL pública.
 const SIGNED_URL_TTL_SECONDS = 3600; // 1 hora
+
+// Upload simples usado pelo GESTOR na tela de visualização (hoje só para o
+// ASO). Diferente do FileUploadBox do colaborador: aqui não há preview de
+// arrastar-e-soltar, é só um botão que abre o seletor de arquivo do sistema.
+function ManagerFileUpload({ fieldKey, uploading, onFile, replace }) {
+  const inputId = `manager-upload-${fieldKey}`;
+  return (
+    <label
+      htmlFor={inputId}
+      className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-lg border border-dashed border-[#ff8b00] text-[#ff8b00] hover:bg-[#ff8b00]/10 cursor-pointer transition"
+    >
+      {uploading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
+      {uploading ? 'Enviando...' : replace ? 'Substituir arquivo do ASO' : 'Anexar ASO (PDF ou imagem)'}
+      <input
+        id={inputId}
+        type="file"
+        accept="application/pdf,image/*"
+        className="hidden"
+        disabled={uploading}
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          if (file) onFile(file);
+          e.target.value = '';
+        }}
+      />
+    </label>
+  );
+}
 
 export default function Admissao() {
   const navigate = useNavigate();
@@ -103,6 +132,14 @@ export default function Admissao() {
   const [signedUrls, setSignedUrls] = useState({}); // { [path]: { url, expiresAt } }
   const [signedUrlLoading, setSignedUrlLoading] = useState({}); // { [path]: boolean }
   const [previewModal, setPreviewModal] = useState(null); // { url, label, isFile? } | null
+
+  // Menu de ações (⋯) e modal de confirmação de exclusão de admissão (aba Concluídos)
+  const [openAdmissionMenuId, setOpenAdmissionMenuId] = useState(null);
+  const [admissionToDelete, setAdmissionToDelete] = useState(null);
+  const [deletingAdmission, setDeletingAdmission] = useState(false);
+
+  // Upload do ASO feito pelo gestor na tela de visualização
+  const [managerUploading, setManagerUploading] = useState(false);
 
   // Toast simples de feedback (copiar link, etc.)
   const [toastMessage, setToastMessage] = useState('');
@@ -410,6 +447,97 @@ export default function Admissao() {
 
   const getAdmissionLink = (adm) => `${window.location.origin}/preencher-admissao/${adm.id}`;
 
+  // Varre progress_data e devolve os `path` de todo arquivo anexado (selfie,
+  // documentos, ASO etc.) para poder apagá-los do Storage junto com o registro.
+  const collectAdmissionStoragePaths = (admission) => {
+    const progressData = admission?.progress_data || {};
+    return Object.values(progressData)
+      .filter((value) => value && typeof value === 'object' && !Array.isArray(value) && value.path)
+      .map((value) => value.path);
+  };
+
+  const handleRequestDeleteAdmission = (adm) => {
+    setOpenAdmissionMenuId(null);
+    setAdmissionToDelete(adm);
+  };
+
+  const handleConfirmDeleteAdmission = async () => {
+    if (!admissionToDelete) return;
+    setDeletingAdmission(true);
+    try {
+      const paths = collectAdmissionStoragePaths(admissionToDelete);
+      if (paths.length > 0) {
+        const { error: storageError } = await supabase.storage.from(STORAGE_BUCKET).remove(paths);
+        // Falha ao limpar arquivos não deve travar a exclusão do registro —
+        // só loga para investigação manual depois, se precisar.
+        if (storageError) console.error('Erro ao remover arquivos do Storage:', storageError);
+      }
+
+      const { error } = await supabase
+        .from('employee_admissions')
+        .delete()
+        .eq('id', admissionToDelete.id);
+      if (error) throw error;
+
+      setAdmissions((prev) => prev.filter((a) => a.id !== admissionToDelete.id));
+      if (activeAdmission?.id === admissionToDelete.id) {
+        setActiveAdmission(null);
+        setViewState('list');
+      }
+      showToast('Admissão excluída com sucesso.');
+      setAdmissionToDelete(null);
+    } catch (err) {
+      console.error('Erro ao excluir admissão:', err);
+      alert('Não foi possível excluir a admissão. Tente novamente.');
+    } finally {
+      setDeletingAdmission(false);
+    }
+  };
+
+  // Upload feito pelo GESTOR (não pelo colaborador) — usado hoje só para o
+  // ASO, que só existe depois que o colaborador já concluiu a admissão.
+  // Grava em progress_data com a mesma chave ('aso') usada no template, para
+  // reaproveitar toda a lógica de exibição/preview já existente.
+  const handleManagerFileUpload = async (field, file) => {
+    if (!activeAdmission || !file) return;
+    setManagerUploading(true);
+    try {
+      const safeName = file.name.replace(/[^a-zA-Z0-9.\-_]/g, '_');
+      const path = `${activeAdmission.id}/${field.key}-${Date.now()}-${safeName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from(STORAGE_BUCKET)
+        .upload(path, file, { upsert: true });
+      if (uploadError) throw uploadError;
+
+      const newValue = {
+        path,
+        name: file.name,
+        type: file.type,
+        uploadedAt: new Date().toISOString(),
+        uploadedBy: 'gestor',
+      };
+      const nextProgressData = { ...(activeAdmission.progress_data || {}), [field.key]: newValue };
+
+      const { error: updateError } = await supabase
+        .from('employee_admissions')
+        .update({ progress_data: nextProgressData, updated_at: new Date().toISOString() })
+        .eq('id', activeAdmission.id);
+      if (updateError) throw updateError;
+
+      setActiveAdmission((prev) => (prev ? { ...prev, progress_data: nextProgressData } : prev));
+      setAdmissions((prev) =>
+        prev.map((a) => (a.id === activeAdmission.id ? { ...a, progress_data: nextProgressData } : a))
+      );
+      showToast('Arquivo do ASO salvo com sucesso.');
+    } catch (err) {
+      console.error('Erro ao anexar ASO:', err);
+      alert('Não foi possível salvar o arquivo do ASO. Tente novamente.');
+    } finally {
+      setManagerUploading(false);
+    }
+  };
+
   const handleCopyAdmissionLink = async (adm) => {
     const link = getAdmissionLink(adm);
     try {
@@ -527,14 +655,14 @@ export default function Admissao() {
               {activeTab === 'templates' ? (
                 <button
                   onClick={() => setViewState('create_template')}
-                  className="border border-[#ff8b00] text-[#ff8b00] hover:bg-[#ff8b00]/10 text-xs font-semibold px-4 py-2 rounded transition-colors"
+                  className="border border-[#ff8b00] text-[#ff8b00] hover:bg-[#fc9314] hover:text-white hover:border-[#fc9314] text-xs font-semibold px-4 py-2 rounded transition-colors"
                 >
                   Novo Template
                 </button>
               ) : (
                 <button
                   onClick={handleOpenEmployeeSelection}
-                  className="bg-[#ff8b00] hover:bg-[#00897b] text-white text-xs font-semibold px-4 py-2 rounded transition-colors shadow-sm"
+                  className="bg-[#ff8b00] hover:bg-[#fc9314] text-white text-xs font-semibold px-4 py-2 rounded transition-colors shadow-sm"
                 >
                   Iniciar admissão
                 </button>
@@ -667,7 +795,7 @@ export default function Admissao() {
                             <td className="py-3 px-4 text-slate-600">{adm.template_name || 'Admissão Matheus'}</td>
                             <td className="py-3 px-4 text-slate-600">{emp.position || 'Atendente'}</td>
                             <td className="py-3 px-4 text-slate-600">{emp.department || '-'}</td>
-                            <td className="py-3 px-4">
+                            <td className="py-3 px-4 relative">
                               <div className="flex items-center justify-center gap-1">
                                 {adm.status === 'Em andamento' && (
                                   <>
@@ -688,13 +816,45 @@ export default function Admissao() {
                                   </>
                                 )}
                                 <button
-                                  onClick={() => handleOpenAdmissionView(adm)}
-                                  title="Ver detalhes"
+                                  onClick={() =>
+                                    setOpenAdmissionMenuId((prev) => (prev === adm.id ? null : adm.id))
+                                  }
+                                  title="Mais ações"
                                   className="p-1.5 hover:bg-slate-100 rounded text-slate-500 hover:text-slate-800 transition-colors"
                                 >
                                   <MoreHorizontal className="w-4 h-4" />
                                 </button>
                               </div>
+
+                              {openAdmissionMenuId === adm.id && (
+                                <>
+                                  <div
+                                    className="fixed inset-0 z-10"
+                                    onClick={() => setOpenAdmissionMenuId(null)}
+                                  />
+                                  <div className="absolute right-4 top-full mt-1 z-20 w-44 bg-white border border-slate-200 rounded-md shadow-lg py-1 text-left">
+                                    <button
+                                      onClick={() => {
+                                        setOpenAdmissionMenuId(null);
+                                        handleOpenAdmissionView(adm);
+                                      }}
+                                      className="w-full flex items-center gap-2 px-3 py-2 text-xs font-medium text-slate-600 hover:bg-slate-50 transition-colors"
+                                    >
+                                      <ChevronRight className="w-3.5 h-3.5" />
+                                      Ver detalhes
+                                    </button>
+                                    {adm.status === 'Concluído' && (
+                                      <button
+                                        onClick={() => handleRequestDeleteAdmission(adm)}
+                                        className="w-full flex items-center gap-2 px-3 py-2 text-xs font-medium text-red-600 hover:bg-red-50 transition-colors"
+                                      >
+                                        <Trash2 className="w-3.5 h-3.5" />
+                                        Excluir Admissão
+                                      </button>
+                                    )}
+                                  </div>
+                                </>
+                              )}
                             </td>
                           </tr>
                         );
@@ -809,7 +969,7 @@ export default function Admissao() {
                 disabled={selectedEmployees.length === 0}
                 className={`text-xs font-semibold px-6 py-2 rounded transition-colors ${
                   selectedEmployees.length > 0
-                    ? 'bg-[#ff8b00] hover:bg-[#00897b] text-white cursor-pointer'
+                    ? 'bg-[#ff8b00] hover:bg-[#fc9314] text-white cursor-pointer'
                     : 'bg-slate-200 text-slate-400 cursor-not-allowed'
                 }`}
               >
@@ -1000,7 +1160,7 @@ export default function Admissao() {
               <button
                 onClick={handleSaveTemplate}
                 disabled={loading}
-                className="bg-[#ff8b00] hover:bg-[#00897b] text-white text-xs font-semibold px-6 py-2 rounded transition-colors shadow-sm"
+                className="bg-[#ff8b00] hover:bg-[#fc9314] text-white text-xs font-semibold px-6 py-2 rounded transition-colors shadow-sm"
               >
                 {loading ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : 'Salvar Template'}
               </button>
@@ -1024,7 +1184,7 @@ export default function Admissao() {
                 disabled={!selectedTemplateId || loading}
                 className={`text-xs font-semibold px-6 py-2 rounded transition-colors ${
                   selectedTemplateId && !loading
-                    ? 'bg-[#ff8b00] hover:bg-[#00897b] text-white cursor-pointer'
+                    ? 'bg-[#ff8b00] hover:bg-[#fc9314] text-white cursor-pointer'
                     : 'bg-slate-200 text-slate-400 cursor-not-allowed'
                 }`}
               >
@@ -1112,7 +1272,7 @@ export default function Admissao() {
 
               <button
                 onClick={() => setViewState('create_template')}
-                className="bg-[#ff8b00] hover:bg-[#00897b] text-white text-xs font-semibold px-4 py-2 rounded transition-colors"
+                className="bg-[#ff8b00] hover:bg-[#fc9314] text-white text-xs font-semibold px-4 py-2 rounded transition-colors"
               >
                 Editar Template
               </button>
@@ -1197,55 +1357,76 @@ export default function Admissao() {
                                   </label>
 
                                   {!item.sent ? (
-                                    <input
-                                      type="text"
-                                      disabled
-                                      value="(Não enviado)"
-                                      className="w-full p-2 bg-white border border-slate-200 rounded text-xs text-slate-400"
-                                    />
+                                    item.key === 'aso' ? (
+                                      <ManagerFileUpload
+                                        fieldKey={item.key}
+                                        uploading={managerUploading}
+                                        onFile={(file) => handleManagerFileUpload(item, file)}
+                                      />
+                                    ) : (
+                                      <input
+                                        type="text"
+                                        disabled
+                                        value="(Não enviado)"
+                                        className="w-full p-2 bg-white border border-slate-200 rounded text-xs text-slate-400"
+                                      />
+                                    )
                                   ) : filePath ? (
-                                    loadingSignedUrl && !signedUrl ? (
-                                      <div className="flex items-center gap-2 text-xs text-slate-400 py-1">
-                                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                                        Gerando link seguro...
-                                      </div>
-                                    ) : !signedUrl ? (
-                                      <button
-                                        type="button"
-                                        onClick={() => ensureSignedUrl(filePath)}
-                                        className="text-xs font-medium text-[#ff8b00] hover:underline"
-                                      >
-                                        Gerar link para visualizar
-                                      </button>
-                                    ) : item.isImage ? (
-                                      <div className="flex items-center gap-3">
-                                        <img
-                                          src={signedUrl}
-                                          alt={item.label}
-                                          onClick={() => setPreviewModal({ url: signedUrl, label: item.label })}
-                                          className="w-24 h-24 rounded-lg object-cover border border-slate-200 cursor-pointer hover:opacity-90 transition"
-                                        />
+                                    <div className="space-y-2">
+                                      {loadingSignedUrl && !signedUrl ? (
+                                        <div className="flex items-center gap-2 text-xs text-slate-400 py-1">
+                                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                          Gerando link seguro...
+                                        </div>
+                                      ) : !signedUrl ? (
                                         <button
                                           type="button"
-                                          onClick={() => setPreviewModal({ url: signedUrl, label: item.label })}
-                                          className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-[#ff8b00] hover:underline"
+                                          onClick={() => ensureSignedUrl(filePath)}
+                                          className="text-xs font-medium text-[#ff8b00] hover:underline"
                                         >
-                                          <ExternalLink className="w-3.5 h-3.5" />
-                                          Abrir em tamanho real
+                                          Gerar link para visualizar
                                         </button>
-                                      </div>
-                                    ) : (
-                                      <button
-                                        type="button"
-                                        onClick={() =>
-                                          setPreviewModal({ url: signedUrl, label: item.displayValue || item.label, isFile: true })
-                                        }
-                                        className="inline-flex items-center gap-1.5 text-xs font-medium text-[#ff8b00] hover:underline"
-                                      >
-                                        <FileText className="w-3.5 h-3.5" />
-                                        {item.displayValue || 'Abrir arquivo'}
-                                      </button>
-                                    )
+                                      ) : item.isImage ? (
+                                        <div className="flex items-center gap-3">
+                                          <img
+                                            src={signedUrl}
+                                            alt={item.label}
+                                            onClick={() => setPreviewModal({ url: signedUrl, label: item.label })}
+                                            className="w-24 h-24 rounded-lg object-cover border border-slate-200 cursor-pointer hover:opacity-90 transition"
+                                          />
+                                          <button
+                                            type="button"
+                                            onClick={() => setPreviewModal({ url: signedUrl, label: item.label })}
+                                            className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-[#ff8b00] hover:underline"
+                                          >
+                                            <ExternalLink className="w-3.5 h-3.5" />
+                                            Abrir em tamanho real
+                                          </button>
+                                        </div>
+                                      ) : (
+                                        <button
+                                          type="button"
+                                          onClick={() =>
+                                            setPreviewModal({ url: signedUrl, label: item.displayValue || item.label, isFile: true })
+                                          }
+                                          className="inline-flex items-center gap-1.5 text-xs font-medium text-[#ff8b00] hover:underline"
+                                        >
+                                          <FileText className="w-3.5 h-3.5" />
+                                          {item.displayValue || 'Abrir arquivo'}
+                                        </button>
+                                      )}
+
+                                      {item.key === 'aso' && (
+                                        <div className="pt-1">
+                                          <ManagerFileUpload
+                                            fieldKey={item.key}
+                                            uploading={managerUploading}
+                                            onFile={(file) => handleManagerFileUpload(item, file)}
+                                            replace
+                                          />
+                                        </div>
+                                      )}
+                                    </div>
                                   ) : Array.isArray(item.rawValue) ? (
                                     item.rawValue.length === 0 ? (
                                       <p className="text-xs text-slate-400">Nenhum dependente informado.</p>
@@ -1326,6 +1507,49 @@ export default function Admissao() {
         </div>
       )}
 
+      {/* MODAL DE CONFIRMAÇÃO — EXCLUIR ADMISSÃO (aba Concluídos) */}
+      {admissionToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-sm w-full p-6">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="w-10 h-10 rounded-full bg-red-50 flex items-center justify-center shrink-0">
+                <AlertTriangle className="w-5 h-5 text-red-500" />
+              </div>
+              <h3 className="font-bold text-sm text-slate-800">Excluir admissão?</h3>
+            </div>
+            <p className="text-xs text-slate-500 mb-6">
+              Tem certeza que deseja excluir a admissão de{' '}
+              <span className="font-semibold text-slate-700">
+                {admissionToDelete.Employees?.full_name || 'este colaborador'}
+              </span>
+              ? Os dados preenchidos e os arquivos anexados (selfie, ASO, documentos) serão apagados
+              permanentemente. Essa ação não pode ser desfeita.
+            </p>
+            <div className="flex justify-end gap-2">
+              <button
+                onClick={() => setAdmissionToDelete(null)}
+                disabled={deletingAdmission}
+                className="px-4 py-2 rounded text-xs font-semibold text-slate-600 border border-slate-200 hover:bg-slate-50 transition-colors disabled:opacity-50"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleConfirmDeleteAdmission}
+                disabled={deletingAdmission}
+                className="px-4 py-2 rounded text-xs font-semibold text-white bg-red-600 hover:bg-red-700 transition-colors disabled:opacity-70 flex items-center gap-1.5"
+              >
+                {deletingAdmission ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                ) : (
+                  <Trash2 className="w-3.5 h-3.5" />
+                )}
+                Excluir
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* MODAL DE PREVIEW — FOTO/DOCUMENTO DA ADMISSÃO (via Signed URL) */}
       {previewModal && (
         <div
@@ -1351,7 +1575,7 @@ export default function Admissao() {
                   href={previewModal.url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1.5 text-sm font-semibold text-white px-4 py-2 rounded-lg bg-[#ff8b00] hover:bg-[#00897b] transition-colors"
+                  className="inline-flex items-center gap-1.5 text-sm font-semibold text-white px-4 py-2 rounded-lg bg-[#ff8b00] hover:bg-[#fc9314] transition-colors"
                 >
                   Abrir arquivo
                 </a>

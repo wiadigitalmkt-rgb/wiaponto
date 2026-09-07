@@ -639,6 +639,24 @@ function SelfieCapture({ field, value, uploading, onFile, onRemove }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // O elemento <video> só existe no DOM quando `cameraActive` é true (ele
+  // fica dentro do bloco condicional do JSX). Por isso a conexão do stream
+  // ao <video> precisa acontecer DEPOIS que o React renderiza esse bloco,
+  // e não dentro de startCamera() — nesse momento videoRef.current ainda
+  // é null, então o stream era obtido mas nunca chegava a ser exibido
+  // (tela preta) e capturePhoto() não tinha frame nenhum para capturar
+  // (botão "Tirar foto" não fazia nada).
+  useEffect(() => {
+    if (!cameraActive || !videoRef.current || !streamRef.current) return;
+    const video = videoRef.current;
+    video.srcObject = streamRef.current;
+    video.play().catch((err) => {
+      console.error(err);
+      setCameraError('Não foi possível iniciar a pré-visualização da câmera. Tente novamente.');
+      setCameraActive(false);
+    });
+  }, [cameraActive]);
+
   async function startCamera() {
     setCameraError('');
     if (!navigator.mediaDevices?.getUserMedia) {
@@ -651,10 +669,8 @@ function SelfieCapture({ field, value, uploading, onFile, onRemove }) {
         audio: false,
       });
       streamRef.current = stream;
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        await videoRef.current.play();
-      }
+      // Ativa o estado primeiro: isso faz o React renderizar o <video>,
+      // e o useEffect acima conecta o stream a ele assim que existir.
       setCameraActive(true);
     } catch (err) {
       console.error(err);

@@ -1165,15 +1165,8 @@ function GeofenceMapTab({ employeeId }) {
     const L = window.L;
 
     const map = L.map(mapDivRef.current).setView([-14.235, -51.9253], 4);
-    // Importante: NÃO usar tile.openstreetmap.org direto em produção — é o
-    // servidor de demonstração da própria OSM, e a política de uso deles
-    // bloqueia/limita quem faz muitas requisições de tile (zoom/pan
-    // repetidos), o que fazia o mapa ficar em branco depois de alguns
-    // segundos de uso e nunca mais carregar. O CARTO oferece um tile básico
-    // gratuito, sem precisar de chave de API, pensado pra uso real.
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-      attribution: '&copy; <a href="https://carto.com/attributions">CARTO</a> &copy; OpenStreetMap contributors',
-      subdomains: 'abcd',
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; OpenStreetMap contributors',
       maxZoom: 19,
     }).addTo(map);
 
@@ -1210,7 +1203,23 @@ function GeofenceMapTab({ employeeId }) {
     // escondida (o container não tem altura calculada ainda no 1º frame).
     setTimeout(() => map.invalidateSize(), 200);
 
+    // Corrige o mapa "sumir" (fica em branco, mas os controles de zoom
+    // continuam aparecendo): sempre que o <div> do mapa muda de tamanho por
+    // QUALQUER motivo — troca de aba, o texto do botão "Adicionar cerca"
+    // mudando de largura, reflow da página, etc — o Leaflet não percebe
+    // sozinho e continua desenhando os tiles na posição antiga. O
+    // ResizeObserver avisa o Leaflet (invalidateSize) toda vez que isso
+    // acontece, então o mapa se realinha sozinho em vez de ficar em branco.
+    let resizeObserver;
+    if (typeof ResizeObserver !== 'undefined') {
+      resizeObserver = new ResizeObserver(() => {
+        map.invalidateSize();
+      });
+      resizeObserver.observe(mapDivRef.current);
+    }
+
     return () => {
+      resizeObserver?.disconnect();
       map.remove();
       mapInstanceRef.current = null;
       markersRef.current = {};

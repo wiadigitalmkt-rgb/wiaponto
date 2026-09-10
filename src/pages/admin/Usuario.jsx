@@ -1352,7 +1352,10 @@ function GeofenceMapTab({ employeeId }) {
           </p>
         </div>
         <button
-          onClick={() => setAddingMode((v) => !v)}
+          onClick={() => {
+            setAddingMode((v) => !v);
+            setTimeout(() => mapInstanceRef.current?.invalidateSize(), 0);
+          }}
           className={`shrink-0 flex items-center gap-1 px-3 py-1.5 rounded font-medium transition-colors border ${
             addingMode
               ? 'bg-[#ff8b00] text-white border-[#ff8b00]'
@@ -1365,11 +1368,18 @@ function GeofenceMapTab({ employeeId }) {
       </div>
 
       <div
-        ref={mapDivRef}
-        className={`w-full h-80 rounded-lg border border-slate-200 bg-slate-50 ${addingMode ? 'cursor-crosshair' : ''}`}
+        className={`relative w-full h-80 rounded-lg border border-slate-200 bg-slate-50 overflow-hidden ${addingMode ? 'cursor-crosshair' : ''}`}
       >
+        {/* Este <div> é dono exclusivo do Leaflet a partir da inicialização:
+            className e filhos são sempre os mesmos em TODO render, então o
+            React nunca precisa "tocar" nele de novo — o que evita qualquer
+            risco de conflito com os nós que o Leaflet insere manualmente
+            (fora do controle do React) e que causava o mapa sumir/ficar
+            branco ao clicar em "Adicionar cerca no mapa". */}
+        <div ref={mapDivRef} className="absolute inset-0" />
+
         {!leafletReady && (
-          <div className="h-full flex items-center justify-center text-slate-400 gap-2">
+          <div className="absolute inset-0 bg-slate-50 flex items-center justify-center text-slate-400 gap-2 pointer-events-none">
             <Loader2 className="w-4 h-4 animate-spin" /> Carregando mapa...
           </div>
         )}

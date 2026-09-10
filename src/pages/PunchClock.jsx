@@ -30,6 +30,21 @@ const minutesToHHMM = (mins) => {
   return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
 };
 
+// Distância em metros entre duas coordenadas (fórmula de Haversine).
+// Usada para checar se o colaborador está dentro do raio de alguma cerca
+// geográfica cadastrada pelo gestor (tabela `geofences`).
+const distanceInMeters = (lat1, lng1, lat2, lng2) => {
+  const R = 6371000; // raio da Terra em metros
+  const toRad = (deg) => (deg * Math.PI) / 180;
+  const dLat = toRad(lat2 - lat1);
+  const dLng = toRad(lng2 - lng1);
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) ** 2;
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+};
+
 export default function PunchClock() {
   const navigate = useNavigate();
 
@@ -73,6 +88,7 @@ export default function PunchClock() {
 
   // Estados da Confirmação no Mapa / Localização / Selfie
   const [mapSuccess, setMapSuccess] = useState(false);
+  const [punchOutsideFence, setPunchOutsideFence] = useState(false);
   const [punchDateTimeModal, setPunchDateTimeModal] = useState({ date: '', time: '' });
 
   // Novas validações obrigatórias
@@ -349,6 +365,7 @@ export default function PunchClock() {
       time: `${hours}h${minutes}min`
     });
     setMapSuccess(false);
+    setPunchOutsideFence(false);
     setSelfieImage(null);
     
     setCurrentView('map');
@@ -386,6 +403,35 @@ export default function PunchClock() {
         }
 
         if (emp?.id) {
+          // Verifica se o colaborador está dentro de alguma cerca geográfica
+          // cadastrada pelo gestor para ele. Se não houver nenhuma cerca
+          // cadastrada, não há restrição (comportamento de antes). Se houver
+          // ao menos uma e o colaborador estiver fora de TODAS, o ponto ainda
+          // é registrado, mas fica pendente de aprovação manual do gestor.
+          const { data: fences } = await supabase
+            .from('geofences')
+            .select('*')
+            .eq('employee_id', emp.id);
+
+          let isOutsideAllFences = false;
+          if (fences && fences.length > 0) {
+            isOutsideAllFences = !fences.some((fence) => {
+              const dist = distanceInMeters(
+                location.lat,
+                location.lng,
+                Number(fence.latitude),
+                Number(fence.longitude)
+              );
+              return dist <= Number(fence.radius_meters || 0);
+            });
+          }
+          setPunchOutsideFence(isOutsideAllFences);
+
+          const approvalFields = {
+            outside_geofence: isOutsideAllFences,
+            approval_status: isOutsideAllFences ? 'pendente' : 'aprovado',
+          };
+
           const { data: openRecord } = await supabase
             .from('time_records')
             .select('*')
@@ -403,7 +449,8 @@ export default function PunchClock() {
                 saida: timeFormatted,
                 latitude: location.lat,
                 longitude: location.lng,
-                photo_url: selfieImage
+                photo_url: selfieImage,
+                ...approvalFields
               })
               .eq('id', openRecord.id);
           } else {
@@ -417,7 +464,8 @@ export default function PunchClock() {
                 obs: 'Ponto Web (GPS + Selfie)',
                 latitude: location.lat,
                 longitude: location.lng,
-                photo_url: selfieImage
+                photo_url: selfieImage,
+                ...approvalFields
               }
             ]);
           }
@@ -805,11 +853,21 @@ export default function PunchClock() {
               </div>
             ) : (
               <div className="bg-white rounded-xl shadow-2xl p-8 text-center space-y-5 animate-in zoom-in-95">
-                <div className="w-14 h-14 rounded-full bg-[#ff8b00] text-white mx-auto flex items-center justify-center shadow-md">
-                  <Check size={32} />
+                <div className={`w-14 h-14 rounded-full text-white mx-auto flex items-center justify-center shadow-md ${punchOutsideFence ? 'bg-amber-500' : 'bg-[#ff8b00]'}`}>
+                  {punchOutsideFence ? <AlertCircle size={32} /> : <Check size={32} />}
                 </div>
 
-                <h3 className="text-base font-bold text-slate-800">Ponto registrado com sucesso!</h3>
+                <div>
+                  <h3 className="text-base font-bold text-slate-800">
+                    {punchOutsideFence ? 'Ponto registrado — fora da área permitida' : 'Ponto registrado com sucesso!'}
+                  </h3>
+                  {punchOutsideFence && (
+                    <p className="text-xs text-slate-500 mt-2">
+                      Você bateu o ponto fora da cerca cadastrada pela empresa. Ele foi salvo,
+                      mas só será validado depois da aprovação do gestor.
+                    </p>
+                  )}
+                </div>
 
                 <button
                   onClick={() => {

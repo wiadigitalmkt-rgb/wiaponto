@@ -17,7 +17,8 @@ import {
   History,
   Search,
   MapPin,
-  Camera
+  Camera,
+  AlertCircle
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -154,6 +155,7 @@ export default function AdminPonto() {
   });
 
   const [registros, setRegistros] = useState([]);
+  const [currentManagerId, setCurrentManagerId] = useState(null);
 
   // 1. CARREGAR COLABORADORES DO SUPABASE E DETECTAR USUÁRIO LOGADO COM RESTRIÇÃO
   useEffect(() => {
@@ -178,6 +180,7 @@ export default function AdminPonto() {
           (currentUserEmail && e.email?.toLowerCase() === currentUserEmail.toLowerCase()) ||
           (currentUserCpf && e.cpf === currentUserCpf)
         );
+        if (loggedInEmployee?.id) setCurrentManagerId(loggedInEmployee.id);
 
         // Verifica os papéis de acesso tanto no banco quanto na sessão armazenada
         const sessionRole = String(sessionUser?.role || sessionUser?.access_type || '').toLowerCase();
@@ -265,7 +268,9 @@ export default function AdminPonto() {
           obs: curr.obs || '',
           latitude: curr.latitude,
           longitude: curr.longitude,
-          photo_url: curr.photo_url
+          photo_url: curr.photo_url,
+          approvalStatus: curr.approval_status || 'aprovado',
+          outsideGeofence: curr.outside_geofence || false
         });
         return acc;
       }, {});
@@ -327,6 +332,28 @@ export default function AdminPonto() {
     }
     fetchRecordsFromSupabase();
     showToast('Ponto removido com sucesso!');
+  };
+
+  // Aprova ou rejeita um ponto batido fora de todas as cercas cadastradas
+  // (approval_status = 'pendente', gravado em PunchClock.jsx). Só o gestor
+  // vê os botões que chamam isso.
+  const handleApproveBatida = async (dbId, decision) => {
+    if (!isManager || !dbId) return;
+    const { error } = await supabase
+      .from('time_records')
+      .update({
+        approval_status: decision, // 'aprovado' | 'rejeitado'
+        approved_by: currentManagerId,
+        approved_at: new Date().toISOString()
+      })
+      .eq('id', dbId);
+
+    if (error) {
+      alert('Erro ao atualizar aprovação: ' + error.message);
+      return;
+    }
+    fetchRecordsFromSupabase();
+    showToast(decision === 'aprovado' ? 'Ponto aprovado!' : 'Ponto rejeitado.');
   };
 
   const handleStartEdit = (itemId, idx, batida) => {
@@ -612,6 +639,7 @@ export default function AdminPonto() {
                 ) : (
                   registros.map((item) => {
                     const isExpanded = expandedRow === item.id;
+                    const hasPending = item.batidas.some((b) => b.approvalStatus === 'pendente');
                     return (
                       <div key={item.id} className="transition-colors border-b border-slate-200">
                         <div 
@@ -625,6 +653,11 @@ export default function AdminPonto() {
                               <ChevronRight className="w-4 h-4 text-slate-400" />
                             )}
                             <span className="font-semibold text-slate-700 text-xs">{item.data}</span>
+                            {hasPending && (
+                              <span className="flex items-center gap-1 bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full text-[10px] font-semibold">
+                                <AlertCircle className="w-3 h-3" /> Pendente
+                              </span>
+                            )}
                           </div>
                           <div className="col-span-2 text-right font-medium text-slate-600">{item.horaExtra}</div>
                           <div className="col-span-2 text-right font-semibold text-slate-800">{item.trabalhado}</div>
@@ -750,7 +783,8 @@ export default function AdminPonto() {
                                 }
 
                                 return (
-                                  <div key={idx} className="group grid grid-cols-12 items-center bg-white border border-slate-200/80 rounded-md py-1.5 px-3 shadow-sm hover:border-slate-300 transition-all">
+                                  <div key={idx} className="space-y-1">
+                                  <div className="group grid grid-cols-12 items-center bg-white border border-slate-200/80 rounded-md py-1.5 px-3 shadow-sm hover:border-slate-300 transition-all">
                                     {/* COLUNA ESQUERDA: BOTOES, LOCALIZAÇÃO E SELFIE */}
                                     <div className="col-span-6 flex items-center space-x-3 overflow-hidden">
                                       {/* EXIBE REMOVER APENAS PARA GESTOR */}
@@ -825,6 +859,39 @@ export default function AdminPonto() {
                                         </button>
                                       )}
                                     </div>
+                                  </div>
+
+                                  {b.approvalStatus === 'pendente' && (
+                                    <div className="flex items-center justify-between gap-2 bg-amber-50 border border-amber-200 rounded-md px-3 py-1.5">
+                                      <span className="flex items-center gap-1.5 text-amber-700 font-medium text-[11px]">
+                                        <AlertCircle className="w-3.5 h-3.5" />
+                                        Fora da cerca — pendente de aprovação
+                                      </span>
+                                      {isManager && (
+                                        <div className="flex items-center gap-2 shrink-0">
+                                          <button
+                                            onClick={() => handleApproveBatida(b.db_id, 'aprovado')}
+                                            className="bg-[#ff8b00] hover:bg-[#e07a00] text-white font-medium px-2.5 py-1 rounded text-[10px] transition-colors"
+                                          >
+                                            Aprovar
+                                          </button>
+                                          <button
+                                            onClick={() => handleApproveBatida(b.db_id, 'rejeitado')}
+                                            className="border border-red-300 text-red-600 hover:bg-red-50 font-medium px-2.5 py-1 rounded text-[10px] transition-colors"
+                                          >
+                                            Rejeitar
+                                          </button>
+                                        </div>
+                                      )}
+                                    </div>
+                                  )}
+
+                                  {b.approvalStatus === 'rejeitado' && (
+                                    <div className="flex items-center gap-1.5 bg-red-50 border border-red-200 rounded-md px-3 py-1.5 text-red-600 font-medium text-[11px]">
+                                      <X className="w-3.5 h-3.5" />
+                                      Ponto fora da cerca — rejeitado pelo gestor
+                                    </div>
+                                  )}
                                   </div>
                                 );
                               })}

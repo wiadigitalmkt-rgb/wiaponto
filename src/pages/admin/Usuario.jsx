@@ -1165,8 +1165,15 @@ function GeofenceMapTab({ employeeId }) {
     const L = window.L;
 
     const map = L.map(mapDivRef.current).setView([-14.235, -51.9253], 4);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '&copy; OpenStreetMap contributors',
+    // Importante: NÃO usar tile.openstreetmap.org direto em produção — é o
+    // servidor de demonstração da própria OSM, e a política de uso deles
+    // bloqueia/limita quem faz muitas requisições de tile (zoom/pan
+    // repetidos), o que fazia o mapa ficar em branco depois de alguns
+    // segundos de uso e nunca mais carregar. O CARTO oferece um tile básico
+    // gratuito, sem precisar de chave de API, pensado pra uso real.
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+      attribution: '&copy; <a href="https://carto.com/attributions">CARTO</a> &copy; OpenStreetMap contributors',
+      subdomains: 'abcd',
       maxZoom: 19,
     }).addTo(map);
 
@@ -1217,6 +1224,24 @@ function GeofenceMapTab({ employeeId }) {
     if (!map || !window.L) return;
     const L = window.L;
 
+    // Ícone do pino em SVG inline — o marcador padrão do Leaflet depende de
+    // 3 arquivos de imagem (marker-icon.png etc.) cujo caminho quebra com
+    // frequência quando a lib é carregada via CDN, deixando o pino invisível
+    // (só o círculo do raio aparecia). Um DivIcon com SVG embutido não
+    // depende de nenhum arquivo externo, então nunca quebra.
+    const pinIcon = L.divIcon({
+      className: '',
+      html: `
+        <svg width="28" height="28" viewBox="0 0 24 24" style="transform: translate(-2px, -26px);">
+          <path d="M12 0C7.6 0 4 3.6 4 8c0 5.8 7 15.3 7.3 15.7.2.3.6.5.9.5s.7-.2.9-.5C13.4 23.3 20 13.8 20 8c0-4.4-3.6-8-8-8z"
+                fill="#ff8b00" stroke="#ffffff" stroke-width="1.2"/>
+          <circle cx="12" cy="8" r="3.2" fill="#ffffff"/>
+        </svg>
+      `,
+      iconSize: [28, 28],
+      iconAnchor: [14, 28],
+    });
+
     const currentIds = new Set(fences.map((f) => f.id));
     Object.keys(markersRef.current).forEach((key) => {
       if (!currentIds.has(key)) {
@@ -1234,7 +1259,7 @@ function GeofenceMapTab({ employeeId }) {
       if (existing) {
         existing.circle.setRadius(radius);
       } else {
-        const marker = L.marker([fence.latitude, fence.longitude], { draggable: true }).addTo(map);
+        const marker = L.marker([fence.latitude, fence.longitude], { draggable: true, icon: pinIcon }).addTo(map);
         const circle = L.circle([fence.latitude, fence.longitude], {
           radius,
           color: '#ff8b00',

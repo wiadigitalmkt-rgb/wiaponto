@@ -156,14 +156,23 @@ export default function PunchClock() {
         const yearNum = now.getFullYear();
         const monthNum = String(now.getMonth() + 1).padStart(2, '0');
         const startDate = `${yearNum}-${monthNum}-01`;
-        const endDate = `${yearNum}-${monthNum}-31`;
+        // Primeiro dia do MÊS SEGUINTE, usado como limite exclusivo (< endDate).
+        // Evita montar uma data inválida tipo "2026-09-31" (setembro só tem
+        // 30 dias) — isso fazia a query ser rejeitada pelo Postgres e o
+        // Supabase devolver `data: null`, que o código silenciosamente
+        // tratava como "nenhum registro no mês" (Dias trabalhados/Horas no
+        // mês ficavam zerados mesmo com o ponto batido).
+        const nextMonthDate = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+        const endDateExclusive = `${nextMonthDate.getFullYear()}-${String(nextMonthDate.getMonth() + 1).padStart(2, '0')}-01`;
 
-        const { data: monthRecords } = await supabase
+        const { data: monthRecords, error: monthError } = await supabase
           .from('time_records')
           .select('*')
           .eq('employee_id', emp.id)
           .gte('record_date', startDate)
-          .lte('record_date', endDate);
+          .lt('record_date', endDateExclusive);
+
+        if (monthError) console.error('Erro ao buscar registros do mês:', monthError);
 
         if (monthRecords && monthRecords.length > 0) {
           const uniqueDates = new Set(monthRecords.map(r => r.record_date));

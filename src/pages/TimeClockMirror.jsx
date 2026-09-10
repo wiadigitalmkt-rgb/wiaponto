@@ -101,10 +101,34 @@ const processDayRecord = (record, targetDailyMinutes = 480) => {
   };
 };
 
+// Nomes dos meses em pt-BR, na mesma ordem que Date.getMonth() (0-11) —
+// usado tanto para o rótulo padrão quanto para gerar as opções do dropdown.
+const MONTH_NAMES = [
+  'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+  'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
+];
+
+function getMonthLabel(date) {
+  return `${MONTH_NAMES[date.getMonth()]}/${date.getFullYear()}`;
+}
+
+// Gera os últimos `count` meses (do mais recente ao mais antigo), sempre
+// incluindo o mês atual. Antes essa lista era fixa ("Agosto/2026" até
+// "Março/2026"), então a partir de setembro/2026 nem dava pra selecionar
+// o mês atual no filtro — por isso os pontos batidos "sumiam" no Espelho.
+function generateRecentMonths(count = 12) {
+  const months = [];
+  const now = new Date();
+  for (let i = 0; i < count; i++) {
+    months.push(getMonthLabel(new Date(now.getFullYear(), now.getMonth() - i, 1)));
+  }
+  return months;
+}
+
 export default function AdminPonto() {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('pontos'); // 'pontos' | 'resumo'
-  const [selectedMonth, setSelectedMonth] = useState('Agosto/2026');
+  const [selectedMonth, setSelectedMonth] = useState(() => getMonthLabel(new Date()));
   const [selectedDepartment, setSelectedDepartment] = useState('Todos');
   
   // Lista dinâmica de colaboradores do Supabase
@@ -208,12 +232,20 @@ export default function AdminPonto() {
       const yearNum = parts[1];
       if (monthNum && yearNum) {
         const startDate = `${yearNum}-${monthNum}-01`;
-        const endDate = `${yearNum}-${monthNum}-31`;
-        query = query.gte('record_date', startDate).lte('record_date', endDate);
+        // Primeiro dia do mês seguinte como limite exclusivo — evita montar
+        // "AAAA-MM-31" (data inválida em meses com menos de 31 dias, como
+        // setembro), que fazia o Postgres rejeitar a query e a tela mostrar
+        // "Nenhum registro de ponto encontrado" mesmo com pontos batidos.
+        const monthIndex = parseInt(monthNum, 10) - 1; // 0-11
+        const nextMonthDate = new Date(parseInt(yearNum, 10), monthIndex + 1, 1);
+        const endDateExclusive = `${nextMonthDate.getFullYear()}-${String(nextMonthDate.getMonth() + 1).padStart(2, '0')}-01`;
+        query = query.gte('record_date', startDate).lt('record_date', endDateExclusive);
       }
     }
 
     const { data, error } = await query.order('record_date', { ascending: false });
+
+    if (error) console.error('Erro ao buscar registros de ponto:', error);
 
     if (!error && data) {
       const grouped = data.reduce((acc, curr) => {
@@ -445,14 +477,7 @@ export default function AdminPonto() {
   };
 
   const MonthDropdownSelector = () => {
-    const months = [
-      'Agosto/2026',
-      'Julho/2026',
-      'Junho/2026',
-      'Maio/2026',
-      'Abril/2026',
-      'Março/2026'
-    ];
+    const months = generateRecentMonths(12);
 
     return (
       <div className="flex items-center space-x-2">

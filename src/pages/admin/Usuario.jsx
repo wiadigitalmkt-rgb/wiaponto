@@ -12,7 +12,10 @@ import {
   ArrowLeft,
   Settings,
   Upload,
-  Plus
+  Plus,
+  FileText,
+  Loader2,
+  Coffee
 } from 'lucide-react';
 
 export default function Usuario() {
@@ -21,7 +24,6 @@ export default function Usuario() {
 
   const [activeTab, setActiveTab] = useState('informacoes');
   const [profileSubTab, setProfileSubTab] = useState('dados');
-  const [jornadaSubTab, setJornadaSubTab] = useState('informacoes');
   const [, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
 
@@ -64,7 +66,6 @@ export default function Usuario() {
   const [newFieldType, setNewFieldType] = useState('Texto livre');
 
   const [attachments, setAttachments] = useState([]);
-  const [schedules, setSchedules] = useState([]);
   const [geofences, setGeofences] = useState([]);
   const [vacations, setVacations] = useState([]);
   const [dependents, setDependents] = useState([]);
@@ -127,9 +128,6 @@ export default function Usuario() {
 
         const { data: files } = await supabase.from('employee_attachments').select('*').eq('employee_id', userId);
         if (files) setAttachments(files);
-
-        const { data: scheds } = await supabase.from('employee_work_schedules').select('*').eq('employee_id', userId);
-        if (scheds) setSchedules(scheds);
 
         const { data: fences } = await supabase.from('geofences').select('*').eq('employee_id', userId);
         if (fences) setGeofences(fences);
@@ -259,18 +257,6 @@ export default function Usuario() {
     }
   };
 
-  // 4. Adicionar Nova Jornada
-  const handleAddSchedule = async () => {
-    if (!userId) return;
-    const newEntry = {
-      employee_id: userId,
-      start_date: new Date().toISOString().split('T')[0],
-      schedule_name: 'SEG A SEX 8H AS 12H DAS 14H AS 18H SAB 08H AS 12H'
-    };
-    const { data } = await supabase.from('employee_work_schedules').insert([newEntry]).select();
-    if (data) setSchedules([...schedules, ...data]);
-  };
-
   // 5. Adicionar Cerca
   const handleAddGeofence = async () => {
     if (!userId || !newFence.name) return;
@@ -320,6 +306,7 @@ export default function Usuario() {
     { id: 'cercas', label: 'Cercas', icon: MapPin },
     { id: 'ferias', label: 'Férias', icon: Plane },
     { id: 'dependentes', label: 'Dependentes', icon: Users },
+    { id: 'formulario_admissao', label: 'Formulário de Admissão', icon: FileText },
     { id: 'acesso', label: 'Acesso ao sistema', icon: KeyRound },
   ];
 
@@ -620,66 +607,7 @@ export default function Usuario() {
               )}
 
               {/* 2. JORNADA DE TRABALHO */}
-              {activeTab === 'jornada' && (
-                <div>
-                  <div className="flex border-b border-slate-200 px-4 pt-2 gap-6 text-sm">
-                    <button
-                      onClick={() => setJornadaSubTab('informacoes')}
-                      className={`pb-3 ${jornadaSubTab === 'informacoes' ? 'border-b-2 border-[#ff8b00] text-[#ff8b00] font-medium' : 'text-slate-500'}`}
-                    >
-                      Informações
-                    </button>
-                    <button
-                      onClick={() => setJornadaSubTab('jornadas')}
-                      className={`pb-3 ${jornadaSubTab === 'jornadas' ? 'border-b-2 border-[#ff8b00] text-[#ff8b00] font-medium' : 'text-slate-500'}`}
-                    >
-                      Jornadas
-                    </button>
-                  </div>
-
-                  {jornadaSubTab === 'jornadas' ? (
-                    <div className="p-6 space-y-6 text-xs">
-                      <div className="flex justify-between items-center">
-                        <button onClick={handleAddSchedule} className="border border-[#ff8b00] text-[#ff8b00] px-4 py-2 rounded font-medium hover:bg-[#ff8b00]/10 flex items-center gap-1 transition-colors">
-                          <Plus className="w-3.5 h-3.5" /> Adicionar nova
-                        </button>
-                      </div>
-
-                      <div className="space-y-4">
-                        {schedules.map((s) => (
-                          <div key={s.id} className="grid grid-cols-1 md:grid-cols-3 gap-4 items-center border p-3 rounded">
-                            <div>
-                              <label className="block text-slate-500 text-[10px]">Início em</label>
-                              <input type="date" defaultValue={s.start_date} className="border rounded p-1.5 text-xs w-full focus:outline-none focus:border-[#ff8b00]" />
-                            </div>
-                            <div>
-                              <label className="block text-slate-500 text-[10px]">Jornada</label>
-                              <select defaultValue={s.schedule_name} className="border rounded p-1.5 text-xs w-full focus:outline-none focus:border-[#ff8b00]">
-                                <option value="SEG A SEX 8H AS 12H DAS 14H AS 18H SAB 08H AS 12H">
-                                  SEG A SEX 8H AS 12H DAS 14H AS 18H SAB 08H AS 12H
-                                </option>
-                              </select>
-                            </div>
-                            <div className="text-right">
-                              <button className="text-red-500 hover:underline">Remover</button>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-
-                      <div className="flex justify-end pt-4">
-                        <button onClick={handleSaveProfile} className="bg-[#ff8b00] hover:bg-[#e07a00] text-white font-medium px-6 py-2 rounded text-xs transition-colors">
-                          Salvar alterações
-                        </button>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="p-6 space-y-6 text-xs">
-                      <p className="text-slate-600 font-medium">Jornada Atual e Parâmetros de Ponto Celular/Web</p>
-                    </div>
-                  )}
-                </div>
-              )}
+              {activeTab === 'jornada' && <WorkScheduleTab employeeId={userId} />}
 
               {/* 3. CERCAS (Geofencing) */}
               {activeTab === 'cercas' && (
@@ -816,6 +744,23 @@ export default function Usuario() {
                   </div>
                 </div>
               )}
+
+              {/* 7. FORMULÁRIO DE ADMISSÃO (esqueleto — a leitura dos dados
+                  reais preenchidos pelo colaborador em PreencherAdmissao.jsx
+                  será conectada aqui numa próxima etapa) */}
+              {activeTab === 'formulario_admissao' && (
+                <div className="p-6 text-xs">
+                  <div className="border-2 border-dashed border-slate-200 rounded-lg p-12 text-center text-slate-400 space-y-2">
+                    <FileText className="w-8 h-8 mx-auto text-slate-300" />
+                    <p className="font-medium text-slate-600">Formulário de Admissão</p>
+                    <p>
+                      Em breve, as respostas enviadas pelo colaborador no processo de admissão
+                      (selfie, estado civil, telefone, endereço, dados bancários, etc.) vão
+                      aparecer aqui, vinculadas a este usuário.
+                    </p>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -907,6 +852,316 @@ export default function Usuario() {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// JORNADA DE TRABALHO — componente próprio, com fetch/save independentes.
+// Guarda uma jornada estruturada por dia da semana (entrada, intervalo de
+// almoço e saída), calcula a carga horária diária/semanal automaticamente
+// e salva em `employee_work_schedules`, vinculada ao employee_id. Essa é a
+// jornada que o cálculo de horas do ponto (atrasos, extras, faltas) vai usar.
+// ---------------------------------------------------------------------------
+
+const WEEKDAYS = [
+  { key: 1, label: 'Segunda-feira', short: 'SEG' },
+  { key: 2, label: 'Terça-feira', short: 'TER' },
+  { key: 3, label: 'Quarta-feira', short: 'QUA' },
+  { key: 4, label: 'Quinta-feira', short: 'QUI' },
+  { key: 5, label: 'Sexta-feira', short: 'SEX' },
+  { key: 6, label: 'Sábado', short: 'SAB' },
+  { key: 0, label: 'Domingo', short: 'DOM' },
+];
+
+function defaultDay(weekday) {
+  const isWeekday = weekday >= 1 && weekday <= 5;
+  return {
+    weekday,
+    active: isWeekday,
+    has_break: isWeekday,
+    entry: isWeekday ? '08:00' : '',
+    lunch_start: isWeekday ? '12:00' : '',
+    lunch_end: isWeekday ? '13:00' : '',
+    exit: isWeekday ? '18:00' : '',
+  };
+}
+
+function defaultDays() {
+  return WEEKDAYS.map((w) => defaultDay(w.key));
+}
+
+function timeToMinutes(t) {
+  if (!t || typeof t !== 'string') return null;
+  const [h, m] = t.split(':').map(Number);
+  if (Number.isNaN(h) || Number.isNaN(m)) return null;
+  return h * 60 + m;
+}
+
+function minutesToHours(mins) {
+  if (!mins || mins <= 0) return '0h00';
+  const h = Math.floor(mins / 60);
+  const m = Math.round(mins % 60);
+  return `${h}h${String(m).padStart(2, '0')}`;
+}
+
+// Calcula os minutos trabalhados no dia, descontando o intervalo de almoço
+// quando aplicável. Usado tanto na tela (preview) quanto para gravar
+// weekly_hours no banco.
+function calcDailyMinutes(day) {
+  if (!day.active) return 0;
+  const entry = timeToMinutes(day.entry);
+  const exit = timeToMinutes(day.exit);
+  if (entry === null || exit === null || exit <= entry) return 0;
+
+  if (!day.has_break) return exit - entry;
+
+  const lunchStart = timeToMinutes(day.lunch_start);
+  const lunchEnd = timeToMinutes(day.lunch_end);
+  if (lunchStart === null || lunchEnd === null || lunchEnd <= lunchStart) {
+    return exit - entry;
+  }
+  return Math.max(0, exit - entry - (lunchEnd - lunchStart));
+}
+
+function buildScheduleLabel(days) {
+  const active = days.filter((d) => d.active && d.entry && d.exit);
+  if (active.length === 0) return 'Sem jornada definida';
+
+  const order = WEEKDAYS.map((w) => w.key);
+  const sorted = [...active].sort((a, b) => order.indexOf(a.weekday) - order.indexOf(b.weekday));
+  const shortOf = (weekday) => WEEKDAYS.find((w) => w.key === weekday)?.short || '';
+
+  const first = sorted[0];
+  const last = sorted[sorted.length - 1];
+  const sameTimes = active.every((d) => d.entry === first.entry && d.exit === last.exit);
+
+  const rangeLabel =
+    sorted.length > 1 && sameTimes
+      ? `${shortOf(first.weekday)} A ${shortOf(last.weekday)}`
+      : sorted.map((d) => shortOf(d.weekday)).join('/');
+
+  return `${rangeLabel} ${first.entry} ÀS ${last.exit}`;
+}
+
+function WorkScheduleTab({ employeeId }) {
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [scheduleId, setScheduleId] = useState(null);
+  const [startDate, setStartDate] = useState(new Date().toISOString().split('T')[0]);
+  const [days, setDays] = useState(defaultDays());
+
+  useEffect(() => {
+    if (!employeeId || !supabase) return;
+
+    async function fetchSchedule() {
+      setLoading(true);
+      try {
+        const { data, error } = await supabase
+          .from('employee_work_schedules')
+          .select('*')
+          .eq('employee_id', employeeId)
+          .maybeSingle();
+
+        if (error) throw error;
+
+        if (data) {
+          setScheduleId(data.id);
+          setStartDate(data.start_date || new Date().toISOString().split('T')[0]);
+          setDays(Array.isArray(data.week_days) && data.week_days.length ? data.week_days : defaultDays());
+        } else {
+          setScheduleId(null);
+          setDays(defaultDays());
+        }
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    fetchSchedule();
+  }, [employeeId]);
+
+  function updateDay(weekday, patch) {
+    setDays((prev) => prev.map((d) => (d.weekday === weekday ? { ...d, ...patch } : d)));
+  }
+
+  const weeklyMinutes = days.reduce((sum, d) => sum + calcDailyMinutes(d), 0);
+
+  async function handleSave() {
+    if (!employeeId || !supabase) return;
+    setSaving(true);
+    try {
+      const label = buildScheduleLabel(days);
+      const payload = {
+        employee_id: employeeId,
+        start_date: startDate || new Date().toISOString().split('T')[0],
+        week_days: days,
+        weekly_hours: Math.round((weeklyMinutes / 60) * 100) / 100,
+        schedule_name: label,
+        is_active: true,
+        updated_at: new Date().toISOString(),
+      };
+
+      const { data, error } = await supabase
+        .from('employee_work_schedules')
+        .upsert(payload, { onConflict: 'employee_id' })
+        .select()
+        .single();
+      if (error) throw error;
+      setScheduleId(data.id);
+
+      // Mantém Employees.work_schedule (texto livre usado em outras telas,
+      // como a criação do colaborador) sincronizado com a jornada real.
+      await supabase.from('Employees').update({ work_schedule: label }).eq('id', employeeId);
+
+      alert('Jornada de trabalho salva com sucesso!');
+    } catch (err) {
+      console.error(err);
+      alert('Erro ao salvar a jornada de trabalho. Verifique os horários preenchidos.');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="p-10 flex items-center justify-center text-slate-400 text-xs gap-2">
+        <Loader2 className="w-4 h-4 animate-spin" /> Carregando jornada...
+      </div>
+    );
+  }
+
+  return (
+    <div className="p-6 space-y-5 text-xs">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-4 border-b border-slate-100">
+        <div>
+          <h3 className="font-semibold text-slate-800 text-sm">Jornada de trabalho</h3>
+          <p className="text-slate-500 mt-0.5">
+            Defina os dias, horários e intervalo de almoço. Essa jornada é a base para o cálculo
+            de horas extras, atrasos e faltas no registro de ponto.
+          </p>
+        </div>
+        <div>
+          <label className="block text-slate-500 text-[10px] mb-1">Vigente a partir de</label>
+          <input
+            type="date"
+            value={startDate}
+            onChange={(e) => setStartDate(e.target.value)}
+            className="border rounded p-2 text-xs focus:outline-none focus:border-[#ff8b00]"
+          />
+        </div>
+      </div>
+
+      <div className="space-y-2">
+        {WEEKDAYS.map((wd) => {
+          const day = days.find((d) => d.weekday === wd.key) || defaultDay(wd.key);
+          const dailyMinutes = calcDailyMinutes(day);
+
+          return (
+            <div
+              key={wd.key}
+              className={`rounded-lg border p-3 transition-colors ${
+                day.active ? 'border-slate-200 bg-white' : 'border-slate-100 bg-slate-50/60'
+              }`}
+            >
+              <div className="flex flex-col lg:flex-row lg:items-center gap-3">
+                <label className="flex items-center gap-2 w-36 shrink-0 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={day.active}
+                    onChange={(e) => updateDay(wd.key, { active: e.target.checked })}
+                    className="accent-[#ff8b00] w-3.5 h-3.5"
+                  />
+                  <span className={`font-semibold ${day.active ? 'text-slate-800' : 'text-slate-400'}`}>
+                    {wd.label}
+                  </span>
+                </label>
+
+                {day.active ? (
+                  <div className="flex flex-1 flex-wrap items-end gap-3">
+                    <div>
+                      <label className="block text-slate-500 text-[10px] mb-1">Entrada</label>
+                      <input
+                        type="time"
+                        value={day.entry}
+                        onChange={(e) => updateDay(wd.key, { entry: e.target.value })}
+                        className="border rounded p-1.5 text-xs focus:outline-none focus:border-[#ff8b00]"
+                      />
+                    </div>
+
+                    <label className="flex items-center gap-1.5 text-[11px] text-slate-500 pb-2 cursor-pointer select-none">
+                      <input
+                        type="checkbox"
+                        checked={day.has_break}
+                        onChange={(e) => updateDay(wd.key, { has_break: e.target.checked })}
+                        className="accent-[#ff8b00] w-3 h-3"
+                      />
+                      <Coffee className="w-3 h-3" /> Intervalo
+                    </label>
+
+                    {day.has_break && (
+                      <>
+                        <div>
+                          <label className="block text-slate-500 text-[10px] mb-1">Saída p/ almoço</label>
+                          <input
+                            type="time"
+                            value={day.lunch_start}
+                            onChange={(e) => updateDay(wd.key, { lunch_start: e.target.value })}
+                            className="border rounded p-1.5 text-xs focus:outline-none focus:border-[#ff8b00]"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-slate-500 text-[10px] mb-1">Retorno do almoço</label>
+                          <input
+                            type="time"
+                            value={day.lunch_end}
+                            onChange={(e) => updateDay(wd.key, { lunch_end: e.target.value })}
+                            className="border rounded p-1.5 text-xs focus:outline-none focus:border-[#ff8b00]"
+                          />
+                        </div>
+                      </>
+                    )}
+
+                    <div>
+                      <label className="block text-slate-500 text-[10px] mb-1">Saída</label>
+                      <input
+                        type="time"
+                        value={day.exit}
+                        onChange={(e) => updateDay(wd.key, { exit: e.target.value })}
+                        className="border rounded p-1.5 text-xs focus:outline-none focus:border-[#ff8b00]"
+                      />
+                    </div>
+
+                    <div className="ml-auto text-right pb-2">
+                      <span className="text-slate-400 text-[10px] block">Carga do dia</span>
+                      <strong className="text-slate-700">{minutesToHours(dailyMinutes)}</strong>
+                    </div>
+                  </div>
+                ) : (
+                  <span className="text-slate-400 text-[11px]">Folga / não trabalha neste dia</span>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pt-2 border-t border-slate-100">
+        <div>
+          <span className="text-slate-500 text-[10px] block">Carga horária semanal total</span>
+          <strong className="text-slate-800 text-sm">{minutesToHours(weeklyMinutes)}</strong>
+        </div>
+        <button
+          onClick={handleSave}
+          disabled={saving}
+          className="bg-[#ff8b00] hover:bg-[#e07a00] text-white font-medium px-6 py-2.5 rounded text-xs transition-colors disabled:opacity-60 flex items-center justify-center gap-1.5"
+        >
+          {saving && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+          {saving ? 'Salvando...' : scheduleId ? 'Salvar alterações' : 'Salvar jornada'}
+        </button>
+      </div>
     </div>
   );
 }

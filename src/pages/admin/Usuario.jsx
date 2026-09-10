@@ -66,7 +66,6 @@ export default function Usuario() {
   const [newFieldType, setNewFieldType] = useState('Texto livre');
 
   const [attachments, setAttachments] = useState([]);
-  const [geofences, setGeofences] = useState([]);
   const [vacations, setVacations] = useState([]);
   const [dependents, setDependents] = useState([]);
 
@@ -82,9 +81,6 @@ export default function Usuario() {
     relationship: 'Filho(a)',
     notes: ''
   });
-
-  const [showGeofenceModal, setShowGeofenceModal] = useState(false);
-  const [newFence, setNewFence] = useState({ name: '', latitude: -30.0811, longitude: -51.0233, radius_meters: 100 });
 
   // Carregar dados iniciais do Supabase
   useEffect(() => {
@@ -128,9 +124,6 @@ export default function Usuario() {
 
         const { data: files } = await supabase.from('employee_attachments').select('*').eq('employee_id', userId);
         if (files) setAttachments(files);
-
-        const { data: fences } = await supabase.from('geofences').select('*').eq('employee_id', userId);
-        if (fences) setGeofences(fences);
 
         const { data: vacs } = await supabase.from('employee_vacations').select('*').eq('employee_id', userId);
         if (vacs) setVacations(vacs);
@@ -254,20 +247,6 @@ export default function Usuario() {
       if (record) {
         setAttachments(prev => [...prev, ...record]);
       }
-    }
-  };
-
-  // 5. Adicionar Cerca
-  const handleAddGeofence = async () => {
-    if (!userId || !newFence.name) return;
-    const { data } = await supabase.from('geofences').insert([{
-      employee_id: userId,
-      ...newFence
-    }]).select();
-
-    if (data) {
-      setGeofences([...geofences, ...data]);
-      setShowGeofenceModal(false);
     }
   };
 
@@ -610,36 +589,7 @@ export default function Usuario() {
               {activeTab === 'jornada' && <WorkScheduleTab employeeId={userId} />}
 
               {/* 3. CERCAS (Geofencing) */}
-              {activeTab === 'cercas' && (
-                <div className="p-6 text-xs space-y-6">
-                  <div className="flex justify-between items-center">
-                    <h3 className="font-semibold text-slate-800 text-sm">Cercas do Usuário</h3>
-                    <button onClick={() => setShowGeofenceModal(true)} className="flex items-center gap-1 border border-[#ff8b00] text-[#ff8b00] px-3 py-1.5 rounded hover:bg-[#ff8b00]/10 font-medium transition-colors">
-                      <MapPin className="w-3.5 h-3.5" /> Adicionar Cerca no Mapa
-                    </button>
-                  </div>
-
-                  {geofences.length === 0 ? (
-                    <div className="border-2 border-dashed border-slate-200 rounded-lg p-12 text-center text-slate-400 space-y-2">
-                      <MapPin className="w-8 h-8 mx-auto text-slate-300" />
-                      <p className="font-medium text-slate-600">Nenhuma cerca cadastrada</p>
-                      <p>Adicione um raio no mapa onde o ponto será liberado sem alerta.</p>
-                    </div>
-                  ) : (
-                    <div className="space-y-3">
-                      {geofences.map(f => (
-                        <div key={f.id} className="p-3 border rounded flex justify-between items-center">
-                          <div>
-                            <strong className="text-slate-800 block">{f.name}</strong>
-                            <span className="text-slate-500">Lat: {f.latitude}, Lng: {f.longitude} (Raio: {f.radius_meters}m)</span>
-                          </div>
-                          <span className="bg-[#ff8b00]/10 text-[#ff8b00] px-2 py-0.5 rounded text-[10px] font-semibold">Ativa</span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
+              {activeTab === 'cercas' && <GeofenceMapTab employeeId={userId} />}
 
               {/* 4. FÉRIAS */}
               {activeTab === 'ferias' && (
@@ -817,37 +767,6 @@ export default function Usuario() {
             <div className="flex justify-end gap-2 pt-2">
               <button onClick={() => setShowDependentModal(false)} className="px-4 py-2 border rounded text-xs">Cancelar</button>
               <button onClick={handleAddDependent} className="px-4 py-2 bg-[#ff8b00] hover:bg-[#e07a00] text-white rounded text-xs font-medium transition-colors">Salvar</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* MODAL CERCA NO MAPA */}
-      {showGeofenceModal && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded-lg w-full max-w-md space-y-4">
-            <h3 className="font-bold text-slate-800 text-sm">Cadastrar Cerca Geográfica</h3>
-            <div>
-              <label className="block text-xs text-slate-600">Nome do Local</label>
-              <input type="text" placeholder="Ex: Sede Viamão" onChange={(e) => setNewFence({...newFence, name: e.target.value})} className="w-full border rounded p-2 text-xs focus:outline-none focus:border-[#ff8b00]" />
-            </div>
-            <div className="grid grid-cols-2 gap-2">
-              <div>
-                <label className="block text-xs text-slate-600">Latitude</label>
-                <input type="number" step="any" value={newFence.latitude} onChange={(e) => setNewFence({...newFence, latitude: parseFloat(e.target.value)})} className="w-full border rounded p-2 text-xs focus:outline-none focus:border-[#ff8b00]" />
-              </div>
-              <div>
-                <label className="block text-xs text-slate-600">Longitude</label>
-                <input type="number" step="any" value={newFence.longitude} onChange={(e) => setNewFence({...newFence, longitude: parseFloat(e.target.value)})} className="w-full border rounded p-2 text-xs focus:outline-none focus:border-[#ff8b00]" />
-              </div>
-            </div>
-            <div>
-              <label className="block text-xs text-slate-600">Raio de Cobertura (Metros)</label>
-              <input type="number" value={newFence.radius_meters} onChange={(e) => setNewFence({...newFence, radius_meters: parseInt(e.target.value)})} className="w-full border rounded p-2 text-xs focus:outline-none focus:border-[#ff8b00]" />
-            </div>
-            <div className="flex justify-end gap-2 pt-2">
-              <button onClick={() => setShowGeofenceModal(false)} className="px-4 py-2 border rounded text-xs">Cancelar</button>
-              <button onClick={handleAddGeofence} className="px-4 py-2 bg-[#ff8b00] hover:bg-[#e07a00] text-white rounded text-xs font-medium transition-colors">Salvar Cerca</button>
             </div>
           </div>
         </div>
@@ -1162,6 +1081,335 @@ function WorkScheduleTab({ employeeId }) {
           {saving ? 'Salvando...' : scheduleId ? 'Salvar alterações' : 'Salvar jornada'}
         </button>
       </div>
+    </div>
+  );
+}
+// ---------------------------------------------------------------------------
+// CERCAS — mapa interativo (Leaflet + OpenStreetMap, carregado via CDN, sem
+// precisar instalar pacote novo no projeto). O gestor clica no mapa pra
+// colocar um pino, ajusta nome/raio, e salva. Cada pino é uma cerca
+// independente — o colaborador é liberado ao bater o ponto dentro do raio de
+// QUALQUER uma delas. Fora de todas, o ponto ainda é salvo, mas fica
+// "pendente" até o gestor aprovar manualmente (checagem feita em
+// PunchClock.jsx no momento de bater o ponto; aprovação feita em
+// TimeClockMirror.jsx / Espelho de Ponto).
+// ---------------------------------------------------------------------------
+
+const LEAFLET_CSS_URL = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
+const LEAFLET_JS_URL = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
+
+function loadLeaflet(onReady) {
+  if (typeof window === 'undefined') return;
+  if (window.L) {
+    onReady();
+    return;
+  }
+  if (!document.getElementById('leaflet-cdn-css')) {
+    const link = document.createElement('link');
+    link.id = 'leaflet-cdn-css';
+    link.rel = 'stylesheet';
+    link.href = LEAFLET_CSS_URL;
+    document.head.appendChild(link);
+  }
+  const existingScript = document.getElementById('leaflet-cdn-script');
+  if (existingScript) {
+    existingScript.addEventListener('load', onReady);
+    return;
+  }
+  const script = document.createElement('script');
+  script.id = 'leaflet-cdn-script';
+  script.src = LEAFLET_JS_URL;
+  script.async = true;
+  script.onload = onReady;
+  document.body.appendChild(script);
+}
+
+function GeofenceMapTab({ employeeId }) {
+  const [loading, setLoading] = useState(true);
+  const [fences, setFences] = useState([]);
+  const [addingMode, setAddingMode] = useState(false);
+  const [leafletReady, setLeafletReady] = useState(typeof window !== 'undefined' && !!window.L);
+
+  const mapDivRef = useRef(null);
+  const mapInstanceRef = useRef(null);
+  const markersRef = useRef({});
+  const addingModeRef = useRef(false);
+
+  useEffect(() => {
+    addingModeRef.current = addingMode;
+  }, [addingMode]);
+
+  // 1) Carrega a biblioteca do mapa (uma vez só, via CDN)
+  useEffect(() => {
+    loadLeaflet(() => setLeafletReady(true));
+  }, []);
+
+  // 2) Busca as cercas já cadastradas para este colaborador
+  useEffect(() => {
+    if (!employeeId || !supabase) return;
+    (async () => {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from('geofences')
+        .select('*')
+        .eq('employee_id', employeeId);
+      if (error) console.error(error);
+      setFences(data || []);
+      setLoading(false);
+    })();
+  }, [employeeId]);
+
+  // 3) Inicializa o mapa assim que a biblioteca e o <div> estiverem prontos
+  useEffect(() => {
+    if (!leafletReady || !mapDivRef.current || mapInstanceRef.current) return;
+    const L = window.L;
+
+    const map = L.map(mapDivRef.current).setView([-14.235, -51.9253], 4);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; OpenStreetMap contributors',
+      maxZoom: 19,
+    }).addTo(map);
+
+    map.on('click', (e) => {
+      if (!addingModeRef.current) return;
+      const tempId = `temp-${Date.now()}`;
+      setFences((prev) => [
+        ...prev,
+        {
+          id: tempId,
+          _isNew: true,
+          name: '',
+          latitude: e.latlng.lat,
+          longitude: e.latlng.lng,
+          radius_meters: 100,
+        },
+      ]);
+      setAddingMode(false);
+    });
+
+    mapInstanceRef.current = map;
+
+    // Centraliza no local do gestor, se o navegador permitir — só ajuda a
+    // não começar sempre olhando pro Brasil inteiro.
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => map.setView([pos.coords.latitude, pos.coords.longitude], 15),
+        () => {},
+        { timeout: 4000 }
+      );
+    }
+
+    // Corrige um bug comum do Leaflet quando o mapa nasce dentro de uma aba
+    // escondida (o container não tem altura calculada ainda no 1º frame).
+    setTimeout(() => map.invalidateSize(), 200);
+
+    return () => {
+      map.remove();
+      mapInstanceRef.current = null;
+      markersRef.current = {};
+    };
+  }, [leafletReady]);
+
+  // 4) Sempre que a lista de cercas mudar, reconcilia os marcadores/círculos
+  // no mapa (adiciona os novos, remove os excluídos, atualiza raio/posição).
+  useEffect(() => {
+    const map = mapInstanceRef.current;
+    if (!map || !window.L) return;
+    const L = window.L;
+
+    const currentIds = new Set(fences.map((f) => f.id));
+    Object.keys(markersRef.current).forEach((key) => {
+      if (!currentIds.has(key)) {
+        const { marker, circle } = markersRef.current[key];
+        map.removeLayer(marker);
+        map.removeLayer(circle);
+        delete markersRef.current[key];
+      }
+    });
+
+    fences.forEach((fence) => {
+      const existing = markersRef.current[fence.id];
+      const radius = Number(fence.radius_meters) || 0;
+
+      if (existing) {
+        existing.circle.setRadius(radius);
+      } else {
+        const marker = L.marker([fence.latitude, fence.longitude], { draggable: true }).addTo(map);
+        const circle = L.circle([fence.latitude, fence.longitude], {
+          radius,
+          color: '#ff8b00',
+          fillColor: '#ff8b00',
+          fillOpacity: 0.15,
+          weight: 2,
+        }).addTo(map);
+
+        marker.on('drag', (e) => {
+          circle.setLatLng(e.target.getLatLng());
+        });
+        marker.on('dragend', (e) => {
+          const { lat, lng } = e.target.getLatLng();
+          setFences((prev) =>
+            prev.map((f) => (f.id === fence.id ? { ...f, latitude: lat, longitude: lng } : f))
+          );
+        });
+
+        markersRef.current[fence.id] = { marker, circle };
+      }
+    });
+  }, [fences]);
+
+  function updateFenceField(id, patch) {
+    setFences((prev) => prev.map((f) => (f.id === id ? { ...f, ...patch } : f)));
+  }
+
+  async function handleSaveFence(fence) {
+    if (!fence.name?.trim()) {
+      alert('Dê um nome para essa cerca (ex: "Sede", "Obra Zona Sul").');
+      return;
+    }
+    const payload = {
+      employee_id: employeeId,
+      name: fence.name.trim(),
+      latitude: fence.latitude,
+      longitude: fence.longitude,
+      radius_meters: Number(fence.radius_meters) || 100,
+    };
+
+    if (fence._isNew) {
+      const { data, error } = await supabase.from('geofences').insert([payload]).select().single();
+      if (error) {
+        console.error(error);
+        alert('Erro ao salvar a cerca.');
+        return;
+      }
+      setFences((prev) => prev.map((f) => (f.id === fence.id ? data : f)));
+    } else {
+      const { error } = await supabase.from('geofences').update(payload).eq('id', fence.id);
+      if (error) {
+        console.error(error);
+        alert('Erro ao salvar a cerca.');
+        return;
+      }
+      setFences((prev) => prev.map((f) => (f.id === fence.id ? { ...f, ...payload } : f)));
+    }
+  }
+
+  async function handleDeleteFence(fence) {
+    if (!fence._isNew) {
+      const { error } = await supabase.from('geofences').delete().eq('id', fence.id);
+      if (error) {
+        console.error(error);
+        alert('Erro ao remover a cerca.');
+        return;
+      }
+    }
+    setFences((prev) => prev.filter((f) => f.id !== fence.id));
+  }
+
+  return (
+    <div className="p-6 text-xs space-y-4">
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+        <div>
+          <h3 className="font-semibold text-slate-800 text-sm">Cercas do usuário</h3>
+          <p className="text-slate-500 mt-0.5 max-w-lg">
+            Clique no mapa para colocar um pino e definir a área onde o ponto é liberado sem
+            alerta. Fora de todas as cercas, o ponto ainda é registrado, mas fica pendente até
+            você aprovar (veja no Espelho de Ponto).
+          </p>
+        </div>
+        <button
+          onClick={() => setAddingMode((v) => !v)}
+          className={`shrink-0 flex items-center gap-1 px-3 py-1.5 rounded font-medium transition-colors border ${
+            addingMode
+              ? 'bg-[#ff8b00] text-white border-[#ff8b00]'
+              : 'border-[#ff8b00] text-[#ff8b00] hover:bg-[#ff8b00]/10'
+          }`}
+        >
+          <MapPin className="w-3.5 h-3.5" />
+          {addingMode ? 'Clique no mapa...' : 'Adicionar cerca no mapa'}
+        </button>
+      </div>
+
+      <div
+        ref={mapDivRef}
+        className={`w-full h-80 rounded-lg border border-slate-200 bg-slate-50 ${addingMode ? 'cursor-crosshair' : ''}`}
+      >
+        {!leafletReady && (
+          <div className="h-full flex items-center justify-center text-slate-400 gap-2">
+            <Loader2 className="w-4 h-4 animate-spin" /> Carregando mapa...
+          </div>
+        )}
+      </div>
+
+      {loading ? (
+        <div className="text-slate-400 flex items-center gap-2 py-4">
+          <Loader2 className="w-4 h-4 animate-spin" /> Carregando cercas...
+        </div>
+      ) : fences.length === 0 ? (
+        <div className="border-2 border-dashed border-slate-200 rounded-lg p-8 text-center text-slate-400 space-y-1">
+          <MapPin className="w-6 h-6 mx-auto text-slate-300" />
+          <p className="font-medium text-slate-600">Nenhuma cerca cadastrada</p>
+          <p>Clique em "Adicionar cerca no mapa" e depois no local desejado.</p>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {fences.map((fence) => (
+            <div key={fence.id} className="p-3 border rounded-lg space-y-2">
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  value={fence.name}
+                  onChange={(e) => updateFenceField(fence.id, { name: e.target.value })}
+                  placeholder="Nome do local (ex: Sede, Obra Zona Sul)"
+                  className="flex-1 border rounded p-1.5 text-xs focus:outline-none focus:border-[#ff8b00]"
+                />
+                {fence._isNew ? (
+                  <span className="bg-amber-100 text-amber-700 px-2 py-0.5 rounded text-[10px] font-semibold shrink-0">
+                    Não salva
+                  </span>
+                ) : (
+                  <span className="bg-[#ff8b00]/10 text-[#ff8b00] px-2 py-0.5 rounded text-[10px] font-semibold shrink-0">
+                    Ativa
+                  </span>
+                )}
+              </div>
+
+              <div className="flex flex-wrap items-center gap-3">
+                <label className="flex items-center gap-1.5 text-slate-500">
+                  Raio
+                  <input
+                    type="number"
+                    min="10"
+                    step="10"
+                    value={fence.radius_meters}
+                    onChange={(e) => updateFenceField(fence.id, { radius_meters: e.target.value })}
+                    className="w-20 border rounded p-1.5 text-xs focus:outline-none focus:border-[#ff8b00]"
+                  />
+                  metros
+                </label>
+                <span className="text-slate-400 font-mono text-[10px]">
+                  Lat: {Number(fence.latitude).toFixed(5)}, Lng: {Number(fence.longitude).toFixed(5)}
+                </span>
+
+                <div className="ml-auto flex items-center gap-2">
+                  <button
+                    onClick={() => handleSaveFence(fence)}
+                    className="bg-[#ff8b00] hover:bg-[#e07a00] text-white font-medium px-3 py-1.5 rounded text-xs transition-colors"
+                  >
+                    Salvar
+                  </button>
+                  <button
+                    onClick={() => handleDeleteFence(fence)}
+                    className="border border-red-300 text-red-500 hover:bg-red-50 font-medium px-3 py-1.5 rounded text-xs transition-colors"
+                  >
+                    Remover
+                  </button>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

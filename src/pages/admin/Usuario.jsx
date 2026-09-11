@@ -209,9 +209,12 @@ export default function Usuario() {
     }
   };
 
-  // Resetar a senha do usuário para o padrão inicial (CPF, só dígitos) —
-  // mesmo padrão usado no login (ver `login` em usuarioData, montado a
-  // partir do CPF na criação do colaborador).
+  // Resetar a senha do usuário para o padrão inicial (CPF, só dígitos).
+  // Chama a Edge Function `reset-employee-password`, que atualiza tanto
+  // Employees.password_hash quanto a senha real no Supabase Auth (só ela
+  // tem acesso à chave de admin necessária pra isso — ver Login.jsx, que
+  // tenta signInWithPassword primeiro). Se a função ainda não foi
+  // publicada, cai num fallback que atualiza só a tabela e avisa.
   const handleResetPassword = async () => {
     if (!supabase || !userId) return;
     const cpfDigits = (usuarioData.cpf || '').replace(/\D/g, '');
@@ -223,12 +226,31 @@ export default function Usuario() {
 
     setResettingPassword(true);
     try {
-      const { error } = await supabase.from('Employees').update({ password_hash: cpfDigits }).eq('id', userId);
+      const { data, error } = await supabase.functions.invoke('reset-employee-password', {
+        body: { employee_id: userId }
+      });
       if (error) throw error;
-      alert('Senha resetada para o CPF do usuário com sucesso!');
+      if (data?.error) throw new Error(data.error);
+
+      alert('Senha resetada para o CPF do usuário com sucesso (login e Supabase Auth já atualizados)!');
     } catch (err) {
       console.error(err);
-      alert('Erro ao resetar a senha.');
+      try {
+        const { error: fallbackError } = await supabase
+          .from('Employees')
+          .update({ password_hash: cpfDigits })
+          .eq('id', userId);
+        if (fallbackError) throw fallbackError;
+
+        alert(
+          'Não consegui chamar a função de reset (' + (err.message || 'erro desconhecido') + '). ' +
+          'Atualizei a senha só na tabela de colaboradores — se este usuário fizer login pelo Supabase Auth, ' +
+          'a senha antiga ainda vai valer até a Edge Function "reset-employee-password" ser publicada.'
+        );
+      } catch (fallbackErr) {
+        console.error(fallbackErr);
+        alert('Erro ao resetar a senha.');
+      }
     } finally {
       setResettingPassword(false);
     }

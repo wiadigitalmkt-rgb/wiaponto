@@ -76,6 +76,7 @@ export default function Employees() {
           departamento: emp.department || '-',
           tipoAcesso: emp.role === 'gestor' || emp.role === 'admin' ? 'Gestor' : 'Colaborador',
           status: emp.status ? emp.status.trim() : 'Ativo',
+          photoUrl: emp.photo_url || '',
         };
       });
 
@@ -282,9 +283,17 @@ export default function Employees() {
                         >
                           <td className="py-3.5 px-6">
                             <div className="flex items-center space-x-3">
-                              <div className="w-8 h-8 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center font-semibold text-slate-600 text-xs shrink-0">
-                                {user.initials}
-                              </div>
+                              {user.photoUrl ? (
+                                <img
+                                  src={user.photoUrl}
+                                  alt={user.name}
+                                  className="w-8 h-8 rounded-full object-cover border border-slate-200 shrink-0"
+                                />
+                              ) : (
+                                <div className="w-8 h-8 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center font-semibold text-slate-600 text-xs shrink-0">
+                                  {user.initials}
+                                </div>
+                              )}
                               <span className="font-semibold text-slate-800 hover:text-[#ff8b00] transition-colors">
                                 {user.name}
                               </span>

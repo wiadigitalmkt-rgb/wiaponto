@@ -1142,15 +1142,13 @@ export default function Admissao() {
                                       <ChevronRight className="w-3.5 h-3.5" />
                                       Ver detalhes
                                     </button>
-                                    {adm.status === 'Concluído' && (
-                                      <button
-                                        onClick={() => handleRequestDeleteAdmission(adm)}
-                                        className="w-full flex items-center gap-2 px-3 py-2 text-xs font-medium text-red-600 hover:bg-red-50 transition-colors"
-                                      >
-                                        <Trash2 className="w-3.5 h-3.5" />
-                                        Excluir Admissão
-                                      </button>
-                                    )}
+                                    <button
+                                      onClick={() => handleRequestDeleteAdmission(adm)}
+                                      className="w-full flex items-center gap-2 px-3 py-2 text-xs font-medium text-red-600 hover:bg-red-50 transition-colors"
+                                    >
+                                      <Trash2 className="w-3.5 h-3.5" />
+                                      Excluir Admissão
+                                    </button>
                                   </div>
                                 </>
                               )}

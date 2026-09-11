@@ -287,7 +287,7 @@ export default function Employees() {
                                 <img
                                   src={user.photoUrl}
                                   alt={user.name}
-                                  className="w-8 h-8 rounded-full object-cover border border-slate-200 shrink-0"
+                                  className="w-8 h-8 rounded-full object-cover object-top border border-slate-200 shrink-0"
                                 />
                               ) : (
                                 <div className="w-8 h-8 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center font-semibold text-slate-600 text-xs shrink-0">

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Link, useSearchParams, useNavigate } from 'react-router-dom';
 import Navbar from '@/components/Navbar';
 import { supabase } from '@/lib/supabase';
+import { useAuth } from '@/lib/AuthContext';
 import {
   User,
   Clock,
@@ -27,6 +28,7 @@ import {
 export default function Usuario() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+  const { user: loggedInUser } = useAuth();
   const userId = searchParams.get('id');
 
   const [activeTab, setActiveTab] = useState('informacoes');
@@ -276,7 +278,7 @@ export default function Usuario() {
     setResettingPassword(true);
     try {
       const { data, error } = await supabase.functions.invoke('reset-employee-password', {
-        body: { employee_id: userId }
+        body: { employee_id: userId, requester_id: loggedInUser?.id }
       });
 
       if (error) {
@@ -328,7 +330,7 @@ export default function Usuario() {
     openConfirm({
       title: novoStatus === 'Inativo' ? 'Inativar usuário?' : 'Ativar usuário?',
       message: novoStatus === 'Inativo'
-        ? `${usuarioData.primeiroNome || 'Este usuário'} vai perder o acesso ao sistema até que você ative novamente.`
+        ? `${usuarioData.primeiroNome || 'Este usuário'} vai perder o acesso ao sistema e deixa de ser cobrado na fatura.`
         : `${usuarioData.primeiroNome || 'Este usuário'} volta a ter acesso normal ao sistema.`,
       confirmLabel: novoStatus === 'Inativo' ? 'Inativar' : 'Ativar',
       danger: novoStatus === 'Inativo',

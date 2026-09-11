@@ -19,7 +19,9 @@ import {
   Pencil,
   Trash2,
   CheckCircle2,
-  AlertCircle
+  AlertCircle,
+  Eye,
+  EyeOff
 } from 'lucide-react';
 
 export default function Usuario() {
@@ -33,6 +35,24 @@ export default function Usuario() {
   const [saving, setSaving] = useState(false);
   const [resettingPassword, setResettingPassword] = useState(false);
   const [deletingUser, setDeletingUser] = useState(false);
+  const [showSenha, setShowSenha] = useState(false);
+  const [confirmModal, setConfirmModal] = useState(null); // { title, message, confirmLabel, danger, requireText, onConfirm }
+  const [confirmInput, setConfirmInput] = useState('');
+
+  function openConfirm({ title, message, confirmLabel, danger, requireText, onConfirm }) {
+    setConfirmInput('');
+    setConfirmModal({ title, message, confirmLabel, danger, requireText, onConfirm });
+  }
+  function closeConfirmModal() {
+    setConfirmModal(null);
+    setConfirmInput('');
+  }
+  async function handleConfirmModalAction() {
+    if (!confirmModal) return;
+    const action = confirmModal.onConfirm;
+    closeConfirmModal();
+    await action();
+  }
 
   const fileInputRef = useRef(null);
 
@@ -127,6 +147,7 @@ export default function Usuario() {
             // como se fosse o login dele). O CPF só entra como último
             // recurso, se por algum motivo não houver e-mail cadastrado.
             login: emp.email || (emp.cpf ? emp.cpf.replace(/\D/g, '') : ''),
+            senhaAtual: emp.password_hash || '',
             tipoAcesso: emp.role === 'gestor' || emp.role === 'admin' || emp.access_type === 'Gestor' ? 'Gestor' : 'Colaborador',
             statusUsuario: emp.status || 'Ativo'
           });
@@ -200,8 +221,21 @@ export default function Usuario() {
   };
 
   // Tipo de Acesso — salva assim que o gestor troca a opção
-  const handleChangeAccessType = async (e) => {
+  const handleChangeAccessType = (e) => {
     const novoTipo = e.target.value;
+    if (novoTipo === usuarioData.tipoAcesso) return;
+    openConfirm({
+      title: novoTipo === 'Gestor' ? 'Dar acesso de Gestor?' : 'Remover acesso de Gestor?',
+      message: novoTipo === 'Gestor'
+        ? `${usuarioData.primeiroNome || 'Este usuário'} vai passar a ter acesso TOTAL ao sistema — as mesmas páginas, funções e botões que uma conta de gestor tem, sem exceção.`
+        : `${usuarioData.primeiroNome || 'Este usuário'} volta a ter só o acesso de colaborador (ponto e área do colaborador).`,
+      confirmLabel: 'Confirmar',
+      danger: false,
+      onConfirm: () => applyAccessTypeChange(novoTipo)
+    });
+  };
+
+  const applyAccessTypeChange = async (novoTipo) => {
     setUsuarioData(prev => ({ ...prev, tipoAcesso: novoTipo }));
     if (!supabase || !userId) return;
     try {
@@ -222,15 +256,23 @@ export default function Usuario() {
   // tem acesso à chave de admin necessária pra isso — ver Login.jsx, que
   // tenta signInWithPassword primeiro). Se a função ainda não foi
   // publicada, cai num fallback que atualiza só a tabela e avisa.
-  const handleResetPassword = async () => {
-    if (!supabase || !userId) return;
+  const handleResetPassword = () => {
     const cpfDigits = (usuarioData.cpf || '').replace(/\D/g, '');
     if (!cpfDigits) {
       alert('Este usuário não tem CPF cadastrado. Cadastre o CPF na aba Informações antes de resetar a senha.');
       return;
     }
-    if (!window.confirm(`Resetar a senha de ${usuarioData.primeiroNome || 'usuário'} para o CPF (${cpfDigits})?`)) return;
+    openConfirm({
+      title: 'Resetar senha?',
+      message: `A senha de ${usuarioData.primeiroNome || 'usuário'} vai voltar para o padrão inicial: o CPF (${cpfDigits}).`,
+      confirmLabel: 'Resetar senha',
+      danger: false,
+      onConfirm: () => applyResetPassword(cpfDigits)
+    });
+  };
 
+  const applyResetPassword = async (cpfDigits) => {
+    if (!supabase || !userId) return;
     setResettingPassword(true);
     try {
       const { data, error } = await supabase.functions.invoke('reset-employee-password', {
@@ -240,6 +282,7 @@ export default function Usuario() {
       if (data?.error) throw new Error(data.error);
 
       alert('Senha resetada para o CPF do usuário com sucesso (login e Supabase Auth já atualizados)!');
+      setUsuarioData(prev => ({ ...prev, senhaAtual: cpfDigits }));
     } catch (err) {
       console.error(err);
       try {
@@ -248,6 +291,7 @@ export default function Usuario() {
           .update({ password_hash: cpfDigits })
           .eq('id', userId);
         if (fallbackError) throw fallbackError;
+        setUsuarioData(prev => ({ ...prev, senhaAtual: cpfDigits }));
 
         alert(
           'Não consegui chamar a função de reset (' + (err.message || 'erro desconhecido') + '). ' +
@@ -263,8 +307,21 @@ export default function Usuario() {
     }
   };
 
-  // Ativar / Inativar — muda na hora, sem precisar de botão "Salvar" à parte
-  const handleToggleStatus = async (novoStatus) => {
+  // Ativar / Inativar
+  const handleToggleStatus = (novoStatus) => {
+    if (novoStatus === usuarioData.statusUsuario) return;
+    openConfirm({
+      title: novoStatus === 'Inativo' ? 'Inativar usuário?' : 'Ativar usuário?',
+      message: novoStatus === 'Inativo'
+        ? `${usuarioData.primeiroNome || 'Este usuário'} vai perder o acesso ao sistema e deixa de ser cobrado na fatura.`
+        : `${usuarioData.primeiroNome || 'Este usuário'} volta a ter acesso normal ao sistema.`,
+      confirmLabel: novoStatus === 'Inativo' ? 'Inativar' : 'Ativar',
+      danger: novoStatus === 'Inativo',
+      onConfirm: () => applyStatusChange(novoStatus)
+    });
+  };
+
+  const applyStatusChange = async (novoStatus) => {
     if (!supabase || !userId) return;
     const statusAnterior = usuarioData.statusUsuario;
     setUsuarioData(prev => ({ ...prev, statusUsuario: novoStatus }));
@@ -278,21 +335,23 @@ export default function Usuario() {
     }
   };
 
-  // Deletar usuário — some com os dados relacionados antes, pra não esbarrar
-  // em restrição de chave estrangeira, e exige digitar o nome completo do
-  // colaborador como confirmação (ação permanente).
-  const handleDeleteUser = async () => {
-    if (!supabase || !userId) return;
+  // Deletar usuário — exige digitar o nome completo do colaborador dentro do
+  // próprio modal como confirmação (ação permanente), e some com os dados
+  // relacionados antes, pra não esbarrar em restrição de chave estrangeira.
+  const handleDeleteUser = () => {
     const nomeCompleto = `${usuarioData.primeiroNome} ${usuarioData.sobrenome}`.trim() || 'este usuário';
-    const digitado = window.prompt(
-      `Esta ação é PERMANENTE e não pode ser desfeita.\n\nPara confirmar, digite o nome completo do colaborador exatamente como aparece: "${nomeCompleto}"`
-    );
-    if (digitado === null) return;
-    if (digitado.trim().toLowerCase() !== nomeCompleto.toLowerCase()) {
-      alert('O nome digitado não confere. Nada foi deletado.');
-      return;
-    }
+    openConfirm({
+      title: 'Deletar usuário permanentemente?',
+      message: `Isso apaga ${nomeCompleto} e todos os dados vinculados (ponto, jornada, cercas, férias, dependentes, anexos) de forma definitiva. Não é possível desfazer.`,
+      confirmLabel: 'Deletar usuário',
+      danger: true,
+      requireText: nomeCompleto,
+      onConfirm: () => applyDeleteUser()
+    });
+  };
 
+  const applyDeleteUser = async () => {
+    if (!supabase || !userId) return;
     setDeletingUser(true);
     try {
       const relatedTables = [
@@ -780,7 +839,20 @@ export default function Usuario() {
                     <div className="space-y-1.5 md:text-right">
                       <div><span className="text-slate-500">ID PONTO: </span><strong className="text-slate-800">{usuarioData.idPonto || '-'}</strong></div>
                       <div><span className="text-slate-500">LOGIN: </span><strong className="text-slate-800">{usuarioData.login || '-'}</strong></div>
-                      <div><span className="text-slate-500">SENHA: </span><strong className="text-slate-800">******</strong></div>
+                      <div className="flex items-center gap-1.5 md:justify-end">
+                        <span className="text-slate-500">SENHA: </span>
+                        <strong className="text-slate-800 font-mono">
+                          {showSenha ? (usuarioData.senhaAtual || '(não definida)') : '******'}
+                        </strong>
+                        <button
+                          type="button"
+                          onClick={() => setShowSenha(v => !v)}
+                          className="text-slate-400 hover:text-slate-600"
+                          title={showSenha ? 'Ocultar senha' : 'Mostrar senha'}
+                        >
+                          {showSenha ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                        </button>
+                      </div>
                     </div>
                   </div>
 
@@ -902,6 +974,55 @@ export default function Usuario() {
           </div>
         </div>
       </main>
+
+      {/* MODAL DE CONFIRMAÇÃO (ativar/inativar, tipo de acesso, resetar
+          senha, deletar usuário) */}
+      {confirmModal && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-sm p-6 space-y-4">
+            <h3 className="font-bold text-slate-800 text-sm">{confirmModal.title}</h3>
+            <p className="text-xs text-slate-600 leading-relaxed">{confirmModal.message}</p>
+
+            {confirmModal.requireText && (
+              <div>
+                <label className="block text-[11px] text-slate-500 mb-1">
+                  Digite <strong>{confirmModal.requireText}</strong> para confirmar
+                </label>
+                <input
+                  type="text"
+                  autoFocus
+                  value={confirmInput}
+                  onChange={(e) => setConfirmInput(e.target.value)}
+                  className="w-full border rounded p-2 text-xs focus:outline-none focus:border-red-400"
+                />
+              </div>
+            )}
+
+            <div className="flex justify-end gap-2 pt-2">
+              <button
+                type="button"
+                onClick={closeConfirmModal}
+                className="px-4 py-2 border rounded text-xs font-medium text-slate-600 hover:bg-slate-50"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmModalAction}
+                disabled={
+                  !!confirmModal.requireText &&
+                  confirmInput.trim().toLowerCase() !== confirmModal.requireText.toLowerCase()
+                }
+                className={`px-4 py-2 rounded text-xs font-semibold text-white transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
+                  confirmModal.danger ? 'bg-red-500 hover:bg-red-600' : 'bg-[#ff8b00] hover:bg-[#e07a00]'
+                }`}
+              >
+                {confirmModal.confirmLabel || 'Confirmar'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* MODAL FÉRIAS */}
       {showVacationModal && (

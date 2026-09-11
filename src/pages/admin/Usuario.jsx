@@ -278,7 +278,22 @@ export default function Usuario() {
       const { data, error } = await supabase.functions.invoke('reset-employee-password', {
         body: { employee_id: userId }
       });
-      if (error) throw error;
+
+      if (error) {
+        // O supabase-js só devolve uma mensagem genérica ("Edge Function
+        // returned a non-2xx status code") em erros de HTTP — o motivo
+        // real vem no corpo da resposta, acessível via error.context.
+        let detail = error.message;
+        try {
+          if (error.context && typeof error.context.json === 'function') {
+            const body = await error.context.json();
+            if (body?.error) detail = body.error;
+          }
+        } catch (_) {
+          // se não der pra ler o corpo, fica com a mensagem genérica mesmo
+        }
+        throw new Error(detail);
+      }
       if (data?.error) throw new Error(data.error);
 
       alert('Senha resetada para o CPF do usuário com sucesso (login e Supabase Auth já atualizados)!');
@@ -294,9 +309,9 @@ export default function Usuario() {
         setUsuarioData(prev => ({ ...prev, senhaAtual: cpfDigits }));
 
         alert(
-          'Não consegui chamar a função de reset (' + (err.message || 'erro desconhecido') + '). ' +
+          'A função de reset recusou o pedido (' + (err.message || 'erro desconhecido') + '). ' +
           'Atualizei a senha só na tabela de colaboradores — se este usuário fizer login pelo Supabase Auth, ' +
-          'a senha antiga ainda vai valer até a Edge Function "reset-employee-password" ser publicada.'
+          'a senha antiga ainda vai valer até esse erro ser corrigido na Edge Function.'
         );
       } catch (fallbackErr) {
         console.error(fallbackErr);

@@ -12,7 +12,6 @@ import {
   KeyRound,
   ArrowLeft,
   Settings,
-  Upload,
   Plus,
   FileText,
   Loader2,
@@ -56,8 +55,6 @@ export default function Usuario() {
     await action();
   }
 
-  const fileInputRef = useRef(null);
-
   // Estados dos Dados Principais
   const [usuarioData, setUsuarioData] = useState({
     primeiroNome: '',
@@ -94,7 +91,6 @@ export default function Usuario() {
   const [newFieldName, setNewFieldName] = useState('');
   const [newFieldType, setNewFieldType] = useState('Texto livre');
 
-  const [attachments, setAttachments] = useState([]);
   const [vacations, setVacations] = useState([]);
   const [dependents, setDependents] = useState([]);
 
@@ -150,6 +146,7 @@ export default function Usuario() {
             // recurso, se por algum motivo não houver e-mail cadastrado.
             login: emp.email || (emp.cpf ? emp.cpf.replace(/\D/g, '') : ''),
             senhaAtual: emp.password_hash || '',
+            notasInternas: emp.internal_notes || '',
             tipoAcesso: emp.role === 'gestor' || emp.role === 'admin' || emp.access_type === 'Gestor' ? 'Gestor' : 'Colaborador',
             statusUsuario: emp.status || 'Ativo'
           });
@@ -158,9 +155,6 @@ export default function Usuario() {
         // 2. Sub-tabelas
         const { data: fields } = await supabase.from('employee_custom_fields').select('*').eq('employee_id', userId);
         if (fields) setCustomFields(fields);
-
-        const { data: files } = await supabase.from('employee_attachments').select('*').eq('employee_id', userId);
-        if (files) setAttachments(files);
 
         const { data: vacs } = await supabase.from('employee_vacations').select('*').eq('employee_id', userId);
         if (vacs) setVacations(vacs);
@@ -209,7 +203,8 @@ export default function Usuario() {
         point_id: usuarioData.idPonto,
         access_type: usuarioData.tipoAcesso,
         role: usuarioData.tipoAcesso === 'Gestor' ? 'gestor' : 'colaborador',
-        status: usuarioData.statusUsuario
+        status: usuarioData.statusUsuario,
+        internal_notes: usuarioData.notasInternas
       };
 
       await supabase.from('Employees').update(payload).eq('id', userId);
@@ -414,59 +409,113 @@ export default function Usuario() {
     }
   };
 
-  // 3. Upload Múltiplo de Arquivos/Anexos
-  const handleFileUpload = async (e) => {
-    const files = Array.from(e.target.files);
-    if (!files.length || !userId) return;
+  // Recarrega direto do Supabase (em vez de só confiar no retorno do
+  // insert) — garante que o que aparece na tela é exatamente o que está
+  // salvo no banco, sem depender de estado local que pode ficar
+  // dessincronizado.
+  const refetchVacations = async () => {
+    if (!userId) return;
+    const { data, error } = await supabase
+      .from('employee_vacations')
+      .select('*')
+      .eq('employee_id', userId)
+      .order('start_date', { ascending: false });
+    if (error) { console.error(error); return; }
+    setVacations(data || []);
+  };
 
-    for (const file of files) {
-      const filePath = `${userId}/${Date.now()}_${file.name}`;
-      const { error: uploadErr } = await supabase.storage
-        .from('employee-files')
-        .upload(filePath, file);
-
-      const fileUrl = uploadErr ? '' : supabase.storage.from('employee-files').getPublicUrl(filePath).data.publicUrl;
-
-      const { data: record } = await supabase.from('employee_attachments').insert([{
-        employee_id: userId,
-        file_name: file.name,
-        file_url: fileUrl,
-        file_size: file.size
-      }]).select();
-
-      if (record) {
-        setAttachments(prev => [...prev, ...record]);
-      }
-    }
+  const refetchDependents = async () => {
+    if (!userId) return;
+    const { data, error } = await supabase
+      .from('employee_dependents')
+      .select('*')
+      .eq('employee_id', userId)
+      .order('created_at', { ascending: false });
+    if (error) { console.error(error); return; }
+    setDependents(data || []);
   };
 
   // 6. Cadastrar Férias
   const handleAddVacation = async () => {
-    if (!userId || !newVacation.start_date || !newVacation.end_date) return;
-    const { data } = await supabase.from('employee_vacations').insert([{
+    if (!userId) return;
+    if (!newVacation.start_date || !newVacation.end_date) {
+      alert('Preencha as datas de início e fim das férias.');
+      return;
+    }
+    const { error } = await supabase.from('employee_vacations').insert([{
       employee_id: userId,
       ...newVacation,
       status: 'Agendado'
-    }]).select();
+    }]);
 
-    if (data) {
-      setVacations([...vacations, ...data]);
-      setShowVacationModal(false);
+    if (error) {
+      console.error(error);
+      alert('Erro ao salvar as férias: ' + error.message);
+      return;
     }
+
+    await refetchVacations();
+    setNewVacation({ start_date: '', end_date: '' });
+    setShowVacationModal(false);
+  };
+
+  const handleDeleteVacation = (vacation) => {
+    openConfirm({
+      title: 'Remover período de férias?',
+      message: `Remove o período de ${vacation.start_date} a ${vacation.end_date}.`,
+      confirmLabel: 'Remover',
+      danger: true,
+      onConfirm: async () => {
+        const { error } = await supabase.from('employee_vacations').delete().eq('id', vacation.id);
+        if (error) {
+          console.error(error);
+          alert('Erro ao remover o período de férias.');
+          return;
+        }
+        await refetchVacations();
+      }
+    });
   };
 
   // 7. Cadastrar Dependente
   const handleAddDependent = async () => {
-    if (!userId || !newDependent.first_name) return;
-    const { data } = await supabase.from('employee_dependents').insert([{
+    if (!userId) return;
+    if (!newDependent.first_name?.trim() || !newDependent.last_name?.trim()) {
+      alert('Preencha nome e sobrenome do dependente (sobrenome é obrigatório).');
+      return;
+    }
+    const { error } = await supabase.from('employee_dependents').insert([{
       employee_id: userId,
       ...newDependent
-    }]).select();
+    }]);
 
-    if (data) {
-      setDependents([...dependents, ...data]);
-      setShowDependentModal(false);
+    if (error) {
+      console.error(error);
+      alert('Erro ao salvar o dependente: ' + error.message);
+      return;
     }
+
+    await refetchDependents();
+    setNewDependent({ first_name: '', last_name: '', birth_date: '', relationship: 'Filho(a)', notes: '' });
+    setShowDependentModal(false);
+  };
+
+  const handleDeleteDependent = (dependent) => {
+    openConfirm({
+      title: 'Remover dependente?',
+      message: `Remove ${dependent.first_name} ${dependent.last_name} da lista de dependentes.`,
+      confirmLabel: 'Remover',
+      danger: true,
+      onConfirm: async () => {
+        const { error } = await supabase.from('employee_dependents').delete().eq('id', dependent.id);
+        if (error) {
+          console.error(error);
+          alert('Erro ao remover o dependente.');
+          return;
+        }
+        await refetchDependents();
+      }
+    });
   };
 
   const menuItems = [
@@ -544,10 +593,7 @@ export default function Usuario() {
                   <div className="flex border-b border-slate-200 px-4 pt-2 gap-6 text-sm overflow-x-auto">
                     {[
                       { id: 'dados', label: 'Dados do perfil' },
-                      { id: 'campos_adicionais', label: 'Campos adicionais' },
-                      { id: 'admissao', label: 'Admissão' },
-                      { id: 'anexos', label: 'Anexos' },
-                      { id: 'arquivos', label: 'Arquivos distribuídos' }
+                      { id: 'campos_adicionais', label: 'Campos adicionais' }
                     ].map((tab) => (
                       <button
                         key={tab.id}
@@ -667,7 +713,23 @@ export default function Usuario() {
                   {/* SUB-ABA: CAMPOS ADICIONAIS */}
                   {profileSubTab === 'campos_adicionais' && (
                     <div className="p-6 space-y-6 text-xs">
-                      <div className="flex justify-between items-center">
+                      <section className="space-y-2">
+                        <h3 className="font-semibold text-slate-800 text-sm">Notas internas</h3>
+                        <p className="text-slate-500">
+                          Anotações do gestor sobre este colaborador — visíveis só pra quem tem acesso a este
+                          painel, nunca pro colaborador.
+                        </p>
+                        <textarea
+                          name="notasInternas"
+                          value={usuarioData.notasInternas}
+                          onChange={handleInputChange}
+                          rows={4}
+                          placeholder="Ex: Combinado horário flexível às sextas-feiras, pendência de documento X, feedback da última avaliação..."
+                          className="w-full border rounded p-2.5 text-slate-800 focus:outline-none focus:border-[#ff8b00] resize-y"
+                        />
+                      </section>
+
+                      <div className="flex justify-between items-center pt-4 border-t border-slate-100">
                         <button onClick={() => setShowConfigCampos(!showConfigCampos)} className="flex items-center gap-1.5 border border-[#ff8b00] text-[#ff8b00] px-3 py-1.5 rounded font-medium hover:bg-[#ff8b00]/10 transition-colors">
                           <Settings className="w-3.5 h-3.5" /> Configurar campos
                         </button>
@@ -719,59 +781,6 @@ export default function Usuario() {
                       </div>
                     </div>
                   )}
-
-                  {/* SUB-ABA: ANEXOS (UPLOAD MÚLTIPLO) */}
-                  {profileSubTab === 'anexos' && (
-                    <div className="p-6 space-y-6 text-xs">
-                      <div className="flex justify-between items-center">
-                        <input
-                          type="file"
-                          multiple
-                          ref={fileInputRef}
-                          onChange={handleFileUpload}
-                          className="hidden"
-                          accept="image/*,.pdf,.doc,.docx"
-                        />
-                        <div></div>
-                        <div className="text-right">
-                          <button
-                            onClick={() => fileInputRef.current?.click()}
-                            className="bg-[#ff8b00] hover:bg-[#fc9314] text-white font-medium px-4 py-2 rounded transition-colors inline-flex items-center gap-1.5"
-                          >
-                            <Upload className="w-3.5 h-3.5" /> Anexar novo arquivo
-                          </button>
-                          <span className="block text-[10px] text-slate-400 mt-1">Limite por arquivo: 50MB</span>
-                        </div>
-                      </div>
-
-                      <table className="w-full text-left border-collapse">
-                        <thead>
-                          <tr className="border-b text-slate-500 font-semibold uppercase tracking-wider text-[11px]">
-                            <th className="py-2">ARQUIVO</th>
-                            <th className="py-2 text-right">ANEXADO EM</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {attachments.map((file) => (
-                            <tr key={file.id} className="border-b">
-                              <td className="py-2 font-medium text-[#ff8b00]">
-                                <a href={file.file_url} target="_blank" rel="noreferrer" className="hover:underline">
-                                  {file.file_name}
-                                </a>
-                              </td>
-                              <td className="py-2 text-right text-slate-400">
-                                {new Date(file.created_at).toLocaleDateString('pt-BR')}
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-
-                      {attachments.length === 0 && (
-                        <div className="py-12 text-center text-slate-500">Nenhum anexo encontrado</div>
-                      )}
-                    </div>
-                  )}
                 </div>
               )}
 
@@ -797,6 +806,7 @@ export default function Usuario() {
                         <th className="py-2">INÍCIO</th>
                         <th className="py-2">FIM</th>
                         <th className="py-2 text-right">STATUS</th>
+                        <th className="py-2 text-right"></th>
                       </tr>
                     </thead>
                     <tbody>
@@ -805,10 +815,23 @@ export default function Usuario() {
                           <td className="py-3 font-medium text-slate-700">{v.start_date}</td>
                           <td className="py-3 text-slate-700">{v.end_date}</td>
                           <td className="py-3 text-right font-medium text-[#ff8b00]">{v.status}</td>
+                          <td className="py-3 text-right">
+                            <button
+                              onClick={() => handleDeleteVacation(v)}
+                              className="text-red-500 hover:text-red-600"
+                              title="Remover"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </td>
                         </tr>
                       ))}
                     </tbody>
                   </table>
+
+                  {vacations.length === 0 && (
+                    <div className="py-8 text-center text-slate-400">Nenhum período de férias cadastrado</div>
+                  )}
                 </div>
               )}
 
@@ -827,6 +850,7 @@ export default function Usuario() {
                         <th className="py-2">NOME</th>
                         <th className="py-2">NASCIMENTO</th>
                         <th className="py-2">VÍNCULO</th>
+                        <th className="py-2 text-right"></th>
                       </tr>
                     </thead>
                     <tbody>
@@ -835,10 +859,23 @@ export default function Usuario() {
                           <td className="py-2 font-medium">{d.first_name} {d.last_name}</td>
                           <td className="py-2">{d.birth_date}</td>
                           <td className="py-2">{d.relationship}</td>
+                          <td className="py-2 text-right">
+                            <button
+                              onClick={() => handleDeleteDependent(d)}
+                              className="text-red-500 hover:text-red-600"
+                              title="Remover"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </td>
                         </tr>
                       ))}
                     </tbody>
                   </table>
+
+                  {dependents.length === 0 && (
+                    <div className="py-8 text-center text-slate-400">Nenhum dependente cadastrado</div>
+                  )}
                 </div>
               )}
 
@@ -971,22 +1008,9 @@ export default function Usuario() {
                 </div>
               )}
 
-              {/* 7. FORMULÁRIO DE ADMISSÃO (esqueleto — a leitura dos dados
-                  reais preenchidos pelo colaborador em PreencherAdmissao.jsx
-                  será conectada aqui numa próxima etapa) */}
-              {activeTab === 'formulario_admissao' && (
-                <div className="p-6 text-xs">
-                  <div className="border-2 border-dashed border-slate-200 rounded-lg p-12 text-center text-slate-400 space-y-2">
-                    <FileText className="w-8 h-8 mx-auto text-slate-300" />
-                    <p className="font-medium text-slate-600">Formulário de Admissão</p>
-                    <p>
-                      Em breve, as respostas enviadas pelo colaborador no processo de admissão
-                      (selfie, estado civil, telefone, endereço, dados bancários, etc.) vão
-                      aparecer aqui, vinculadas a este usuário.
-                    </p>
-                  </div>
-                </div>
-              )}
+              {/* 7. FORMULÁRIO DE ADMISSÃO — lê o processo de admissão real
+                  (preenchido pelo colaborador em PreencherAdmissao.jsx) */}
+              {activeTab === 'formulario_admissao' && <AdmissionInfoTab employeeId={userId} />}
             </div>
           </div>
         </div>
@@ -1859,6 +1883,128 @@ function GeofenceMapTab({ employeeId }) {
         >
           {toast.type === 'error' ? <AlertCircle className="w-4 h-4" /> : <CheckCircle2 className="w-4 h-4" />}
           {toast.message}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// FORMULÁRIO DE ADMISSÃO — lê o processo de admissão real do colaborador
+// (tabela employee_admissions, preenchida pelo próprio colaborador em
+// PreencherAdmissao.jsx). Mostra o mesmo progresso e os mesmos campos que a
+// página de Admissão do gestor já exibe, só que direto na tela de edição do
+// usuário — sem duplicar lógica, é a mesma estrutura (template_steps +
+// progress_data) usada em admin/Admissao.jsx e admissionSteps.js.
+// ---------------------------------------------------------------------------
+
+// Mesma regra usada em PreencherAdmissao.jsx / admissionSteps.js pra
+// considerar um campo "preenchido": string/número não vazio, ou objeto de
+// upload com `url`.
+function isAdmissionFieldEmpty(value) {
+  if (value === undefined || value === null || value === '') return true;
+  if (typeof value === 'object') return !value.url;
+  return false;
+}
+
+function AdmissionInfoTab({ employeeId }) {
+  const [loading, setLoading] = useState(true);
+  const [admission, setAdmission] = useState(null);
+
+  useEffect(() => {
+    if (!employeeId || !supabase) return;
+    (async () => {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from('employee_admissions')
+        .select('*')
+        .eq('employee_id', employeeId)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (error) console.error(error);
+      setAdmission(data || null);
+      setLoading(false);
+    })();
+  }, [employeeId]);
+
+  if (loading) {
+    return (
+      <div className="p-10 flex items-center justify-center text-slate-400 text-xs gap-2">
+        <Loader2 className="w-4 h-4 animate-spin" /> Carregando admissão...
+      </div>
+    );
+  }
+
+  if (!admission) {
+    return (
+      <div className="p-6 text-xs">
+        <div className="border-2 border-dashed border-slate-200 rounded-lg p-12 text-center text-slate-400 space-y-2">
+          <FileText className="w-8 h-8 mx-auto text-slate-300" />
+          <p className="font-medium text-slate-600">Nenhum processo de admissão vinculado a este colaborador</p>
+          <p>Quando um processo de admissão for iniciado para ele em "Admissão", as respostas aparecem aqui.</p>
+        </div>
+      </div>
+    );
+  }
+
+  const fields = (admission.template_steps || []).flatMap((step) => step.fields || []);
+  const progressData = admission.progress_data || {};
+  const sentCount = fields.filter((f) => !isAdmissionFieldEmpty(progressData[f.key])).length;
+  const totalCount = fields.length;
+  const progressPercent = totalCount ? Math.round((sentCount / totalCount) * 100) : 0;
+
+  return (
+    <div className="p-6 text-xs space-y-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h3 className="font-semibold text-slate-800 text-sm">Formulário de Admissão</h3>
+          <p className="text-slate-500 mt-0.5">
+            {admission.template_name}
+            {admission.status ? ` · ${admission.status}` : ''}
+          </p>
+        </div>
+        <span className="bg-[#ff8b00]/10 text-[#ff8b00] px-3 py-1 rounded-full text-[11px] font-semibold shrink-0">
+          {progressPercent}% preenchido ({sentCount} de {totalCount} campos)
+        </span>
+      </div>
+
+      <div className="w-full bg-slate-200 h-2 rounded-full overflow-hidden">
+        <div className="bg-[#ff8b00] h-full transition-all" style={{ width: `${progressPercent}%` }} />
+      </div>
+
+      {fields.length === 0 ? (
+        <div className="text-slate-400 py-6 text-center">Este processo de admissão ainda não tem campos configurados.</div>
+      ) : (
+        <div className="divide-y divide-slate-100 border rounded-lg overflow-hidden">
+          {fields.map((field) => {
+            const rawValue = progressData[field.key];
+            const isEmpty = isAdmissionFieldEmpty(rawValue);
+            const isFileUpload = !isEmpty && typeof rawValue === 'object';
+            const displayValue = isEmpty ? null : isFileUpload ? rawValue.url : String(rawValue);
+
+            return (
+              <div key={field.key} className="flex items-center justify-between gap-4 px-4 py-2.5">
+                <span className="font-medium text-slate-700 shrink-0">{field.label}</span>
+                {isEmpty ? (
+                  <span className="text-slate-400 flex items-center gap-1">
+                    <AlertCircle className="w-3.5 h-3.5" /> Não enviado
+                  </span>
+                ) : isFileUpload ? (
+                  <a
+                    href={displayValue}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-[#ff8b00] hover:underline flex items-center gap-1"
+                  >
+                    <CheckCircle2 className="w-3.5 h-3.5" /> Ver arquivo enviado
+                  </a>
+                ) : (
+                  <span className="text-slate-700 text-right break-words max-w-xs">{displayValue}</span>
+                )}
+              </div>
+            );
+          })}
         </div>
       )}
     </div>

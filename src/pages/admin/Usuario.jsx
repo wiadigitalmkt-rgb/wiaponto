@@ -11,8 +11,6 @@ import {
   Users,
   KeyRound,
   ArrowLeft,
-  Settings,
-  Plus,
   FileText,
   Loader2,
   Coffee,
@@ -22,7 +20,8 @@ import {
   AlertCircle,
   Eye,
   EyeOff,
-  Camera
+  Camera,
+  X
 } from 'lucide-react';
 
 export default function Usuario() {
@@ -94,10 +93,10 @@ export default function Usuario() {
   });
 
   // Estados dos Recursos Específicos
-  const [customFields, setCustomFields] = useState([]);
-  const [showConfigCampos, setShowConfigCampos] = useState(false);
-  const [newFieldName, setNewFieldName] = useState('');
-  const [newFieldType, setNewFieldType] = useState('Texto livre');
+  const [notes, setNotes] = useState([]);
+  const [newNoteText, setNewNoteText] = useState('');
+  const [savingNote, setSavingNote] = useState(false);
+  const [showNotesModal, setShowNotesModal] = useState(false);
 
   const [vacations, setVacations] = useState([]);
   const [dependents, setDependents] = useState([]);
@@ -161,7 +160,6 @@ export default function Usuario() {
             // recurso, se por algum motivo não houver e-mail cadastrado.
             login: emp.email || (emp.cpf ? emp.cpf.replace(/\D/g, '') : ''),
             senhaAtual: emp.password_hash || '',
-            notasInternas: emp.internal_notes || '',
             fotoUrl: emp.photo_url || '',
             tipoAcesso: emp.role === 'gestor' || emp.role === 'admin' || emp.access_type === 'Gestor' ? 'Gestor' : 'Colaborador',
             statusUsuario: emp.status || 'Ativo'
@@ -169,8 +167,12 @@ export default function Usuario() {
         }
 
         // 2. Sub-tabelas
-        const { data: fields } = await supabase.from('employee_custom_fields').select('*').eq('employee_id', userId);
-        if (fields) setCustomFields(fields);
+        const { data: notesData } = await supabase
+          .from('employee_notes')
+          .select('*')
+          .eq('employee_id', userId)
+          .order('created_at', { ascending: false });
+        if (notesData) setNotes(notesData);
 
         const { data: vacs } = await supabase.from('employee_vacations').select('*').eq('employee_id', userId);
         if (vacs) setVacations(vacs);
@@ -226,8 +228,7 @@ export default function Usuario() {
         point_id: usuarioData.idPonto,
         access_type: usuarioData.tipoAcesso,
         role: usuarioData.tipoAcesso === 'Gestor' ? 'gestor' : 'colaborador',
-        status: usuarioData.statusUsuario,
-        internal_notes: usuarioData.notasInternas
+        status: usuarioData.statusUsuario
       };
 
       await supabase.from('Employees').update(payload).eq('id', userId);
@@ -391,6 +392,7 @@ export default function Usuario() {
     try {
       const relatedTables = [
         'employee_custom_fields',
+        'employee_notes',
         'employee_attachments',
         'employee_vacations',
         'employee_dependents',
@@ -461,20 +463,45 @@ export default function Usuario() {
     }
   };
 
-  // 2. Configurar / Adicionar Campos Adicionais
-  const handleAddCustomField = async () => {
-    if (!newFieldName.trim() || !userId) return;
-    const { data, error } = await supabase.from('employee_custom_fields').insert([{
+  // Notas internas — cada nota é um registro próprio (fica salva, mas só
+  // aparece quando o gestor abre o popup "Notas criadas"; não fica exposta
+  // direto na tela).
+  const handleAddNote = async () => {
+    if (!newNoteText.trim() || !userId) return;
+    setSavingNote(true);
+    const { data, error } = await supabase.from('employee_notes').insert([{
       employee_id: userId,
-      field_name: newFieldName,
-      field_type: newFieldType,
-      field_value: ''
+      content: newNoteText.trim()
     }]).select();
 
-    if (!error && data) {
-      setCustomFields([...customFields, ...data]);
-      setNewFieldName('');
+    if (error) {
+      console.error(error);
+      alert('Erro ao salvar a nota.');
+      setSavingNote(false);
+      return;
     }
+
+    setNotes((prev) => [...(data || []), ...prev]);
+    setNewNoteText('');
+    setSavingNote(false);
+  };
+
+  const handleDeleteNote = (note) => {
+    openConfirm({
+      title: 'Remover nota?',
+      message: 'Essa nota vai ser apagada permanentemente.',
+      confirmLabel: 'Remover',
+      danger: true,
+      onConfirm: async () => {
+        const { error } = await supabase.from('employee_notes').delete().eq('id', note.id);
+        if (error) {
+          console.error(error);
+          alert('Erro ao remover a nota.');
+          return;
+        }
+        setNotes((prev) => prev.filter((n) => n.id !== note.id));
+      }
+    });
   };
 
   // Recarrega direto do Supabase (em vez de só confiar no retorno do
@@ -873,73 +900,39 @@ export default function Usuario() {
                     </div>
                   )}
 
-                  {/* SUB-ABA: CAMPOS ADICIONAIS */}
+                  {/* SUB-ABA: CAMPOS ADICIONAIS (Notas internas) */}
                   {profileSubTab === 'campos_adicionais' && (
-                    <div className="p-6 space-y-6 text-xs">
-                      <section className="space-y-2">
+                    <div className="p-6 space-y-4 text-xs">
+                      <div>
                         <h3 className="font-semibold text-slate-800 text-sm">Notas internas</h3>
-                        <p className="text-slate-500">
-                          Anotações do gestor sobre este colaborador — visíveis só pra quem tem acesso a este
-                          painel, nunca pro colaborador.
+                        <p className="text-slate-500 mt-1">
+                          Anotações do gestor sobre este colaborador — visíveis só pra quem tem acesso a
+                          este painel, nunca pro colaborador. Cada nota fica salva, mas só aparece quando
+                          você abre "Notas criadas".
                         </p>
-                        <textarea
-                          name="notasInternas"
-                          value={usuarioData.notasInternas}
-                          onChange={handleInputChange}
-                          rows={4}
-                          placeholder="Ex: Combinado horário flexível às sextas-feiras, pendência de documento X, feedback da última avaliação..."
-                          className="w-full border rounded p-2.5 text-slate-800 focus:outline-none focus:border-[#ff8b00] resize-y"
-                        />
-                      </section>
-
-                      <div className="flex justify-between items-center pt-4 border-t border-slate-100">
-                        <button onClick={() => setShowConfigCampos(!showConfigCampos)} className="flex items-center gap-1.5 border border-[#ff8b00] text-[#ff8b00] px-3 py-1.5 rounded font-medium hover:bg-[#ff8b00]/10 transition-colors">
-                          <Settings className="w-3.5 h-3.5" /> Configurar campos
-                        </button>
                       </div>
 
-                      {showConfigCampos && (
-                        <div className="p-4 bg-slate-50 border rounded-lg space-y-4">
-                          <h4 className="font-semibold text-slate-700">Campos adicionais no cadastro</h4>
-                          <div className="flex gap-4 items-center">
-                            <input
-                              type="text"
-                              placeholder="Digite o nome do campo (ex: Observações)"
-                              value={newFieldName}
-                              onChange={(e) => setNewFieldName(e.target.value)}
-                              className="border p-2 rounded flex-1 text-xs focus:outline-none focus:border-[#ff8b00]"
-                            />
-                            <select value={newFieldType} onChange={(e) => setNewFieldType(e.target.value)} className="border p-2 rounded text-xs focus:outline-none focus:border-[#ff8b00]">
-                              <option value="Texto livre">Texto livre</option>
-                              <option value="Número">Número</option>
-                            </select>
-                            <button onClick={handleAddCustomField} className="bg-[#ff8b00] hover:bg-[#fc9314] text-white px-4 py-2 rounded font-medium flex items-center gap-1 transition-colors">
-                              <Plus className="w-3.5 h-3.5" /> Adicionar Campo
-                            </button>
-                          </div>
-                        </div>
-                      )}
+                      <textarea
+                        value={newNoteText}
+                        onChange={(e) => setNewNoteText(e.target.value)}
+                        rows={4}
+                        placeholder="Ex: Combinado horário flexível às sextas-feiras, pendência de documento X, feedback da última avaliação..."
+                        className="w-full border rounded p-2.5 text-slate-800 focus:outline-none focus:border-[#ff8b00] resize-y"
+                      />
 
-                      {customFields.length === 0 ? (
-                        <div className="text-slate-500 py-6">Nenhum campo criado.</div>
-                      ) : (
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          {customFields.map((field) => (
-                            <div key={field.id}>
-                              <label className="block text-slate-600 mb-1 font-medium">{field.field_name}</label>
-                              <input
-                                type="text"
-                                defaultValue={field.field_value}
-                                className="w-full border rounded p-2 text-slate-800 focus:outline-none focus:border-[#ff8b00]"
-                              />
-                            </div>
-                          ))}
-                        </div>
-                      )}
-
-                      <div className="flex justify-end pt-4 border-t border-slate-100">
-                        <button onClick={handleSaveProfile} className="bg-[#ff8b00] hover:bg-[#fc9314] text-white font-medium px-6 py-2 rounded text-xs transition-colors">
-                          Salvar alterações
+                      <div className="flex items-center justify-between pt-1">
+                        <button
+                          onClick={() => setShowNotesModal(true)}
+                          className="flex items-center gap-1.5 border border-[#ff8b00] text-[#ff8b00] px-3 py-1.5 rounded font-medium hover:bg-[#ff8b00]/10 transition-colors"
+                        >
+                          <FileText className="w-3.5 h-3.5" /> Notas criadas{notes.length > 0 ? ` (${notes.length})` : ''}
+                        </button>
+                        <button
+                          onClick={handleAddNote}
+                          disabled={savingNote || !newNoteText.trim()}
+                          className="bg-[#ff8b00] hover:bg-[#fc9314] text-white font-medium px-4 py-2 rounded transition-colors disabled:opacity-50"
+                        >
+                          {savingNote ? 'Salvando...' : 'Adicionar nota'}
                         </button>
                       </div>
                     </div>
@@ -1178,6 +1171,51 @@ export default function Usuario() {
           </div>
         </div>
       </main>
+
+      {/* MODAL: NOTAS CRIADAS */}
+      {showNotesModal && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-lg max-h-[80vh] flex flex-col">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
+              <h3 className="font-bold text-slate-800 text-sm">
+                Notas internas{notes.length > 0 ? ` (${notes.length})` : ''}
+              </h3>
+              <button
+                type="button"
+                onClick={() => setShowNotesModal(false)}
+                className="text-slate-400 hover:text-slate-600"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="overflow-y-auto p-5 space-y-3 text-xs">
+              {notes.length === 0 ? (
+                <div className="text-center text-slate-400 py-10">Nenhuma nota criada ainda.</div>
+              ) : (
+                notes.map((note) => (
+                  <div key={note.id} className="border border-slate-200 rounded-lg p-3 flex items-start justify-between gap-3">
+                    <div>
+                      <p className="text-slate-700 whitespace-pre-wrap">{note.content}</p>
+                      <p className="text-slate-400 text-[10px] mt-1.5">
+                        {new Date(note.created_at).toLocaleString('pt-BR')}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteNote(note)}
+                      className="text-red-500 hover:text-red-600 shrink-0"
+                      title="Remover nota"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* MODAL DE CONFIRMAÇÃO (ativar/inativar, tipo de acesso, resetar
           senha, deletar usuário) */}

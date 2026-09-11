@@ -18,7 +18,8 @@ import {
   Search,
   MapPin,
   Camera,
-  AlertCircle
+  AlertCircle,
+  Loader2
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -61,6 +62,24 @@ const minutesToFullDisplay = (mins) => {
   const h = Math.floor(mins / 60);
   const m = mins % 60;
   return `${String(h).padStart(2, '0')}h ${String(m).padStart(2, '0')}min`;
+};
+
+// "AAAA-MM-DD" -> "DD/MM/AAAA"
+const formatDDMMYYYY = (isoDate) => {
+  if (!isoDate) return '';
+  const [y, m, d] = isoDate.split('-');
+  return `${d}/${m}/${y}`;
+};
+
+const AUDIT_ACTION_LABELS = {
+  adicionado: 'Ponto adicionado',
+  editado: 'Ponto editado',
+  removido: 'Ponto removido',
+  aprovado: 'Ponto aprovado',
+  rejeitado: 'Ponto rejeitado',
+  falta_justificada: 'Falta justificada',
+  trocar_jornada: 'Jornada trocada',
+  anotacao: 'Anotação'
 };
 
 const processDayRecord = (record, targetDailyMinutes = 480) => {
@@ -143,6 +162,24 @@ export default function AdminPonto() {
   const [expandedRow, setExpandedRow] = useState(null);
   const [toastMessage, setToastMessage] = useState(null);
   const [showHistoryModal, setShowHistoryModal] = useState(false);
+  const [historyItemId, setHistoryItemId] = useState(null);
+  const [historyEntries, setHistoryEntries] = useState([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+
+  const [showSwapModal, setShowSwapModal] = useState(false);
+  const [swapTargetItemId, setSwapTargetItemId] = useState(null);
+  const [swapDate, setSwapDate] = useState('');
+  const [savingSwap, setSavingSwap] = useState(false);
+
+  const [showAbsenceModal, setShowAbsenceModal] = useState(false);
+  const [absenceTargetItemId, setAbsenceTargetItemId] = useState(null);
+  const [absenceForm, setAbsenceForm] = useState({ description: '', countAsWorked: false });
+  const [savingAbsence, setSavingAbsence] = useState(false);
+
+  const [showAnnotationModal, setShowAnnotationModal] = useState(false);
+  const [annotationTargetItemId, setAnnotationTargetItemId] = useState(null);
+  const [annotationText, setAnnotationText] = useState('');
+  const [savingAnnotation, setSavingAnnotation] = useState(false);
   const [showJornadaModal, setShowJornadaModal] = useState(false);
   const [selectedPhotoModal, setSelectedPhotoModal] = useState(null);
 
@@ -156,6 +193,7 @@ export default function AdminPonto() {
 
   const [registros, setRegistros] = useState([]);
   const [currentManagerId, setCurrentManagerId] = useState(null);
+  const [currentManagerName, setCurrentManagerName] = useState('');
 
   // 1. CARREGAR COLABORADORES DO SUPABASE E DETECTAR USUÁRIO LOGADO COM RESTRIÇÃO
   useEffect(() => {
@@ -180,7 +218,10 @@ export default function AdminPonto() {
           (currentUserEmail && e.email?.toLowerCase() === currentUserEmail.toLowerCase()) ||
           (currentUserCpf && e.cpf === currentUserCpf)
         );
-        if (loggedInEmployee?.id) setCurrentManagerId(loggedInEmployee.id);
+        if (loggedInEmployee?.id) {
+          setCurrentManagerId(loggedInEmployee.id);
+          setCurrentManagerName(loggedInEmployee.full_name || '');
+        }
 
         // Verifica os papéis de acesso tanto no banco quanto na sessão armazenada
         const sessionRole = String(sessionUser?.role || sessionUser?.access_type || '').toLowerCase();
@@ -250,6 +291,20 @@ export default function AdminPonto() {
 
     if (error) console.error('Erro ao buscar registros de ponto:', error);
 
+    // Trocas de jornada — usado pra mostrar o selo "Trocado com DD/MM/AAAA"
+    // nos dois dias envolvidos.
+    const { data: swapsData, error: swapsError } = await supabase
+      .from('journey_swaps')
+      .select('*')
+      .eq('employee_id', selectedUser.id);
+    if (swapsError) console.error('Erro ao buscar trocas de jornada:', swapsError);
+
+    const swapMap = {};
+    (swapsData || []).forEach((s) => {
+      swapMap[s.date_a] = s.date_b;
+      swapMap[s.date_b] = s.date_a;
+    });
+
     if (!error && data) {
       const grouped = data.reduce((acc, curr) => {
         const dateKey = curr.record_date;
@@ -257,6 +312,7 @@ export default function AdminPonto() {
           acc[dateKey] = {
             id: dateKey,
             data: dateKey,
+            swappedWith: swapMap[dateKey] || null,
             batidas: []
           };
         }
@@ -317,11 +373,138 @@ export default function AdminPonto() {
     }, 3500);
   };
 
+  // Registra uma entrada no histórico de alterações (tabela time_record_audit)
+  // pra aparecer no "Ver histórico" do dia. Nunca deve travar a ação
+  // principal — se o log falhar, só loga no console.
+  const logAudit = async (recordDate, action, description) => {
+    if (!selectedUser?.id) return;
+    const { error } = await supabase.from('time_record_audit').insert([{
+      employee_id: selectedUser.id,
+      record_date: recordDate,
+      action,
+      description: description || null,
+      changed_by_id: currentManagerId,
+      changed_by_name: currentManagerName || 'Sistema'
+    }]);
+    if (error) console.error('Erro ao registrar histórico:', error);
+  };
+
+  const handleOpenHistory = async (recordDate) => {
+    setHistoryItemId(recordDate);
+    setShowHistoryModal(true);
+    setHistoryLoading(true);
+    const { data, error } = await supabase
+      .from('time_record_audit')
+      .select('*')
+      .eq('employee_id', selectedUser.id)
+      .eq('record_date', recordDate)
+      .order('created_at', { ascending: false });
+    if (error) console.error('Erro ao buscar histórico:', error);
+    setHistoryEntries(data || []);
+    setHistoryLoading(false);
+  };
+
+  // TROCAR JORNADA — permuta a jornada prevista entre o dia selecionado e
+  // outro dia informado pelo gestor (usado em troca de turno, compensação
+  // de folga, etc). Fica registrado em journey_swaps e aparece como selo
+  // "Trocado com DD/MM/AAAA" nos dois dias envolvidos.
+  const handleConfirmSwap = async () => {
+    if (!swapDate || !swapTargetItemId || !selectedUser?.id) return;
+    setSavingSwap(true);
+    try {
+      const { error } = await supabase.from('journey_swaps').insert([{
+        employee_id: selectedUser.id,
+        date_a: swapTargetItemId,
+        date_b: swapDate,
+        created_by_id: currentManagerId
+      }]);
+      if (error) throw error;
+
+      await logAudit(swapTargetItemId, 'trocar_jornada', `Jornada trocada com ${formatDDMMYYYY(swapDate)}`);
+      await logAudit(swapDate, 'trocar_jornada', `Jornada trocada com ${formatDDMMYYYY(swapTargetItemId)}`);
+
+      setShowSwapModal(false);
+      setSwapDate('');
+      setSwapTargetItemId(null);
+      fetchRecordsFromSupabase();
+      showToast('Jornada trocada com sucesso!');
+    } catch (err) {
+      console.error(err);
+      alert('Erro ao trocar jornada: ' + err.message);
+    } finally {
+      setSavingSwap(false);
+    }
+  };
+
+  // FALTA JUSTIFICADA — grava uma linha em time_records sem entrada/saída,
+  // só com a justificativa. "Contar como hora trabalhada" fica salvo no
+  // registro; a forma como isso deve entrar no cálculo de horas do dia
+  // ainda depende de uma definição sua (ver aviso na conversa).
+  const handleConfirmAbsence = async () => {
+    if (!absenceTargetItemId || !selectedUser?.id) return;
+    setSavingAbsence(true);
+    try {
+      const { error } = await supabase.from('time_records').insert([{
+        employee_id: selectedUser.id,
+        record_date: absenceTargetItemId,
+        entrada: '-',
+        saida: '-',
+        is_night: false,
+        obs: absenceForm.description,
+        is_justified_absence: true,
+        count_as_worked: absenceForm.countAsWorked
+      }]);
+      if (error) throw error;
+
+      await logAudit(absenceTargetItemId, 'falta_justificada', absenceForm.description || 'Falta justificada registrada');
+
+      setShowAbsenceModal(false);
+      setAbsenceForm({ description: '', countAsWorked: false });
+      setAbsenceTargetItemId(null);
+      fetchRecordsFromSupabase();
+      showToast('Falta justificada registrada!');
+    } catch (err) {
+      console.error(err);
+      alert('Erro ao registrar falta justificada: ' + err.message);
+    } finally {
+      setSavingAbsence(false);
+    }
+  };
+
+  // ANOTAÇÃO — nota livre do gestor sobre o dia. Fica salva em
+  // day_annotations (pra futuros relatórios) e também aparece no "Ver
+  // histórico" desse dia (via logAudit).
+  const handleConfirmAnnotation = async () => {
+    if (!annotationTargetItemId || !selectedUser?.id || !annotationText.trim()) return;
+    setSavingAnnotation(true);
+    try {
+      const { error } = await supabase.from('day_annotations').insert([{
+        employee_id: selectedUser.id,
+        record_date: annotationTargetItemId,
+        content: annotationText.trim(),
+        created_by_id: currentManagerId
+      }]);
+      if (error) throw error;
+
+      await logAudit(annotationTargetItemId, 'anotacao', annotationText.trim());
+
+      setShowAnnotationModal(false);
+      setAnnotationText('');
+      setAnnotationTargetItemId(null);
+      showToast('Anotação salva!');
+    } catch (err) {
+      console.error(err);
+      alert('Erro ao salvar anotação: ' + err.message);
+    } finally {
+      setSavingAnnotation(false);
+    }
+  };
+
   const toggleRow = (id) => {
     setExpandedRow(expandedRow === id ? null : id);
   };
 
-  const handleRemoveBatida = async (itemId, batidaIdx, dbId) => {
+  const handleRemoveBatida = async (itemId, batidaIdx, dbId, batida) => {
     if (!isManager) return;
     if (dbId) {
       const { error } = await supabase.from('time_records').delete().eq('id', dbId);
@@ -330,6 +513,7 @@ export default function AdminPonto() {
         return;
       }
     }
+    await logAudit(itemId, 'removido', `${batida?.entrada || '-'} → ${batida?.saida || '-'} removido`);
     fetchRecordsFromSupabase();
     showToast('Ponto removido com sucesso!');
   };
@@ -337,7 +521,7 @@ export default function AdminPonto() {
   // Aprova ou rejeita um ponto batido fora de todas as cercas cadastradas
   // (approval_status = 'pendente', gravado em PunchClock.jsx). Só o gestor
   // vê os botões que chamam isso.
-  const handleApproveBatida = async (dbId, decision) => {
+  const handleApproveBatida = async (dbId, decision, recordDate) => {
     if (!isManager || !dbId) return;
     const { error } = await supabase
       .from('time_records')
@@ -352,6 +536,7 @@ export default function AdminPonto() {
       alert('Erro ao atualizar aprovação: ' + error.message);
       return;
     }
+    await logAudit(recordDate, decision, decision === 'aprovado' ? 'Ponto fora da cerca aprovado' : 'Ponto fora da cerca rejeitado');
     fetchRecordsFromSupabase();
     showToast(decision === 'aprovado' ? 'Ponto aprovado!' : 'Ponto rejeitado.');
   };
@@ -367,13 +552,15 @@ export default function AdminPonto() {
     });
   };
 
-  const handleSaveEdit = async (itemId, batidaIdx, dbId) => {
+  const handleSaveEdit = async (itemId, batidaIdx, dbId, originalBatida) => {
     if (dbId) {
+      const novaEntrada = editFormData.entrada.trim() || '-';
+      const novaSaida = editFormData.saida.trim() || '-';
       const { error } = await supabase
         .from('time_records')
         .update({
-          entrada: editFormData.entrada.trim() || '-',
-          saida: editFormData.saida.trim() || '-',
+          entrada: novaEntrada,
+          saida: novaSaida,
           is_night: editFormData.isNight,
           obs: editFormData.obs
         })
@@ -383,6 +570,10 @@ export default function AdminPonto() {
         alert('Erro ao salvar: ' + error.message);
         return;
       }
+
+      const de = `${originalBatida?.entrada || '-'} → ${originalBatida?.saida || '-'}`;
+      const para = `${novaEntrada} → ${novaSaida}`;
+      await logAudit(itemId, 'editado', de === para ? para : `${de} passou para ${para}`);
     }
     setEditingRowKey(null);
     fetchRecordsFromSupabase();
@@ -405,6 +596,7 @@ export default function AdminPonto() {
     if (error) {
       alert('Erro ao adicionar: ' + error.message);
     } else {
+      await logAudit(recordDate, 'adicionado', 'Ponto manual adicionado (08:00 → 12:00)');
       fetchRecordsFromSupabase();
       showToast('Ponto adicionado com sucesso!');
     }
@@ -653,6 +845,11 @@ export default function AdminPonto() {
                               <ChevronRight className="w-4 h-4 text-slate-400" />
                             )}
                             <span className="font-semibold text-slate-700 text-xs">{item.data}</span>
+                            {item.swappedWith && (
+                              <span className="bg-[#ff8b00]/10 text-[#ff8b00] px-2 py-0.5 rounded-full text-[10px] font-semibold">
+                                Trocado com {formatDDMMYYYY(item.swappedWith)}
+                              </span>
+                            )}
                             {hasPending && (
                               <span className="flex items-center gap-1 bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full text-[10px] font-semibold">
                                 <AlertCircle className="w-3 h-3" /> Pendente
@@ -681,15 +878,42 @@ export default function AdminPonto() {
                                     >
                                       Adicionar ponto
                                     </DropdownMenuItem>
-                                    <DropdownMenuItem className="cursor-pointer">Falta justificada</DropdownMenuItem>
-                                    <DropdownMenuItem className="cursor-pointer">Trocar jornada</DropdownMenuItem>
-                                    <DropdownMenuItem className="cursor-pointer">Anotação</DropdownMenuItem>
+                                    <DropdownMenuItem
+                                      onClick={() => {
+                                        setAbsenceTargetItemId(item.id);
+                                        setAbsenceForm({ description: '', countAsWorked: false });
+                                        setShowAbsenceModal(true);
+                                      }}
+                                      className="cursor-pointer"
+                                    >
+                                      Falta justificada
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem
+                                      onClick={() => {
+                                        setSwapTargetItemId(item.id);
+                                        setSwapDate('');
+                                        setShowSwapModal(true);
+                                      }}
+                                      className="cursor-pointer"
+                                    >
+                                      Trocar jornada
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem
+                                      onClick={() => {
+                                        setAnnotationTargetItemId(item.id);
+                                        setAnnotationText('');
+                                        setShowAnnotationModal(true);
+                                      }}
+                                      className="cursor-pointer"
+                                    >
+                                      Anotação
+                                    </DropdownMenuItem>
                                   </DropdownMenuContent>
                                 </DropdownMenu>
                               )}
 
                               <button 
-                                onClick={() => setShowHistoryModal(true)}
+                                onClick={() => handleOpenHistory(item.id)}
                                 className="flex items-center space-x-1 text-[#ff8b00] hover:underline font-medium cursor-pointer ml-auto"
                               >
                                 <History className="w-3.5 h-3.5" />
@@ -772,7 +996,7 @@ export default function AdminPonto() {
                                         <span className="text-slate-400 text-xs px-2">-</span>
 
                                         <button 
-                                          onClick={() => handleSaveEdit(item.id, idx, b.db_id)}
+                                          onClick={() => handleSaveEdit(item.id, idx, b.db_id, b)}
                                           className="bg-white border border-[#1a2c6a] text-[#1a2c6a] hover:bg-[#1a2c6a] hover:text-white font-medium px-4 py-1 rounded text-xs transition-colors"
                                         >
                                           Salvar
@@ -790,7 +1014,7 @@ export default function AdminPonto() {
                                       {/* EXIBE REMOVER APENAS PARA GESTOR */}
                                       {isManager && (
                                         <button 
-                                          onClick={() => handleRemoveBatida(item.id, idx, b.db_id)}
+                                          onClick={() => handleRemoveBatida(item.id, idx, b.db_id, b)}
                                           className="opacity-0 group-hover:opacity-100 bg-red-500 hover:bg-red-600 text-white font-semibold px-2 py-0.5 rounded text-[10px] transition-opacity shadow-sm shrink-0"
                                         >
                                           Remover
@@ -870,13 +1094,13 @@ export default function AdminPonto() {
                                       {isManager && (
                                         <div className="flex items-center gap-2 shrink-0">
                                           <button
-                                            onClick={() => handleApproveBatida(b.db_id, 'aprovado')}
+                                            onClick={() => handleApproveBatida(b.db_id, 'aprovado', item.id)}
                                             className="bg-[#ff8b00] hover:bg-[#e07a00] text-white font-medium px-2.5 py-1 rounded text-[10px] transition-colors"
                                           >
                                             Aprovar
                                           </button>
                                           <button
-                                            onClick={() => handleApproveBatida(b.db_id, 'rejeitado')}
+                                            onClick={() => handleApproveBatida(b.db_id, 'rejeitado', item.id)}
                                             className="border border-red-300 text-red-600 hover:bg-red-50 font-medium px-2.5 py-1 rounded text-[10px] transition-colors"
                                           >
                                             Rejeitar
@@ -1077,38 +1301,46 @@ export default function AdminPonto() {
             </div>
 
             <div className="p-6 space-y-6 text-xs max-h-[70vh] overflow-y-auto">
-              <p className="text-slate-500 font-medium">Dia 06/08/2026</p>
+              <p className="text-slate-500 font-medium">Dia {formatDDMMYYYY(historyItemId)}</p>
 
-              <div className="relative pl-6 space-y-6 border-l-2 border-slate-200 ml-2">
-                <div className="relative">
-                  <div className="absolute -left-[31px] top-0 w-3 h-3 rounded-full border-2 border-red-500 bg-white"></div>
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <p className="text-slate-400 text-[11px]">07/08/2026 20:33</p>
-                      <p className="font-bold text-slate-700">WIA DIGITAL</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="font-semibold text-slate-700">06/08 08:00 <span className="text-red-500 ml-1">→ Removido</span></p>
-                      <p className="text-slate-400 flex items-center justify-end gap-1 mt-0.5"><Monitor className="w-3 h-3"/> Ponto manual</p>
-                      <p className="italic text-slate-400 text-[11px] mt-1">"Ponto removido via interface web"</p>
-                    </div>
-                  </div>
+              {historyLoading ? (
+                <div className="flex items-center gap-2 text-slate-400 py-6 justify-center">
+                  <Loader2 className="w-4 h-4 animate-spin" /> Carregando...
                 </div>
-
-                <div className="relative">
-                  <div className="absolute -left-[31px] top-0 w-3 h-3 rounded-full border-2 border-[#ff8b00] bg-white"></div>
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <p className="text-slate-400 text-[11px]">06/08/2026 23:08</p>
-                      <p className="font-bold text-slate-700">WIA DIGITAL</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="font-semibold text-slate-700">06/08 14:00 → 06/08 21:00</p>
-                      <p className="text-slate-400 flex items-center justify-end gap-1 mt-0.5"><Monitor className="w-3 h-3"/> Ponto manual</p>
-                    </div>
-                  </div>
+              ) : historyEntries.length === 0 ? (
+                <div className="text-center text-slate-400 py-6">
+                  Nenhuma alteração registrada para este dia.
                 </div>
-              </div>
+              ) : (
+                <div className="relative pl-6 space-y-6 border-l-2 border-slate-200 ml-2">
+                  {historyEntries.map((entry) => (
+                    <div key={entry.id} className="relative">
+                      <div className={`absolute -left-[31px] top-0 w-3 h-3 rounded-full border-2 bg-white ${
+                        entry.action === 'removido' || entry.action === 'rejeitado' ? 'border-red-500' : 'border-[#ff8b00]'
+                      }`}></div>
+                      <div className="flex justify-between items-start gap-3">
+                        <div>
+                          <p className="text-slate-400 text-[11px]">
+                            {new Date(entry.created_at).toLocaleString('pt-BR')}
+                          </p>
+                          <p className="font-bold text-slate-700">{entry.changed_by_name || 'Sistema'}</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="font-semibold text-slate-700">
+                            {AUDIT_ACTION_LABELS[entry.action] || entry.action}
+                          </p>
+                          <p className="text-slate-400 flex items-center justify-end gap-1 mt-0.5">
+                            <Monitor className="w-3 h-3" /> Ponto manual
+                          </p>
+                          {entry.description && (
+                            <p className="italic text-slate-400 text-[11px] mt-1">"{entry.description}"</p>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
             <div className="p-4 border-t border-slate-100 flex justify-end">
@@ -1117,6 +1349,124 @@ export default function AdminPonto() {
                 className="bg-white border border-[#1a2c6a] text-[#1a2c6a] hover:bg-[#1a2c6a] hover:text-white font-medium px-6 py-2 rounded text-xs transition-colors"
               >
                 Fechar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: TROCAR JORNADA */}
+      {showSwapModal && (
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-2xl max-w-sm w-full p-6 space-y-4">
+            <h3 className="font-bold text-slate-800 text-sm">Trocar jornada</h3>
+            <p className="text-xs text-slate-500">
+              A jornada prevista do dia <strong>{formatDDMMYYYY(swapTargetItemId)}</strong> passa a ser a mesma
+              do dia informado abaixo, e vice-versa. Use para troca de turno, compensação de folga ou mudança
+              de escala.
+            </p>
+            <div>
+              <label className="block text-[11px] text-slate-500 mb-1">Trocar com a data</label>
+              <input
+                type="date"
+                value={swapDate}
+                onChange={(e) => setSwapDate(e.target.value)}
+                className="w-full border rounded p-2 text-xs focus:outline-none focus:border-[#ff8b00]"
+              />
+            </div>
+            <div className="flex justify-end gap-2 pt-2">
+              <button
+                onClick={() => setShowSwapModal(false)}
+                disabled={savingSwap}
+                className="px-4 py-2 border rounded text-xs font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-50"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleConfirmSwap}
+                disabled={savingSwap || !swapDate}
+                className="px-4 py-2 rounded text-xs font-semibold text-white bg-[#ff8b00] hover:bg-[#fc9314] disabled:opacity-50 flex items-center gap-1.5"
+              >
+                {savingSwap && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                Confirmar troca
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: FALTA JUSTIFICADA */}
+      {showAbsenceModal && (
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-2xl max-w-sm w-full p-6 space-y-4">
+            <h3 className="font-bold text-slate-800 text-sm">Falta justificada — {formatDDMMYYYY(absenceTargetItemId)}</h3>
+            <div>
+              <label className="block text-[11px] text-slate-500 mb-1">Descrição</label>
+              <input
+                type="text"
+                value={absenceForm.description}
+                onChange={(e) => setAbsenceForm((p) => ({ ...p, description: e.target.value }))}
+                placeholder="Ex: Atestado médico"
+                className="w-full border rounded p-2 text-xs focus:outline-none focus:border-[#ff8b00]"
+              />
+            </div>
+            <label className="flex items-center gap-2 text-xs text-slate-600 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={absenceForm.countAsWorked}
+                onChange={(e) => setAbsenceForm((p) => ({ ...p, countAsWorked: e.target.checked }))}
+                className="accent-[#ff8b00]"
+              />
+              Contar como hora trabalhada
+            </label>
+            <div className="flex justify-end gap-2 pt-2">
+              <button
+                onClick={() => setShowAbsenceModal(false)}
+                disabled={savingAbsence}
+                className="px-4 py-2 border rounded text-xs font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-50"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleConfirmAbsence}
+                disabled={savingAbsence}
+                className="px-4 py-2 rounded text-xs font-semibold text-white bg-[#ff8b00] hover:bg-[#fc9314] disabled:opacity-50 flex items-center gap-1.5"
+              >
+                {savingAbsence && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                Salvar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: ANOTAÇÃO */}
+      {showAnnotationModal && (
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-2xl max-w-sm w-full p-6 space-y-4">
+            <h3 className="font-bold text-slate-800 text-sm">Anotação — {formatDDMMYYYY(annotationTargetItemId)}</h3>
+            <textarea
+              value={annotationText}
+              onChange={(e) => setAnnotationText(e.target.value)}
+              rows={4}
+              placeholder="Escreva uma observação sobre este dia..."
+              className="w-full border rounded p-2.5 text-xs focus:outline-none focus:border-[#ff8b00] resize-y"
+            />
+            <div className="flex justify-end gap-2 pt-2">
+              <button
+                onClick={() => setShowAnnotationModal(false)}
+                disabled={savingAnnotation}
+                className="px-4 py-2 border rounded text-xs font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-50"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleConfirmAnnotation}
+                disabled={savingAnnotation || !annotationText.trim()}
+                className="px-4 py-2 rounded text-xs font-semibold text-white bg-[#ff8b00] hover:bg-[#fc9314] disabled:opacity-50 flex items-center gap-1.5"
+              >
+                {savingAnnotation && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                Salvar
               </button>
             </div>
           </div>

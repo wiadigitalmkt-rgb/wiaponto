@@ -29,7 +29,7 @@ export default function Login() {
       if (!rawInput.includes('@') && cleanCPF.length > 0) {
         const { data: empData } = await supabase
           .from('Employees')
-          .select('email, password_hash, role, id, full_name, cpf')
+          .select('email, password_hash, role, id, full_name, cpf, status')
           .or(`cpf.eq.${cleanCPF},cpf.eq.${rawInput}`)
           .maybeSingle();
 
@@ -38,6 +38,11 @@ export default function Login() {
         } else if (empData) {
           // Fallback se o colaborador não tiver e-mail cadastrado no Supabase Auth
           if (empData.password_hash === password) {
+            if (String(empData.status || '').toLowerCase() === 'inativo') {
+              setErrorMsg('Este usuário está inativo. Fale com o gestor da sua empresa.');
+              setLoading(false);
+              return;
+            }
             const sessionData = {
               id: empData.id,
               full_name: empData.full_name,
@@ -79,6 +84,13 @@ export default function Login() {
           .eq('email', loginEmail)
           .maybeSingle();
 
+        if (emp && String(emp.status || '').toLowerCase() === 'inativo') {
+          await supabase.auth.signOut();
+          setErrorMsg('Este usuário está inativo. Fale com o gestor da sua empresa.');
+          setLoading(false);
+          return;
+        }
+
         const sessionData = {
           id: emp?.id || authData.user.id,
           full_name: emp?.full_name || authData.user.email,
@@ -107,6 +119,11 @@ export default function Login() {
       const user = employees?.[0];
 
       if (user && user.password_hash === password) {
+        if (String(user.status || '').toLowerCase() === 'inativo') {
+          setErrorMsg('Este usuário está inativo. Fale com o gestor da sua empresa.');
+          setLoading(false);
+          return;
+        }
         const sessionData = {
           id: user.id,
           full_name: user.full_name,

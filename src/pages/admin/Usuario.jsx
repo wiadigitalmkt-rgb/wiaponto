@@ -328,7 +328,7 @@ export default function Usuario() {
     openConfirm({
       title: novoStatus === 'Inativo' ? 'Inativar usuário?' : 'Ativar usuário?',
       message: novoStatus === 'Inativo'
-        ? `${usuarioData.primeiroNome || 'Este usuário'} vai perder o acesso ao sistema e deixa de ser cobrado na fatura.`
+        ? `${usuarioData.primeiroNome || 'Este usuário'} vai perder o acesso ao sistema até que você ative novamente.`
         : `${usuarioData.primeiroNome || 'Este usuário'} volta a ter acesso normal ao sistema.`,
       confirmLabel: novoStatus === 'Inativo' ? 'Inativar' : 'Ativar',
       danger: novoStatus === 'Inativo',

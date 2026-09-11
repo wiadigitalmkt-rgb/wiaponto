@@ -119,7 +119,14 @@ export default function Usuario() {
             cidade: emp.city || '',
             estado: emp.state || '',
             idPonto: emp.point_id || '',
-            login: emp.cpf ? emp.cpf.replace(/\D/g, '') : '',
+            // O campo "(Login)" no cadastro (admin_employees.jsx) é o
+            // e-mail — é ele que deve aparecer aqui como LOGIN. Antes essa
+            // linha sempre montava o login a partir do CPF, mesmo quando o
+            // colaborador foi cadastrado com e-mail (ex.: Fulano Silva,
+            // logava com fulanoteste@gmail.com mas a tela mostrava o CPF
+            // como se fosse o login dele). O CPF só entra como último
+            // recurso, se por algum motivo não houver e-mail cadastrado.
+            login: emp.email || (emp.cpf ? emp.cpf.replace(/\D/g, '') : ''),
             tipoAcesso: emp.role === 'gestor' || emp.role === 'admin' || emp.access_type === 'Gestor' ? 'Gestor' : 'Colaborador',
             statusUsuario: emp.status || 'Ativo'
           });
@@ -766,6 +773,9 @@ export default function Usuario() {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3 p-6 border-b border-slate-100">
                     <div>
                       <h3 className="font-semibold text-slate-800 text-sm">Acesso</h3>
+                      <p className="text-slate-500 mt-1">
+                        O colaborador também pode entrar usando o CPF em vez do e-mail.
+                      </p>
                     </div>
                     <div className="space-y-1.5 md:text-right">
                       <div><span className="text-slate-500">ID PONTO: </span><strong className="text-slate-800">{usuarioData.idPonto || '-'}</strong></div>

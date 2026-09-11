@@ -21,7 +21,8 @@ import {
   CheckCircle2,
   AlertCircle,
   Eye,
-  EyeOff
+  EyeOff,
+  Camera
 } from 'lucide-react';
 
 export default function Usuario() {
@@ -36,6 +37,8 @@ export default function Usuario() {
   const [saving, setSaving] = useState(false);
   const [resettingPassword, setResettingPassword] = useState(false);
   const [deletingUser, setDeletingUser] = useState(false);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const photoInputRef = useRef(null);
   const [showSenha, setShowSenha] = useState(false);
   const [confirmModal, setConfirmModal] = useState(null); // { title, message, confirmLabel, danger, requireText, onConfirm }
   const [confirmInput, setConfirmInput] = useState('');
@@ -70,6 +73,7 @@ export default function Usuario() {
     dataNascimento: '',
     cargo: '',
     salario: '',
+    fotoUrl: '',
     dataAdmissao: '',
     tipoContrato: '',
     cep: '',
@@ -147,6 +151,7 @@ export default function Usuario() {
             login: emp.email || (emp.cpf ? emp.cpf.replace(/\D/g, '') : ''),
             senhaAtual: emp.password_hash || '',
             notasInternas: emp.internal_notes || '',
+            fotoUrl: emp.photo_url || '',
             tipoAcesso: emp.role === 'gestor' || emp.role === 'admin' || emp.access_type === 'Gestor' ? 'Gestor' : 'Colaborador',
             statusUsuario: emp.status || 'Ativo'
           });
@@ -393,6 +398,51 @@ export default function Usuario() {
     }
   };
 
+  // Foto de perfil — sobe pro Storage (bucket "employee-photos") e salva a
+  // URL pública em Employees.photo_url. Usa upsert no mesmo caminho
+  // (userId/foto-perfil.ext), então trocar a foto substitui a anterior em
+  // vez de acumular arquivos á toa no bucket.
+  const handlePhotoUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file || !userId || !supabase) return;
+
+    if (!file.type.startsWith('image/')) {
+      alert('Selecione um arquivo de imagem (JPG, PNG etc).');
+      return;
+    }
+
+    setUploadingPhoto(true);
+    try {
+      const ext = file.name.split('.').pop() || 'jpg';
+      const filePath = `${userId}/foto-perfil.${ext}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('employee-photos')
+        .upload(filePath, file, { upsert: true, cacheControl: '3600' });
+      if (uploadError) throw uploadError;
+
+      const { data: publicUrlData } = supabase.storage.from('employee-photos').getPublicUrl(filePath);
+      // Cache-busting: sem isso, o navegador continuaria mostrando a foto
+      // antiga em cache mesmo depois de trocada, já que o caminho do
+      // arquivo é sempre o mesmo (upsert).
+      const photoUrl = `${publicUrlData.publicUrl}?t=${Date.now()}`;
+
+      const { error: updateError } = await supabase.from('Employees').update({ photo_url: photoUrl }).eq('id', userId);
+      if (updateError) throw updateError;
+
+      setUsuarioData(prev => ({ ...prev, fotoUrl: photoUrl }));
+    } catch (err) {
+      console.error(err);
+      alert(
+        'Erro ao enviar a foto: ' + (err.message || 'tente novamente.') +
+        ' Se o erro mencionar "bucket not found", crie um bucket público chamado "employee-photos" no Supabase (Storage → New bucket).'
+      );
+    } finally {
+      setUploadingPhoto(false);
+      if (photoInputRef.current) photoInputRef.current.value = '';
+    }
+  };
+
   // 2. Configurar / Adicionar Campos Adicionais
   const handleAddCustomField = async () => {
     if (!newFieldName.trim() || !userId) return;
@@ -547,13 +597,43 @@ export default function Usuario() {
         <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-4 gap-6">
           {/* SIDEBAR DA PÁGINA */}
           <div className="md:col-span-1 space-y-4">
-            <div className="flex items-center gap-3 p-2 bg-white rounded-lg border border-slate-200">
-              <div className="w-10 h-10 rounded-full bg-slate-300 flex items-center justify-center font-semibold text-slate-600 uppercase">
-                {usuarioData.primeiroNome?.[0]}{usuarioData.sobrenome?.[0]}
+            <div className="p-5 bg-white rounded-lg border border-slate-200 text-center space-y-2">
+              <div className="relative w-20 h-20 mx-auto">
+                {usuarioData.fotoUrl ? (
+                  <img
+                    src={usuarioData.fotoUrl}
+                    alt={`${usuarioData.primeiroNome} ${usuarioData.sobrenome}`}
+                    className="w-20 h-20 rounded-full object-cover border-2 border-slate-100"
+                  />
+                ) : (
+                  <div className="w-20 h-20 rounded-full bg-slate-300 flex items-center justify-center font-bold text-2xl text-slate-600 uppercase">
+                    {usuarioData.primeiroNome?.[0]}{usuarioData.sobrenome?.[0]}
+                  </div>
+                )}
+                <button
+                  type="button"
+                  onClick={() => photoInputRef.current?.click()}
+                  disabled={uploadingPhoto}
+                  className="absolute bottom-0 right-0 w-7 h-7 rounded-full bg-[#ff8b00] hover:bg-[#fc9314] text-white flex items-center justify-center shadow border-2 border-white transition-colors disabled:opacity-60"
+                  title="Alterar foto"
+                >
+                  {uploadingPhoto ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Camera className="w-3.5 h-3.5" />}
+                </button>
+                <input
+                  ref={photoInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handlePhotoUpload}
+                  className="hidden"
+                />
               </div>
-              <span className="font-semibold text-slate-800 text-sm">
-                {usuarioData.primeiroNome} {usuarioData.sobrenome}
-              </span>
+              <div>
+                <p className="font-semibold text-slate-800 text-sm">
+                  {usuarioData.primeiroNome} {usuarioData.sobrenome}
+                </p>
+                <p className="text-slate-500 text-xs mt-0.5">{usuarioData.cargo || 'Cargo não definido'}</p>
+                <p className="text-slate-400 text-[11px] mt-0.5">{'Sua Empresa'}</p>
+              </div>
             </div>
 
             <nav className="space-y-1">

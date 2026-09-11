@@ -83,6 +83,10 @@ export default function Usuario() {
     complemento: '',
     estado: '',
     cidade: '',
+    banco: '',
+    agencia: '',
+    conta: '',
+    observacoesBancarias: '',
     idPonto: '',
     login: '',
     tipoAcesso: 'Colaborador',
@@ -132,6 +136,9 @@ export default function Usuario() {
             pisPasep: emp.pis_pasep || '',
             cargo: emp.position || '',
             salario: emp.salary || '',
+            departamento: emp.department || '',
+            dataNascimento: emp.birth_date || '',
+            tipoContrato: emp.contract_type || '',
             dataAdmissao: emp.admission_date || '',
             cep: emp.cep || '',
             rua: emp.street || '',
@@ -140,6 +147,10 @@ export default function Usuario() {
             complemento: emp.complement || '',
             cidade: emp.city || '',
             estado: emp.state || '',
+            banco: emp.bank_name || '',
+            agencia: emp.bank_agency || '',
+            conta: emp.bank_account || '',
+            observacoesBancarias: emp.bank_notes || '',
             idPonto: emp.point_id || '',
             // O campo "(Login)" no cadastro (admin_employees.jsx) é o
             // e-mail — é ele que deve aparecer aqui como LOGIN. Antes essa
@@ -198,6 +209,9 @@ export default function Usuario() {
         position: usuarioData.cargo,
         salary: usuarioData.salario.replace('R$', '').trim(),
         admission_date: usuarioData.dataAdmissao || null,
+        department: usuarioData.departamento,
+        birth_date: usuarioData.dataNascimento || null,
+        contract_type: usuarioData.tipoContrato,
         cep: usuarioData.cep,
         street: usuarioData.rua,
         number: usuarioData.numero,
@@ -205,6 +219,10 @@ export default function Usuario() {
         complement: usuarioData.complemento,
         city: usuarioData.cidade,
         state: usuarioData.estado,
+        bank_name: usuarioData.banco,
+        bank_agency: usuarioData.agencia,
+        bank_account: usuarioData.conta,
+        bank_notes: usuarioData.observacoesBancarias,
         point_id: usuarioData.idPonto,
         access_type: usuarioData.tipoAcesso,
         role: usuarioData.tipoAcesso === 'Gestor' ? 'gestor' : 'colaborador',
@@ -737,6 +755,46 @@ export default function Usuario() {
                             <label className="block text-slate-600 mb-1">PIS/PASEP</label>
                             <input type="text" name="pisPasep" value={usuarioData.pisPasep} onChange={handleInputChange} className="w-full border rounded p-2 text-slate-800 focus:outline-none focus:border-[#ff8b00]" />
                           </div>
+                          <div>
+                            <label className="block text-slate-600 mb-1">Departamento</label>
+                            <input type="text" name="departamento" value={usuarioData.departamento} onChange={handleInputChange} placeholder="Ex: Financeiro, Operações..." className="w-full border rounded p-2 text-slate-800 focus:outline-none focus:border-[#ff8b00]" />
+                          </div>
+                          <div>
+                            <label className="block text-slate-600 mb-1">Data de nascimento</label>
+                            <input type="date" name="dataNascimento" value={usuarioData.dataNascimento} onChange={handleInputChange} className="w-full border rounded p-2 text-slate-800 focus:outline-none focus:border-[#ff8b00]" />
+                          </div>
+                        </div>
+                      </section>
+
+                      <hr className="border-slate-100" />
+
+                      {/* Contratação */}
+                      <section className="space-y-4">
+                        <h3 className="font-semibold text-slate-800 text-sm">Contratação</h3>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                          <div>
+                            <label className="block text-slate-600 mb-1">Cargo*</label>
+                            <input type="text" name="cargo" value={usuarioData.cargo} onChange={handleInputChange} className="w-full border rounded p-2 text-slate-800 focus:outline-none focus:border-[#ff8b00]" />
+                          </div>
+                          <div>
+                            <label className="block text-slate-600 mb-1">Salário bruto</label>
+                            <input type="text" name="salario" value={usuarioData.salario} onChange={handleInputChange} placeholder="R$ 0,00" className="w-full border rounded p-2 text-slate-800 focus:outline-none focus:border-[#ff8b00]" />
+                          </div>
+                          <div>
+                            <label className="block text-slate-600 mb-1">Data de admissão</label>
+                            <input type="date" name="dataAdmissao" value={usuarioData.dataAdmissao} onChange={handleInputChange} className="w-full border rounded p-2 text-slate-800 focus:outline-none focus:border-[#ff8b00]" />
+                          </div>
+                          <div>
+                            <label className="block text-slate-600 mb-1">Tipo de contrato</label>
+                            <select name="tipoContrato" value={usuarioData.tipoContrato} onChange={handleInputChange} className="w-full border rounded p-2 text-slate-800 focus:outline-none focus:border-[#ff8b00]">
+                              <option value="">Selecione</option>
+                              <option value="CLT">CLT</option>
+                              <option value="PJ">PJ</option>
+                              <option value="Estágio">Estágio</option>
+                              <option value="Temporário">Temporário</option>
+                              <option value="Outros">Outros</option>
+                            </select>
+                          </div>
                         </div>
                       </section>
 
@@ -778,6 +836,31 @@ export default function Usuario() {
                           <div>
                             <label className="block text-slate-600 mb-1">Cidade</label>
                             <input type="text" name="cidade" value={usuarioData.cidade} onChange={handleInputChange} className="w-full border rounded p-2 text-slate-800 focus:outline-none focus:border-[#ff8b00]" />
+                          </div>
+                        </div>
+                      </section>
+
+                      <hr className="border-slate-100" />
+
+                      {/* Dados bancários */}
+                      <section className="space-y-4">
+                        <h3 className="font-semibold text-slate-800 text-sm">Dados bancários</h3>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                          <div>
+                            <label className="block text-slate-600 mb-1">Banco</label>
+                            <input type="text" name="banco" value={usuarioData.banco} onChange={handleInputChange} className="w-full border rounded p-2 text-slate-800 focus:outline-none focus:border-[#ff8b00]" />
+                          </div>
+                          <div>
+                            <label className="block text-slate-600 mb-1">Agência</label>
+                            <input type="text" name="agencia" value={usuarioData.agencia} onChange={handleInputChange} className="w-full border rounded p-2 text-slate-800 focus:outline-none focus:border-[#ff8b00]" />
+                          </div>
+                          <div>
+                            <label className="block text-slate-600 mb-1">Conta</label>
+                            <input type="text" name="conta" value={usuarioData.conta} onChange={handleInputChange} className="w-full border rounded p-2 text-slate-800 focus:outline-none focus:border-[#ff8b00]" />
+                          </div>
+                          <div className="md:col-span-3">
+                            <label className="block text-slate-600 mb-1">Observações</label>
+                            <input type="text" name="observacoesBancarias" value={usuarioData.observacoesBancarias} onChange={handleInputChange} placeholder="Ex: tipo de conta, PIX, titularidade..." className="w-full border rounded p-2 text-slate-800 focus:outline-none focus:border-[#ff8b00]" />
                           </div>
                         </div>
                       </section>

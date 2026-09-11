@@ -25,7 +25,23 @@ export default function ProtectedRoute({ allowedRoles = [], unauthenticatedEleme
 
   // Normaliza a permissão do usuário
   const userRole = String(user.role || user.tipoAcesso || '').toLowerCase();
-  const isAuthorized = allowedRoles.some((role) => userRole.includes(role.toLowerCase()));
+
+  // "gestor" precisa ter acesso TOTAL, idêntico ao "admin" (dono da conta) —
+  // em toda página, sem exceção. Em vez de sair caçando e editando o
+  // allowedRoles de cada rota (App.jsx) uma por uma — o que é frágil, já
+  // que basta alguém esquecer de incluir 'gestor' numa rota nova pra essa
+  // regra quebrar de novo — tratamos os dois papéis como equivalentes bem
+  // aqui, no único lugar que decide autorização: se a rota libera 'admin'
+  // OU 'gestor', e o usuário logado é 'admin' OU 'gestor' (qualquer um dos
+  // dois), o acesso é liberado.
+  const ADMIN_TIER_ROLES = ['admin', 'gestor'];
+  const isAdminTierUser = ADMIN_TIER_ROLES.includes(userRole);
+
+  const isAuthorized = allowedRoles.some((role) => {
+    const normalizedRole = role.toLowerCase();
+    if (isAdminTierUser && ADMIN_TIER_ROLES.includes(normalizedRole)) return true;
+    return userRole.includes(normalizedRole);
+  });
 
   // Colaborador tentando acessar rota de gestor -> Redireciona para a home/ponto
   if (!isAuthorized) {

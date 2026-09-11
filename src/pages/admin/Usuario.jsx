@@ -621,7 +621,7 @@ export default function Usuario() {
                   <img
                     src={usuarioData.fotoUrl}
                     alt={`${usuarioData.primeiroNome} ${usuarioData.sobrenome}`}
-                    className="w-20 h-20 rounded-full object-cover border-2 border-slate-100"
+                    className="w-20 h-20 rounded-full object-cover object-top border-2 border-slate-100"
                   />
                 ) : (
                   <div className="w-20 h-20 rounded-full bg-slate-300 flex items-center justify-center font-bold text-2xl text-slate-600 uppercase">

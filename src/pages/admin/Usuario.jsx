@@ -657,7 +657,7 @@ export default function Usuario() {
                       </section>
 
                       <div className="flex justify-end pt-4">
-                        <button onClick={handleSaveProfile} disabled={saving} className="bg-[#ff8b00] hover:bg-[#e07a00] text-white font-medium px-6 py-2 rounded text-xs transition-colors">
+                        <button onClick={handleSaveProfile} disabled={saving} className="bg-[#ff8b00] hover:bg-[#fc9314] text-white font-medium px-6 py-2 rounded text-xs transition-colors">
                           {saving ? 'Salvando...' : 'Salvar alterações'}
                         </button>
                       </div>
@@ -688,7 +688,7 @@ export default function Usuario() {
                               <option value="Texto livre">Texto livre</option>
                               <option value="Número">Número</option>
                             </select>
-                            <button onClick={handleAddCustomField} className="bg-[#ff8b00] hover:bg-[#e07a00] text-white px-4 py-2 rounded font-medium flex items-center gap-1 transition-colors">
+                            <button onClick={handleAddCustomField} className="bg-[#ff8b00] hover:bg-[#fc9314] text-white px-4 py-2 rounded font-medium flex items-center gap-1 transition-colors">
                               <Plus className="w-3.5 h-3.5" /> Adicionar Campo
                             </button>
                           </div>
@@ -713,7 +713,7 @@ export default function Usuario() {
                       )}
 
                       <div className="flex justify-end pt-4 border-t border-slate-100">
-                        <button onClick={handleSaveProfile} className="bg-[#ff8b00] hover:bg-[#e07a00] text-white font-medium px-6 py-2 rounded text-xs transition-colors">
+                        <button onClick={handleSaveProfile} className="bg-[#ff8b00] hover:bg-[#fc9314] text-white font-medium px-6 py-2 rounded text-xs transition-colors">
                           Salvar alterações
                         </button>
                       </div>
@@ -736,7 +736,7 @@ export default function Usuario() {
                         <div className="text-right">
                           <button
                             onClick={() => fileInputRef.current?.click()}
-                            className="bg-[#ff8b00] hover:bg-[#e07a00] text-white font-medium px-4 py-2 rounded transition-colors inline-flex items-center gap-1.5"
+                            className="bg-[#ff8b00] hover:bg-[#fc9314] text-white font-medium px-4 py-2 rounded transition-colors inline-flex items-center gap-1.5"
                           >
                             <Upload className="w-3.5 h-3.5" /> Anexar novo arquivo
                           </button>
@@ -786,7 +786,7 @@ export default function Usuario() {
                 <div className="p-6 text-xs space-y-6">
                   <div className="flex justify-between items-center">
                     <span className="text-slate-500">Admitido em {usuarioData.dataAdmissao}</span>
-                    <button onClick={() => setShowVacationModal(true)} className="bg-[#ff8b00] hover:bg-[#e07a00] text-white font-medium px-4 py-2 rounded transition-colors">
+                    <button onClick={() => setShowVacationModal(true)} className="bg-[#ff8b00] hover:bg-[#fc9314] text-white font-medium px-4 py-2 rounded transition-colors">
                       Adicionar período
                     </button>
                   </div>
@@ -816,7 +816,7 @@ export default function Usuario() {
               {activeTab === 'dependentes' && (
                 <div className="p-6 text-xs space-y-6">
                   <div className="flex justify-end">
-                    <button onClick={() => setShowDependentModal(true)} className="bg-[#ff8b00] hover:bg-[#e07a00] text-white font-medium px-4 py-2 rounded transition-colors">
+                    <button onClick={() => setShowDependentModal(true)} className="bg-[#ff8b00] hover:bg-[#fc9314] text-white font-medium px-4 py-2 rounded transition-colors">
                       Adicionar novo
                     </button>
                   </div>
@@ -906,7 +906,7 @@ export default function Usuario() {
                         type="button"
                         onClick={handleResetPassword}
                         disabled={resettingPassword}
-                        className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold px-4 py-2 rounded text-xs transition-colors disabled:opacity-60"
+                        className="bg-[#ff8b00] hover:bg-[#fc9314] text-white font-semibold px-4 py-2 rounded text-xs transition-colors disabled:opacity-60"
                       >
                         {resettingPassword ? 'Resetando...' : 'Resetar senha'}
                       </button>
@@ -928,9 +928,9 @@ export default function Usuario() {
                           name="statusUsuario"
                           checked={usuarioData.statusUsuario === 'Ativo'}
                           onChange={() => handleToggleStatus('Ativo')}
-                          className="accent-emerald-600 w-3.5 h-3.5"
+                          className="accent-[#1a2c6a] w-3.5 h-3.5"
                         />
-                        <span className={usuarioData.statusUsuario === 'Ativo' ? 'text-emerald-600 font-semibold' : 'text-slate-500'}>
+                        <span className={usuarioData.statusUsuario === 'Ativo' ? 'text-[#1a2c6a] font-semibold' : 'text-slate-500'}>
                           Ativo
                         </span>
                       </label>
@@ -1031,7 +1031,7 @@ export default function Usuario() {
                   confirmInput.trim().toLowerCase() !== confirmModal.requireText.toLowerCase()
                 }
                 className={`px-4 py-2 rounded text-xs font-semibold text-white transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
-                  confirmModal.danger ? 'bg-red-500 hover:bg-red-600' : 'bg-[#ff8b00] hover:bg-[#e07a00]'
+                  confirmModal.danger ? 'bg-red-500 hover:bg-red-600' : 'bg-[#ff8b00] hover:bg-[#fc9314]'
                 }`}
               >
                 {confirmModal.confirmLabel || 'Confirmar'}
@@ -1056,7 +1056,7 @@ export default function Usuario() {
             </div>
             <div className="flex justify-end gap-2 pt-2">
               <button onClick={() => setShowVacationModal(false)} className="px-4 py-2 border rounded text-xs">Cancelar</button>
-              <button onClick={handleAddVacation} className="px-4 py-2 bg-[#ff8b00] hover:bg-[#e07a00] text-white rounded text-xs font-medium transition-colors">Adicionar</button>
+              <button onClick={handleAddVacation} className="px-4 py-2 bg-[#ff8b00] hover:bg-[#fc9314] text-white rounded text-xs font-medium transition-colors">Adicionar</button>
             </div>
           </div>
         </div>
@@ -1091,7 +1091,7 @@ export default function Usuario() {
             </div>
             <div className="flex justify-end gap-2 pt-2">
               <button onClick={() => setShowDependentModal(false)} className="px-4 py-2 border rounded text-xs">Cancelar</button>
-              <button onClick={handleAddDependent} className="px-4 py-2 bg-[#ff8b00] hover:bg-[#e07a00] text-white rounded text-xs font-medium transition-colors">Salvar</button>
+              <button onClick={handleAddDependent} className="px-4 py-2 bg-[#ff8b00] hover:bg-[#fc9314] text-white rounded text-xs font-medium transition-colors">Salvar</button>
             </div>
           </div>
         </div>
@@ -1400,7 +1400,7 @@ function WorkScheduleTab({ employeeId }) {
         <button
           onClick={handleSave}
           disabled={saving}
-          className="bg-[#ff8b00] hover:bg-[#e07a00] text-white font-medium px-6 py-2.5 rounded text-xs transition-colors disabled:opacity-60 flex items-center justify-center gap-1.5"
+          className="bg-[#ff8b00] hover:bg-[#fc9314] text-white font-medium px-6 py-2.5 rounded text-xs transition-colors disabled:opacity-60 flex items-center justify-center gap-1.5"
         >
           {saving && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
           {saving ? 'Salvando...' : scheduleId ? 'Salvar alterações' : 'Salvar jornada'}
@@ -1805,7 +1805,7 @@ function GeofenceMapTab({ employeeId }) {
                   <div className="ml-auto flex items-center gap-2">
                     <button
                       onClick={() => handleSaveFence(fence)}
-                      className="bg-[#ff8b00] hover:bg-[#e07a00] text-white font-medium px-3 py-1.5 rounded text-xs transition-colors"
+                      className="bg-[#ff8b00] hover:bg-[#fc9314] text-white font-medium px-3 py-1.5 rounded text-xs transition-colors"
                     >
                       Salvar
                     </button>
@@ -1854,7 +1854,7 @@ function GeofenceMapTab({ employeeId }) {
       {toast && (
         <div
           className={`fixed bottom-6 right-6 z-50 flex items-center gap-2 px-4 py-3 rounded-lg shadow-lg text-xs font-medium text-white animate-in slide-in-from-bottom-2 ${
-            toast.type === 'error' ? 'bg-red-500' : 'bg-emerald-500'
+            toast.type === 'error' ? 'bg-red-500' : 'bg-[#ff8b00]'
           }`}
         >
           {toast.type === 'error' ? <AlertCircle className="w-4 h-4" /> : <CheckCircle2 className="w-4 h-4" />}

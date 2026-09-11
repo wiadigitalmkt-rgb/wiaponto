@@ -15,7 +15,11 @@ import {
   Plus,
   FileText,
   Loader2,
-  Coffee
+  Coffee,
+  Pencil,
+  Trash2,
+  CheckCircle2,
+  AlertCircle
 } from 'lucide-react';
 
 export default function Usuario() {
@@ -1129,11 +1133,19 @@ function GeofenceMapTab({ employeeId }) {
   const [fences, setFences] = useState([]);
   const [addingMode, setAddingMode] = useState(false);
   const [leafletReady, setLeafletReady] = useState(typeof window !== 'undefined' && !!window.L);
+  const [toast, setToast] = useState(null); // { type: 'success' | 'error', message: string }
 
   const mapDivRef = useRef(null);
   const mapInstanceRef = useRef(null);
   const markersRef = useRef({});
   const addingModeRef = useRef(false);
+  const toastTimeoutRef = useRef(null);
+
+  function showToast(message, type = 'success') {
+    setToast({ type, message });
+    clearTimeout(toastTimeoutRef.current);
+    toastTimeoutRef.current = setTimeout(() => setToast(null), 3000);
+  }
 
   useEffect(() => {
     addingModeRef.current = addingMode;
@@ -1154,7 +1166,7 @@ function GeofenceMapTab({ employeeId }) {
         .select('*')
         .eq('employee_id', employeeId);
       if (error) console.error(error);
-      setFences(data || []);
+      setFences((data || []).map((f) => ({ ...f, _editing: false })));
       setLoading(false);
     })();
   }, [employeeId]);
@@ -1178,6 +1190,7 @@ function GeofenceMapTab({ employeeId }) {
         {
           id: tempId,
           _isNew: true,
+          _editing: true,
           name: '',
           latitude: e.latlng.lat,
           longitude: e.latlng.lng,
@@ -1296,6 +1309,33 @@ function GeofenceMapTab({ employeeId }) {
     setFences((prev) => prev.map((f) => (f.id === id ? { ...f, ...patch } : f)));
   }
 
+  // Entra em modo de edição, guardando os valores atuais em `_original`
+  // (usado pra reverter se o gestor clicar em "Cancelar").
+  function handleEditFence(fence) {
+    setFences((prev) =>
+      prev.map((f) =>
+        f.id === fence.id
+          ? { ...f, _editing: true, _original: { name: f.name, radius_meters: f.radius_meters } }
+          : f
+      )
+    );
+  }
+
+  function handleCancelEditFence(fence) {
+    if (fence._isNew) {
+      // Cerca nunca salva: cancelar remove o pino do mapa direto.
+      setFences((prev) => prev.filter((f) => f.id !== fence.id));
+      return;
+    }
+    setFences((prev) =>
+      prev.map((f) =>
+        f.id === fence.id
+          ? { ...f, ...(f._original || {}), _editing: false, _original: undefined }
+          : f
+      )
+    );
+  }
+
   async function handleSaveFence(fence) {
     if (!fence.name?.trim()) {
       alert('Dê um nome para essa cerca (ex: "Sede", "Obra Zona Sul").');
@@ -1313,29 +1353,34 @@ function GeofenceMapTab({ employeeId }) {
       const { data, error } = await supabase.from('geofences').insert([payload]).select().single();
       if (error) {
         console.error(error);
-        alert('Erro ao salvar a cerca.');
+        showToast('Erro ao salvar a cerca.', 'error');
         return;
       }
-      setFences((prev) => prev.map((f) => (f.id === fence.id ? data : f)));
+      setFences((prev) => prev.map((f) => (f.id === fence.id ? { ...data, _editing: false } : f)));
     } else {
       const { error } = await supabase.from('geofences').update(payload).eq('id', fence.id);
       if (error) {
         console.error(error);
-        alert('Erro ao salvar a cerca.');
+        showToast('Erro ao salvar a cerca.', 'error');
         return;
       }
-      setFences((prev) => prev.map((f) => (f.id === fence.id ? { ...f, ...payload } : f)));
+      setFences((prev) =>
+        prev.map((f) => (f.id === fence.id ? { ...f, ...payload, _editing: false, _original: undefined } : f))
+      );
     }
+    showToast('Cerca salva com sucesso!');
   }
 
   async function handleDeleteFence(fence) {
     if (!fence._isNew) {
+      if (!window.confirm(`Remover a cerca "${fence.name}"?`)) return;
       const { error } = await supabase.from('geofences').delete().eq('id', fence.id);
       if (error) {
         console.error(error);
-        alert('Erro ao remover a cerca.');
+        showToast('Erro ao remover a cerca.', 'error');
         return;
       }
+      showToast('Cerca removida.');
     }
     setFences((prev) => prev.filter((f) => f.id !== fence.id));
   }
@@ -1397,61 +1442,102 @@ function GeofenceMapTab({ employeeId }) {
         </div>
       ) : (
         <div className="space-y-3">
-          {fences.map((fence) => (
-            <div key={fence.id} className="p-3 border rounded-lg space-y-2">
-              <div className="flex items-center gap-2">
-                <input
-                  type="text"
-                  value={fence.name}
-                  onChange={(e) => updateFenceField(fence.id, { name: e.target.value })}
-                  placeholder="Nome do local (ex: Sede, Obra Zona Sul)"
-                  className="flex-1 border rounded p-1.5 text-xs focus:outline-none focus:border-[#ff8b00]"
-                />
-                {fence._isNew ? (
-                  <span className="bg-amber-100 text-amber-700 px-2 py-0.5 rounded text-[10px] font-semibold shrink-0">
-                    Não salva
+          {fences.map((fence) =>
+            fence._editing ? (
+              <div key={fence.id} className="p-3 border rounded-lg space-y-2">
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    value={fence.name}
+                    onChange={(e) => updateFenceField(fence.id, { name: e.target.value })}
+                    placeholder="Nome do local (ex: Sede, Obra Zona Sul)"
+                    className="flex-1 border rounded p-1.5 text-xs focus:outline-none focus:border-[#ff8b00]"
+                  />
+                  {fence._isNew ? (
+                    <span className="bg-amber-100 text-amber-700 px-2 py-0.5 rounded text-[10px] font-semibold shrink-0">
+                      Não salva
+                    </span>
+                  ) : (
+                    <span className="bg-[#ff8b00]/10 text-[#ff8b00] px-2 py-0.5 rounded text-[10px] font-semibold shrink-0">
+                      Ativa
+                    </span>
+                  )}
+                </div>
+
+                <div className="flex flex-wrap items-center gap-3">
+                  <label className="flex items-center gap-1.5 text-slate-500">
+                    Raio
+                    <input
+                      type="number"
+                      min="10"
+                      step="10"
+                      value={fence.radius_meters}
+                      onChange={(e) => updateFenceField(fence.id, { radius_meters: e.target.value })}
+                      className="w-20 border rounded p-1.5 text-xs focus:outline-none focus:border-[#ff8b00]"
+                    />
+                    metros
+                  </label>
+                  <span className="text-slate-400 font-mono text-[10px]">
+                    Lat: {Number(fence.latitude).toFixed(5)}, Lng: {Number(fence.longitude).toFixed(5)}
                   </span>
-                ) : (
+
+                  <div className="ml-auto flex items-center gap-2">
+                    <button
+                      onClick={() => handleSaveFence(fence)}
+                      className="bg-[#ff8b00] hover:bg-[#e07a00] text-white font-medium px-3 py-1.5 rounded text-xs transition-colors"
+                    >
+                      Salvar
+                    </button>
+                    <button
+                      onClick={() => handleCancelEditFence(fence)}
+                      className="border border-slate-300 text-slate-600 hover:bg-slate-50 font-medium px-3 py-1.5 rounded text-xs transition-colors"
+                    >
+                      Cancelar
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div key={fence.id} className="p-3 border rounded-lg flex flex-wrap items-center gap-3">
+                <div className="flex items-center gap-2 min-w-[140px]">
+                  <span className="font-semibold text-slate-800">{fence.name}</span>
                   <span className="bg-[#ff8b00]/10 text-[#ff8b00] px-2 py-0.5 rounded text-[10px] font-semibold shrink-0">
                     Ativa
                   </span>
-                )}
-              </div>
-
-              <div className="flex flex-wrap items-center gap-3">
-                <label className="flex items-center gap-1.5 text-slate-500">
-                  Raio
-                  <input
-                    type="number"
-                    min="10"
-                    step="10"
-                    value={fence.radius_meters}
-                    onChange={(e) => updateFenceField(fence.id, { radius_meters: e.target.value })}
-                    className="w-20 border rounded p-1.5 text-xs focus:outline-none focus:border-[#ff8b00]"
-                  />
-                  metros
-                </label>
+                </div>
+                <span className="text-slate-500">Raio: {fence.radius_meters}m</span>
                 <span className="text-slate-400 font-mono text-[10px]">
                   Lat: {Number(fence.latitude).toFixed(5)}, Lng: {Number(fence.longitude).toFixed(5)}
                 </span>
 
                 <div className="ml-auto flex items-center gap-2">
                   <button
-                    onClick={() => handleSaveFence(fence)}
-                    className="bg-[#ff8b00] hover:bg-[#e07a00] text-white font-medium px-3 py-1.5 rounded text-xs transition-colors"
+                    onClick={() => handleEditFence(fence)}
+                    className="flex items-center gap-1 border border-slate-300 text-slate-600 hover:bg-slate-50 font-medium px-3 py-1.5 rounded text-xs transition-colors"
                   >
-                    Salvar
+                    <Pencil className="w-3.5 h-3.5" /> Editar
                   </button>
                   <button
                     onClick={() => handleDeleteFence(fence)}
-                    className="border border-red-300 text-red-500 hover:bg-red-50 font-medium px-3 py-1.5 rounded text-xs transition-colors"
+                    className="flex items-center gap-1 border border-red-300 text-red-500 hover:bg-red-50 font-medium px-3 py-1.5 rounded text-xs transition-colors"
                   >
-                    Remover
+                    <Trash2 className="w-3.5 h-3.5" /> Excluir
                   </button>
                 </div>
               </div>
-            </div>
-          ))}
+            )
+          )}
+        </div>
+      )}
+
+      {toast && (
+        <div
+          className={`fixed bottom-6 right-6 z-50 flex items-center gap-2 px-4 py-3 rounded-lg shadow-lg text-xs font-medium text-white animate-in slide-in-from-bottom-2 ${
+            toast.type === 'error' ? 'bg-red-500' : 'bg-emerald-500'
+          }`}
+        >
+          {toast.type === 'error' ? <AlertCircle className="w-4 h-4" /> : <CheckCircle2 className="w-4 h-4" />}
+          {toast.message}
         </div>
       )}
     </div>

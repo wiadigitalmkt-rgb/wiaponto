@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams, useNavigate } from 'react-router-dom';
 import Navbar from '@/components/Navbar';
 import { supabase } from '@/lib/supabase';
 import {
@@ -24,12 +24,15 @@ import {
 
 export default function Usuario() {
   const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
   const userId = searchParams.get('id');
 
   const [activeTab, setActiveTab] = useState('informacoes');
   const [profileSubTab, setProfileSubTab] = useState('dados');
   const [, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [resettingPassword, setResettingPassword] = useState(false);
+  const [deletingUser, setDeletingUser] = useState(false);
 
   const fileInputRef = useRef(null);
 
@@ -189,26 +192,104 @@ export default function Usuario() {
     }
   };
 
-  // Salvar especificamente o Tipo de Acesso
-  const handleSaveAccessType = async () => {
+  // Tipo de Acesso — salva assim que o gestor troca a opção
+  const handleChangeAccessType = async (e) => {
+    const novoTipo = e.target.value;
+    setUsuarioData(prev => ({ ...prev, tipoAcesso: novoTipo }));
     if (!supabase || !userId) return;
-    setSaving(true);
     try {
-      const isGestor = usuarioData.tipoAcesso === 'Gestor';
-      const payload = {
-        access_type: usuarioData.tipoAcesso,
-        role: isGestor ? 'gestor' : 'colaborador'
-      };
-
-      const { error } = await supabase.from('Employees').update(payload).eq('id', userId);
+      const { error } = await supabase.from('Employees').update({
+        access_type: novoTipo,
+        role: novoTipo === 'Gestor' ? 'gestor' : 'colaborador'
+      }).eq('id', userId);
       if (error) throw error;
-
-      alert(`Tipo de acesso salvo como ${usuarioData.tipoAcesso} com sucesso!`);
     } catch (err) {
       console.error(err);
       alert('Erro ao salvar o tipo de acesso.');
+    }
+  };
+
+  // Resetar a senha do usuário para o padrão inicial (CPF, só dígitos) —
+  // mesmo padrão usado no login (ver `login` em usuarioData, montado a
+  // partir do CPF na criação do colaborador).
+  const handleResetPassword = async () => {
+    if (!supabase || !userId) return;
+    const cpfDigits = (usuarioData.cpf || '').replace(/\D/g, '');
+    if (!cpfDigits) {
+      alert('Este usuário não tem CPF cadastrado. Cadastre o CPF na aba Informações antes de resetar a senha.');
+      return;
+    }
+    if (!window.confirm(`Resetar a senha de ${usuarioData.primeiroNome || 'usuário'} para o CPF (${cpfDigits})?`)) return;
+
+    setResettingPassword(true);
+    try {
+      const { error } = await supabase.from('Employees').update({ password_hash: cpfDigits }).eq('id', userId);
+      if (error) throw error;
+      alert('Senha resetada para o CPF do usuário com sucesso!');
+    } catch (err) {
+      console.error(err);
+      alert('Erro ao resetar a senha.');
     } finally {
-      setSaving(false);
+      setResettingPassword(false);
+    }
+  };
+
+  // Ativar / Inativar — muda na hora, sem precisar de botão "Salvar" à parte
+  const handleToggleStatus = async (novoStatus) => {
+    if (!supabase || !userId) return;
+    const statusAnterior = usuarioData.statusUsuario;
+    setUsuarioData(prev => ({ ...prev, statusUsuario: novoStatus }));
+    try {
+      const { error } = await supabase.from('Employees').update({ status: novoStatus }).eq('id', userId);
+      if (error) throw error;
+    } catch (err) {
+      console.error(err);
+      setUsuarioData(prev => ({ ...prev, statusUsuario: statusAnterior }));
+      alert('Erro ao atualizar o status do usuário.');
+    }
+  };
+
+  // Deletar usuário — some com os dados relacionados antes, pra não esbarrar
+  // em restrição de chave estrangeira, e exige digitar o nome completo do
+  // colaborador como confirmação (ação permanente).
+  const handleDeleteUser = async () => {
+    if (!supabase || !userId) return;
+    const nomeCompleto = `${usuarioData.primeiroNome} ${usuarioData.sobrenome}`.trim() || 'este usuário';
+    const digitado = window.prompt(
+      `Esta ação é PERMANENTE e não pode ser desfeita.\n\nPara confirmar, digite o nome completo do colaborador exatamente como aparece: "${nomeCompleto}"`
+    );
+    if (digitado === null) return;
+    if (digitado.trim().toLowerCase() !== nomeCompleto.toLowerCase()) {
+      alert('O nome digitado não confere. Nada foi deletado.');
+      return;
+    }
+
+    setDeletingUser(true);
+    try {
+      const relatedTables = [
+        'employee_custom_fields',
+        'employee_attachments',
+        'employee_vacations',
+        'employee_dependents',
+        'employee_work_schedules',
+        'geofences',
+        'time_records',
+        'employee_admissions'
+      ];
+      for (const table of relatedTables) {
+        const { error } = await supabase.from(table).delete().eq('employee_id', userId);
+        if (error) console.warn(`Aviso ao limpar ${table}:`, error.message);
+      }
+
+      const { error: empError } = await supabase.from('Employees').delete().eq('id', userId);
+      if (empError) throw empError;
+
+      alert('Usuário deletado com sucesso.');
+      navigate('/admin/colaboradores');
+    } catch (err) {
+      console.error(err);
+      alert('Erro ao deletar o usuário.');
+      setDeletingUser(false);
     }
   };
 
@@ -658,41 +739,111 @@ export default function Usuario() {
 
               {/* 6. ACESSO AO SISTEMA */}
               {activeTab === 'acesso' && (
-                <div className="p-6 space-y-6 text-xs">
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pb-4 border-b border-slate-100">
+                <div className="text-xs">
+                  {/* ACESSO (dados de login, somente leitura) */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 p-6 border-b border-slate-100">
                     <div>
-                      <span className="text-slate-500 block">ID PONTO:</span>
-                      <strong className="text-slate-800">{usuarioData.idPonto}</strong>
+                      <h3 className="font-semibold text-slate-800 text-sm">Acesso</h3>
                     </div>
-                    <div>
-                      <span className="text-slate-500 block">LOGIN:</span>
-                      <strong className="text-slate-800">{usuarioData.login}</strong>
-                    </div>
-                    <div>
-                      <span className="text-slate-500 block">SENHA:</span>
-                      <strong className="text-slate-800">******</strong>
+                    <div className="space-y-1.5 md:text-right">
+                      <div><span className="text-slate-500">ID PONTO: </span><strong className="text-slate-800">{usuarioData.idPonto || '-'}</strong></div>
+                      <div><span className="text-slate-500">LOGIN: </span><strong className="text-slate-800">{usuarioData.login || '-'}</strong></div>
+                      <div><span className="text-slate-500">SENHA: </span><strong className="text-slate-800">******</strong></div>
                     </div>
                   </div>
 
-                  <div className="space-y-4">
-                    <label className="block text-slate-700 font-semibold">Tipo de acesso</label>
-                    <div className="flex items-center gap-3">
+                  {/* TIPO DE ACESSO */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 p-6 border-b border-slate-100 items-center">
+                    <div>
+                      <h3 className="font-semibold text-slate-800 text-sm">Tipo de acesso</h3>
+                      <p className="text-slate-500 mt-1">
+                        Gestor tem acesso total ao sistema. Colaborador mantém o acesso atual (ponto e área do colaborador).
+                      </p>
+                    </div>
+                    <div className="md:justify-self-end w-full md:w-56">
                       <select
-                        name="tipoAcesso"
                         value={usuarioData.tipoAcesso}
-                        onChange={handleInputChange}
-                        className="w-full md:w-1/2 border rounded p-2 text-slate-800 focus:outline-none focus:border-[#ff8b00]"
+                        onChange={handleChangeAccessType}
+                        className="w-full border rounded p-2 text-slate-800 focus:outline-none focus:border-[#ff8b00]"
                       >
                         <option value="Colaborador">Colaborador</option>
                         <option value="Gestor">Gestor</option>
                       </select>
+                    </div>
+                  </div>
+
+                  {/* SENHA */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 p-6 border-b border-slate-100 items-center">
+                    <div>
+                      <h3 className="font-semibold text-slate-800 text-sm">Senha</h3>
+                      <p className="text-slate-500 mt-1">
+                        Reconfigurar senha do usuário para o padrão inicial (CPF do usuário)
+                      </p>
+                    </div>
+                    <div className="md:justify-self-end">
                       <button
                         type="button"
-                        onClick={handleSaveAccessType}
-                        disabled={saving}
-                        className="bg-[#ff8b00] hover:bg-[#e07a00] text-white font-medium px-5 py-2 rounded text-xs transition-colors shrink-0"
+                        onClick={handleResetPassword}
+                        disabled={resettingPassword}
+                        className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold px-4 py-2 rounded text-xs transition-colors disabled:opacity-60"
                       >
-                        {saving ? 'Salvando...' : 'Salvar tipo de acesso'}
+                        {resettingPassword ? 'Resetando...' : 'Resetar senha'}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* STATUS DO USUÁRIO */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 p-6 border-b border-slate-100 items-center">
+                    <div>
+                      <h3 className="font-semibold text-slate-800 text-sm">Status do usuário</h3>
+                      <p className="text-slate-500 mt-1">
+                        Ao inativar, você <strong>bloqueia</strong> o acesso do usuário ao sistema e ele deixa de ser cobrado na fatura.
+                      </p>
+                    </div>
+                    <div className="md:justify-self-end flex items-center gap-5">
+                      <label className="flex items-center gap-1.5 cursor-pointer select-none">
+                        <input
+                          type="radio"
+                          name="statusUsuario"
+                          checked={usuarioData.statusUsuario === 'Ativo'}
+                          onChange={() => handleToggleStatus('Ativo')}
+                          className="accent-emerald-600 w-3.5 h-3.5"
+                        />
+                        <span className={usuarioData.statusUsuario === 'Ativo' ? 'text-emerald-600 font-semibold' : 'text-slate-500'}>
+                          Ativo
+                        </span>
+                      </label>
+                      <label className="flex items-center gap-1.5 cursor-pointer select-none">
+                        <input
+                          type="radio"
+                          name="statusUsuario"
+                          checked={usuarioData.statusUsuario === 'Inativo'}
+                          onChange={() => handleToggleStatus('Inativo')}
+                          className="accent-slate-400 w-3.5 h-3.5"
+                        />
+                        <span className={usuarioData.statusUsuario === 'Inativo' ? 'text-slate-700 font-semibold' : 'text-slate-500'}>
+                          Inativo
+                        </span>
+                      </label>
+                    </div>
+                  </div>
+
+                  {/* DELETAR USUÁRIO */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 p-6 items-center">
+                    <div>
+                      <h3 className="font-semibold text-slate-800 text-sm">Deletar usuário</h3>
+                      <p className="text-slate-500 mt-1">
+                        Ao deletar, você apaga o usuário de forma <strong>permanente</strong>, sem possibilidade de recuperação.
+                      </p>
+                    </div>
+                    <div className="md:justify-self-end">
+                      <button
+                        type="button"
+                        onClick={handleDeleteUser}
+                        disabled={deletingUser}
+                        className="border border-red-300 text-red-500 hover:bg-red-50 font-semibold px-4 py-2 rounded text-xs transition-colors disabled:opacity-60"
+                      >
+                        {deletingUser ? 'Deletando...' : 'Deletar usuário'}
                       </button>
                     </div>
                   </div>

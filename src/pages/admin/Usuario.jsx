@@ -163,8 +163,8 @@ export default function Usuario() {
             login: emp.email || (emp.cpf ? emp.cpf.replace(/\D/g, '') : ''),
             senhaAtual: emp.password_hash || '',
             fotoUrl: emp.photo_url || '',
-            tipoAcesso: emp.access_type === 'Dono da Conta'
-              ? 'Dono da Conta'
+            tipoAcesso: emp.access_type === 'Dono da Empresa'
+              ? 'Dono da Empresa'
               : (emp.role === 'gestor' || emp.role === 'admin' || emp.access_type === 'Gestor' ? 'Gestor' : 'Colaborador'),
             statusUsuario: emp.status || 'Ativo'
           });
@@ -256,12 +256,12 @@ export default function Usuario() {
   const handleChangeAccessType = (e) => {
     const novoTipo = e.target.value;
     if (novoTipo === usuarioData.tipoAcesso) return;
-    const isFullAccess = novoTipo === 'Gestor' || novoTipo === 'Dono da Conta';
+    const isFullAccess = novoTipo === 'Gestor' || novoTipo === 'Dono da Empresa';
     openConfirm({
       title: isFullAccess ? `Dar acesso de ${novoTipo}?` : 'Remover acesso de Gestor?',
       message: isFullAccess
         ? `${usuarioData.primeiroNome || 'Este usuário'} vai passar a ter acesso TOTAL ao sistema — as mesmas páginas, funções e botões que uma conta de gestor tem, sem exceção.${
-            novoTipo === 'Dono da Conta' ? ' Além disso, só quem é "Dono da Conta" pode assinar contratos como EMPREGADORA (a empresa).' : ''
+            novoTipo === 'Dono da Empresa' ? ' Além disso, só quem é "Dono da Empresa" pode assinar contratos como EMPREGADORA (a empresa).' : ''
           }`
         : `${usuarioData.primeiroNome || 'Este usuário'} volta a ter só o acesso de colaborador (ponto e área do colaborador).`,
       confirmLabel: 'Confirmar',
@@ -274,11 +274,11 @@ export default function Usuario() {
     setUsuarioData(prev => ({ ...prev, tipoAcesso: novoTipo }));
     if (!supabase || !userId) return;
     try {
-      // "Dono da Conta" tem o mesmo acesso de rota que "Gestor" (role
+      // "Dono da Empresa" tem o mesmo acesso de rota que "Gestor" (role
       // continua 'gestor', reconhecido pelo ProtectedRoute) — a diferença
       // fica só no access_type, usado especificamente pra decidir quem
       // pode assinar um contrato como EMPREGADORA.
-      const isFullAccess = novoTipo === 'Gestor' || novoTipo === 'Dono da Conta';
+      const isFullAccess = novoTipo === 'Gestor' || novoTipo === 'Dono da Empresa';
       const { error } = await supabase.from('Employees').update({
         access_type: novoTipo,
         role: isFullAccess ? 'gestor' : 'colaborador'
@@ -1091,7 +1091,7 @@ export default function Usuario() {
                     <div>
                       <h3 className="font-semibold text-slate-800 text-sm">Tipo de acesso</h3>
                       <p className="text-slate-500 mt-1">
-                        Gestor e Dono da Conta têm acesso total ao sistema. Só o Dono da Conta pode
+                        Gestor e Dono da Empresa têm acesso total ao sistema. Só o Dono da Empresa pode
                         assinar contratos como EMPREGADORA (a empresa). Colaborador mantém o acesso atual.
                       </p>
                     </div>
@@ -1103,7 +1103,7 @@ export default function Usuario() {
                       >
                         <option value="Colaborador">Colaborador</option>
                         <option value="Gestor">Gestor</option>
-                        <option value="Dono da Conta">Dono da Conta</option>
+                        <option value="Dono da Empresa">Dono da Empresa</option>
                       </select>
                     </div>
                   </div>

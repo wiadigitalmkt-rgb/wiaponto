@@ -148,8 +148,8 @@ export default function Employees() {
           email: emp.email || '-',
           cargo: emp.position || '(Preencher)',
           departamento: emp.department || '-',
-          tipoAcesso: emp.access_type === 'Dono da Conta'
-            ? 'Dono da Conta'
+          tipoAcesso: emp.access_type === 'Dono da Empresa'
+            ? 'Dono da Empresa'
             : (emp.role === 'gestor' || emp.role === 'admin' ? 'Gestor' : 'Colaborador'),
           status: emp.status ? emp.status.trim() : 'Ativo',
           photoUrl: emp.photo_url || '',

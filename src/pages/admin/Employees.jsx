@@ -14,7 +14,7 @@ import {
   Upload,
   Download,
   AlertCircle,
-  CheckCircle2, 
+  CheckCircle2,
   ArrowLeft
 } from 'lucide-react';
 import {
@@ -509,13 +509,13 @@ export default function Employees() {
                 <DropdownMenuContent align="end" className="w-48 bg-white border border-slate-200 shadow-lg rounded-md p-1 z-50">
                   <DropdownMenuItem 
                     onClick={() => setCurrentView('create')}
-                    className="text-xs text-slate-700 cursor-pointer py-2 hover:bg-slate-100"
+                    className="text-xs text-slate-700 cursor-pointer py-2 hover:!bg-[#1a2c6a] hover:!text-white focus:!bg-[#1a2c6a] focus:!text-white data-[highlighted]:!bg-[#1a2c6a] data-[highlighted]:!text-white"
                   >
                     Novo Colaborador
                   </DropdownMenuItem>
                   <DropdownMenuItem
                     onClick={() => { resetImportWizard(); setCurrentView('import'); }}
-                    className="text-xs text-slate-700 cursor-pointer py-2 hover:bg-slate-100"
+                    className="text-xs text-slate-700 cursor-pointer py-2 hover:!bg-[#1a2c6a] hover:!text-white focus:!bg-[#1a2c6a] focus:!text-white data-[highlighted]:!bg-[#1a2c6a] data-[highlighted]:!text-white"
                   >
                     Importar Usuários
                   </DropdownMenuItem>

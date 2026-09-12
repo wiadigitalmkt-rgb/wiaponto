@@ -426,7 +426,7 @@ export default function Contratos() {
     setLoadingContracts(true);
     const { data, error } = await supabase
       .from('employee_contracts')
-      .select('*, contract_templates(name, content), Employees(full_name, position, department, signature_path)')
+      .select('*, contract_templates(name, content), Employees!employee_id(full_name, position, department, signature_path)')
       .order('created_at', { ascending: false });
     if (error) console.error('Erro ao buscar contratos:', error);
     setContractsList(data || []);

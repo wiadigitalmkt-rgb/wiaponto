@@ -246,7 +246,7 @@ export default function PreencherAdmissao({ admissionId: admissionIdProp }) {
       if (field.key === 'assinatura' && admission?.employee_id) {
         const { error: empError } = await supabase
           .from('Employees')
-          .update({ signature_path: path })
+          .update({ signature_path: urlData.publicUrl })
           .eq('id', admission.employee_id);
         if (empError) {
           // Best-effort: não bloqueia o formulário do colaborador por causa

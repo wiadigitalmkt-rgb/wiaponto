@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import Navbar from '@/components/Navbar';
 import { supabase } from '@/lib/supabase';
 import { 
@@ -19,7 +19,9 @@ import {
   MapPin,
   Camera,
   AlertCircle,
-  Loader2
+  Loader2,
+  Smartphone,
+  Tablet
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -64,11 +66,79 @@ const minutesToFullDisplay = (mins) => {
   return `${String(h).padStart(2, '0')}h ${String(m).padStart(2, '0')}min`;
 };
 
+// Domingo de Páscoa (algoritmo de Meeus/Jones/Butcher) — base pros feriados
+// móveis (Carnaval, Sexta-feira Santa, Corpus Christi).
+const getEasterDate = (year) => {
+  const a = year % 19;
+  const b = Math.floor(year / 100);
+  const c = year % 100;
+  const d = Math.floor(b / 4);
+  const e = b % 4;
+  const f = Math.floor((b + 8) / 25);
+  const g = Math.floor((b - f + 1) / 3);
+  const h = (19 * a + b - d - g + 15) % 30;
+  const i = Math.floor(c / 4);
+  const k = c % 4;
+  const l = (32 + 2 * e + 2 * i - h - k) % 7;
+  const m = Math.floor((a + 11 * h + 22 * l) / 451);
+  const month = Math.floor((h + l - 7 * m + 114) / 31);
+  const day = ((h + l - 7 * m + 114) % 31) + 1;
+  return new Date(year, month - 1, day);
+};
+
+const addDaysToDate = (date, days) => {
+  const d = new Date(date);
+  d.setDate(d.getDate() + days);
+  return d;
+};
+
+const dateToISO = (date) =>
+  `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+
+// Feriados nacionais fixos + móveis (calculados a partir da Páscoa) do ano
+// informado. Não inclui feriados estaduais/municipais, que variam por
+// cidade — se precisar, dá pra somar outra lista depois.
+const getBrazilianHolidays = (year) => {
+  const easter = getEasterDate(year);
+  const fixed = [
+    `${year}-01-01`, // Confraternização Universal
+    `${year}-04-21`, // Tiradentes
+    `${year}-05-01`, // Dia do Trabalho
+    `${year}-09-07`, // Independência do Brasil
+    `${year}-10-12`, // Nossa Senhora Aparecida
+    `${year}-11-02`, // Finados
+    `${year}-11-15`, // Proclamação da República
+    `${year}-12-25`, // Natal
+  ];
+  const movable = [
+    dateToISO(addDaysToDate(easter, -47)), // Carnaval (terça-feira)
+    dateToISO(addDaysToDate(easter, -2)),  // Sexta-feira Santa
+    dateToISO(addDaysToDate(easter, 60)),  // Corpus Christi
+  ];
+  return new Set([...fixed, ...movable]);
+};
+
+const WEEKDAY_NAMES = ['Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado'];
+const getWeekdayName = (isoDate) => {
+  if (!isoDate) return '';
+  const [y, m, d] = isoDate.split('-').map(Number);
+  return WEEKDAY_NAMES[new Date(y, m - 1, d).getDay()];
+};
+
 // "AAAA-MM-DD" -> "DD/MM/AAAA"
 const formatDDMMYYYY = (isoDate) => {
   if (!isoDate) return '';
   const [y, m, d] = isoDate.split('-');
   return `${d}/${m}/${y}`;
+};
+
+// Mostra o ícone certo pelo tipo de dispositivo gravado de verdade no ponto
+// (device_type, detectado em PunchClock.jsx). Registros antigos sem esse
+// campo caem no ícone de desktop como padrão neutro.
+const DeviceIcon = ({ deviceType, className }) => {
+  if (deviceType === 'mobile') return <Smartphone className={className} />;
+  if (deviceType === 'tablet') return <Tablet className={className} />;
+  return <Monitor className={className} />;
 };
 
 const AUDIT_ACTION_LABELS = {
@@ -79,7 +149,9 @@ const AUDIT_ACTION_LABELS = {
   rejeitado: 'Ponto rejeitado',
   falta_justificada: 'Falta justificada',
   trocar_jornada: 'Jornada trocada',
-  anotacao: 'Anotação'
+  anotacao: 'Anotação',
+  ajuste_aprovado: 'Solicitação de ajuste aprovada',
+  ajuste_rejeitado: 'Solicitação de ajuste rejeitada'
 };
 
 const processDayRecord = (record, targetDailyMinutes = 480) => {
@@ -147,7 +219,8 @@ function generateRecentMonths(count = 12) {
 
 export default function AdminPonto() {
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState('pontos'); // 'pontos' | 'resumo'
+  const [searchParams] = useSearchParams();
+  const [activeTab, setActiveTab] = useState(searchParams.get('section') === 'ajustes' ? 'ajustes' : 'pontos'); // 'pontos' | 'resumo' | 'ajustes'
   const [selectedMonth, setSelectedMonth] = useState(() => getMonthLabel(new Date()));
   const [selectedDepartment, setSelectedDepartment] = useState('Todos');
   
@@ -171,12 +244,17 @@ export default function AdminPonto() {
   const [swapDate, setSwapDate] = useState('');
   const [savingSwap, setSavingSwap] = useState(false);
 
-  const [showAbsenceModal, setShowAbsenceModal] = useState(false);
-  const [absenceTargetItemId, setAbsenceTargetItemId] = useState(null);
-  const [absenceForm, setAbsenceForm] = useState({ description: '', countAsWorked: false });
-  const [savingAbsence, setSavingAbsence] = useState(false);
-
   const [showAnnotationModal, setShowAnnotationModal] = useState(false);
+
+  // Solicitações de Ajuste (colaborador solicita, gestor aprova/rejeita)
+  const [adjustmentRequests, setAdjustmentRequests] = useState([]);
+  const [loadingAdjustments, setLoadingAdjustments] = useState(false);
+  const [showNewAdjustmentForm, setShowNewAdjustmentForm] = useState(false);
+  const [newAdjustment, setNewAdjustment] = useState({
+    record_date: '', description: '', proposed_entrada: '', proposed_saida: ''
+  });
+  const [savingAdjustment, setSavingAdjustment] = useState(false);
+  const [reviewingId, setReviewingId] = useState(null);
   const [annotationTargetItemId, setAnnotationTargetItemId] = useState(null);
   const [annotationText, setAnnotationText] = useState('');
   const [savingAnnotation, setSavingAnnotation] = useState(false);
@@ -270,19 +348,24 @@ export default function AdminPonto() {
       'Setembro': '09', 'Outubro': '10', 'Novembro': '11', 'Dezembro': '12'
     };
 
+    let startDate = null;
+    let endDateExclusive = null;
+    let yearNum = null;
+    let monthIndex = null; // 0-11
+
     const parts = selectedMonth.split('/');
     if (parts.length === 2) {
       const monthNum = monthMap[parts[0]];
-      const yearNum = parts[1];
+      yearNum = parts[1];
       if (monthNum && yearNum) {
-        const startDate = `${yearNum}-${monthNum}-01`;
+        startDate = `${yearNum}-${monthNum}-01`;
         // Primeiro dia do mês seguinte como limite exclusivo — evita montar
         // "AAAA-MM-31" (data inválida em meses com menos de 31 dias, como
         // setembro), que fazia o Postgres rejeitar a query e a tela mostrar
         // "Nenhum registro de ponto encontrado" mesmo com pontos batidos.
-        const monthIndex = parseInt(monthNum, 10) - 1; // 0-11
+        monthIndex = parseInt(monthNum, 10) - 1;
         const nextMonthDate = new Date(parseInt(yearNum, 10), monthIndex + 1, 1);
-        const endDateExclusive = `${nextMonthDate.getFullYear()}-${String(nextMonthDate.getMonth() + 1).padStart(2, '0')}-01`;
+        endDateExclusive = `${nextMonthDate.getFullYear()}-${String(nextMonthDate.getMonth() + 1).padStart(2, '0')}-01`;
         query = query.gte('record_date', startDate).lt('record_date', endDateExclusive);
       }
     }
@@ -305,18 +388,54 @@ export default function AdminPonto() {
       swapMap[s.date_b] = s.date_a;
     });
 
+    // Anotações do gestor por dia.
+    const { data: annotationsData, error: annotationsError } = await supabase
+      .from('day_annotations')
+      .select('*')
+      .eq('employee_id', selectedUser.id)
+      .order('created_at', { ascending: false });
+    if (annotationsError) console.error('Erro ao buscar anotações:', annotationsError);
+
+    const annotationsMap = {};
+    (annotationsData || []).forEach((a) => {
+      if (!annotationsMap[a.record_date]) annotationsMap[a.record_date] = [];
+      annotationsMap[a.record_date].push(a);
+    });
+
+    const holidaysSet = yearNum ? getBrazilianHolidays(parseInt(yearNum, 10)) : new Set();
+
+    // Gera uma linha pra CADA dia do mês selecionado, mesmo sem nenhum ponto
+    // batido (antes só apareciam dias com pelo menos um registro).
+    const grouped = {};
+    if (yearNum !== null && monthIndex !== null) {
+      const daysInMonth = new Date(parseInt(yearNum, 10), monthIndex + 1, 0).getDate();
+      for (let d = 1; d <= daysInMonth; d++) {
+        const dateKey = `${yearNum}-${String(monthIndex + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+        grouped[dateKey] = {
+          id: dateKey,
+          data: dateKey,
+          swappedWith: swapMap[dateKey] || null,
+          isHoliday: holidaysSet.has(dateKey),
+          annotations: annotationsMap[dateKey] || [],
+          batidas: []
+        };
+      }
+    }
+
     if (!error && data) {
-      const grouped = data.reduce((acc, curr) => {
+      data.forEach((curr) => {
         const dateKey = curr.record_date;
-        if (!acc[dateKey]) {
-          acc[dateKey] = {
+        if (!grouped[dateKey]) {
+          grouped[dateKey] = {
             id: dateKey,
             data: dateKey,
             swappedWith: swapMap[dateKey] || null,
+            isHoliday: holidaysSet.has(dateKey),
+            annotations: annotationsMap[dateKey] || [],
             batidas: []
           };
         }
-        acc[dateKey].batidas.push({
+        grouped[dateKey].batidas.push({
           db_id: curr.id,
           entrada: curr.entrada || '-',
           saida: curr.saida || '-',
@@ -326,12 +445,16 @@ export default function AdminPonto() {
           longitude: curr.longitude,
           photo_url: curr.photo_url,
           approvalStatus: curr.approval_status || 'aprovado',
-          outsideGeofence: curr.outside_geofence || false
+          outsideGeofence: curr.outside_geofence || false,
+          deviceType: curr.device_type || null,
+          isJustifiedAbsence: curr.is_justified_absence || false,
+          countAsWorked: curr.count_as_worked || false
         });
-        return acc;
-      }, {});
+      });
 
-      const processed = Object.values(grouped).map((rec) => processDayRecord(rec));
+      const processed = Object.values(grouped)
+        .map((rec) => processDayRecord(rec))
+        .sort((a, b) => (a.id < b.id ? 1 : -1)); // mais recente primeiro, igual antes
       setRegistros(processed);
     }
   };
@@ -436,40 +559,6 @@ export default function AdminPonto() {
     }
   };
 
-  // FALTA JUSTIFICADA — grava uma linha em time_records sem entrada/saída,
-  // só com a justificativa. "Contar como hora trabalhada" fica salvo no
-  // registro; a forma como isso deve entrar no cálculo de horas do dia
-  // ainda depende de uma definição sua (ver aviso na conversa).
-  const handleConfirmAbsence = async () => {
-    if (!absenceTargetItemId || !selectedUser?.id) return;
-    setSavingAbsence(true);
-    try {
-      const { error } = await supabase.from('time_records').insert([{
-        employee_id: selectedUser.id,
-        record_date: absenceTargetItemId,
-        entrada: '-',
-        saida: '-',
-        is_night: false,
-        obs: absenceForm.description,
-        is_justified_absence: true,
-        count_as_worked: absenceForm.countAsWorked
-      }]);
-      if (error) throw error;
-
-      await logAudit(absenceTargetItemId, 'falta_justificada', absenceForm.description || 'Falta justificada registrada');
-
-      setShowAbsenceModal(false);
-      setAbsenceForm({ description: '', countAsWorked: false });
-      setAbsenceTargetItemId(null);
-      fetchRecordsFromSupabase();
-      showToast('Falta justificada registrada!');
-    } catch (err) {
-      console.error(err);
-      alert('Erro ao registrar falta justificada: ' + err.message);
-    } finally {
-      setSavingAbsence(false);
-    }
-  };
 
   // ANOTAÇÃO — nota livre do gestor sobre o dia. Fica salva em
   // day_annotations (pra futuros relatórios) e também aparece no "Ver
@@ -491,6 +580,7 @@ export default function AdminPonto() {
       setShowAnnotationModal(false);
       setAnnotationText('');
       setAnnotationTargetItemId(null);
+      fetchRecordsFromSupabase();
       showToast('Anotação salva!');
     } catch (err) {
       console.error(err);
@@ -502,6 +592,118 @@ export default function AdminPonto() {
 
   const toggleRow = (id) => {
     setExpandedRow(expandedRow === id ? null : id);
+  };
+
+  // SOLICITAÇÕES DE AJUSTE — o colaborador pede (via "Solicitar ajuste" no
+  // PunchClock), o gestor aprova ou rejeita aqui. Aprovado grava/atualiza o
+  // ponto de verdade (passa a contabilizar); rejeitado não mexe em nada no
+  // ponto do colaborador.
+  const fetchAdjustmentRequests = async () => {
+    if (!selectedUser?.id) return;
+    setLoadingAdjustments(true);
+    const { data, error } = await supabase
+      .from('adjustment_requests')
+      .select('*')
+      .eq('employee_id', selectedUser.id)
+      .order('created_at', { ascending: false });
+    if (error) console.error('Erro ao buscar solicitações de ajuste:', error);
+    setAdjustmentRequests(data || []);
+    setLoadingAdjustments(false);
+  };
+
+  useEffect(() => {
+    if (activeTab === 'ajustes') fetchAdjustmentRequests();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab, selectedUser]);
+
+  const handleSubmitAdjustment = async () => {
+    if (!selectedUser?.id || !newAdjustment.record_date || !newAdjustment.description.trim()) {
+      alert('Preencha pelo menos a data e a descrição do que aconteceu.');
+      return;
+    }
+    setSavingAdjustment(true);
+    try {
+      const { error } = await supabase.from('adjustment_requests').insert([{
+        employee_id: selectedUser.id,
+        record_date: newAdjustment.record_date,
+        description: newAdjustment.description.trim(),
+        proposed_entrada: newAdjustment.proposed_entrada || null,
+        proposed_saida: newAdjustment.proposed_saida || null,
+        status: 'pendente'
+      }]);
+      if (error) throw error;
+
+      setNewAdjustment({ record_date: '', description: '', proposed_entrada: '', proposed_saida: '' });
+      setShowNewAdjustmentForm(false);
+      fetchAdjustmentRequests();
+      showToast('Solicitação enviada! Aguarde a análise do gestor.');
+    } catch (err) {
+      console.error(err);
+      alert('Erro ao enviar solicitação: ' + err.message);
+    } finally {
+      setSavingAdjustment(false);
+    }
+  };
+
+  const handleReviewAdjustment = async (request, decision) => {
+    setReviewingId(request.id);
+    try {
+      const { error } = await supabase
+        .from('adjustment_requests')
+        .update({
+          status: decision,
+          reviewed_by: currentManagerId,
+          reviewed_at: new Date().toISOString()
+        })
+        .eq('id', request.id);
+      if (error) throw error;
+
+      // Só ao aprovar é que o ponto de verdade é criado/ajustado — é isso
+      // que faz ele "contabilizar". Rejeitado não toca em time_records.
+      if (decision === 'aprovado' && (request.proposed_entrada || request.proposed_saida)) {
+        const { data: existing } = await supabase
+          .from('time_records')
+          .select('*')
+          .eq('employee_id', request.employee_id)
+          .eq('record_date', request.record_date)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (existing) {
+          await supabase.from('time_records').update({
+            entrada: request.proposed_entrada || existing.entrada,
+            saida: request.proposed_saida || existing.saida,
+            approval_status: 'aprovado'
+          }).eq('id', existing.id);
+        } else {
+          await supabase.from('time_records').insert([{
+            employee_id: request.employee_id,
+            record_date: request.record_date,
+            entrada: request.proposed_entrada || '-',
+            saida: request.proposed_saida || '-',
+            is_night: false,
+            obs: `Ajuste aprovado: ${request.description}`,
+            approval_status: 'aprovado'
+          }]);
+        }
+      }
+
+      await logAudit(
+        request.record_date,
+        decision === 'aprovado' ? 'ajuste_aprovado' : 'ajuste_rejeitado',
+        request.description
+      );
+
+      fetchAdjustmentRequests();
+      fetchRecordsFromSupabase();
+      showToast(decision === 'aprovado' ? 'Solicitação aprovada!' : 'Solicitação rejeitada.');
+    } catch (err) {
+      console.error(err);
+      alert('Erro ao revisar solicitação: ' + err.message);
+    } finally {
+      setReviewingId(null);
+    }
   };
 
   const handleRemoveBatida = async (itemId, batidaIdx, dbId, batida) => {
@@ -777,6 +979,18 @@ export default function AdminPonto() {
                 <FileText className="w-4 h-4 shrink-0" />
                 <span className="whitespace-nowrap max-md:truncate">Resumo das horas</span>
               </button>
+
+              <button 
+                onClick={() => setActiveTab('ajustes')}
+                className={`w-full flex items-center space-x-3 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                  activeTab === 'ajustes'
+                    ? 'bg-white text-slate-700 hover:bg-[#fc9314] hover:text-white border-l-4 border-[#ff8b00] shadow-sm font-semibold'
+                    : 'bg-white text-slate-500 hover:bg-[#fc9314] hover:text-white'
+                }`}
+              >
+                <MessageSquare className="w-4 h-4 shrink-0" />
+                <span className="whitespace-nowrap max-md:truncate">Solicitações de Ajuste</span>
+              </button>
             </nav>
           </div>
         </aside>
@@ -793,7 +1007,7 @@ export default function AdminPonto() {
               </a> 
               <ChevronRight className="w-3 h-3 inline mx-1" />{' '}
               <span className="text-[#ff8b00] font-medium">
-                {activeTab === 'pontos' ? 'Pontos registrados' : 'Resumo das horas'}
+                {activeTab === 'pontos' ? 'Pontos registrados' : activeTab === 'resumo' ? 'Resumo das horas' : 'Solicitações de Ajuste'}
               </span>
             </div>
             
@@ -844,7 +1058,14 @@ export default function AdminPonto() {
                             ) : (
                               <ChevronRight className="w-4 h-4 text-slate-400" />
                             )}
-                            <span className="font-semibold text-slate-700 text-xs">{item.data}</span>
+                            <span className="font-semibold text-slate-700 text-xs">
+                              {formatDDMMYYYY(item.id)} - {getWeekdayName(item.id)}
+                            </span>
+                            {item.isHoliday && (
+                              <span className="bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full text-[10px] font-semibold">
+                                Feriado
+                              </span>
+                            )}
                             {item.swappedWith && (
                               <span className="bg-[#ff8b00]/10 text-[#ff8b00] px-2 py-0.5 rounded-full text-[10px] font-semibold">
                                 Trocado com {formatDDMMYYYY(item.swappedWith)}
@@ -880,16 +1101,6 @@ export default function AdminPonto() {
                                     </DropdownMenuItem>
                                     <DropdownMenuItem
                                       onClick={() => {
-                                        setAbsenceTargetItemId(item.id);
-                                        setAbsenceForm({ description: '', countAsWorked: false });
-                                        setShowAbsenceModal(true);
-                                      }}
-                                      className="cursor-pointer"
-                                    >
-                                      Falta justificada
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem
-                                      onClick={() => {
                                         setSwapTargetItemId(item.id);
                                         setSwapDate('');
                                         setShowSwapModal(true);
@@ -920,6 +1131,25 @@ export default function AdminPonto() {
                                 <span>Ver histórico</span>
                               </button>
                             </div>
+
+                            {item.annotations && item.annotations.length > 0 && (
+                              <div className="space-y-1.5 mb-3">
+                                {item.annotations.map((note) => (
+                                  <div
+                                    key={note.id}
+                                    className="flex items-start gap-2 bg-slate-100 border border-slate-200 rounded-md px-3 py-2 text-[11px] text-slate-600"
+                                  >
+                                    <MessageSquare className="w-3.5 h-3.5 text-slate-400 shrink-0 mt-0.5" />
+                                    <div>
+                                      <p>{note.content}</p>
+                                      <p className="text-slate-400 mt-0.5">
+                                        {new Date(note.created_at).toLocaleString('pt-BR')}
+                                      </p>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
 
                             <div className="grid grid-cols-12 text-slate-500 font-bold uppercase text-[10px] mb-2 px-2">
                               <div className="col-span-6">DETALHES / LOCALIZAÇÃO E SELFIE</div>
@@ -1062,12 +1292,12 @@ export default function AdminPonto() {
 
                                     <div className="col-span-2 flex items-center justify-center space-x-1 text-slate-700 font-mono text-xs">
                                       <span>{b.entrada}</span>
-                                      {b.entrada !== '-' && <Monitor className="w-3.5 h-3.5 text-slate-400" />}
+                                      {b.entrada !== '-' && <DeviceIcon deviceType={b.deviceType} className="w-3.5 h-3.5 text-slate-400" />}
                                     </div>
 
                                     <div className="col-span-2 flex items-center justify-center space-x-1 text-slate-700 font-mono text-xs">
                                       <span>{b.saida}</span>
-                                      {b.saida !== '-' && <Monitor className="w-3.5 h-3.5 text-slate-400" />}
+                                      {b.saida !== '-' && <DeviceIcon deviceType={b.deviceType} className="w-3.5 h-3.5 text-slate-400" />}
                                     </div>
 
                                     <div className="col-span-2 flex items-center justify-between pl-4">
@@ -1258,6 +1488,130 @@ export default function AdminPonto() {
               </div>
             </div>
           )}
+
+          {/* CONTEÚDO DA ABA: SOLICITAÇÕES DE AJUSTE */}
+          {activeTab === 'ajustes' && (
+            <div className="bg-white rounded-lg border border-slate-200 shadow-sm">
+              <div className="p-4 border-b border-slate-100 flex items-center justify-between">
+                <h2 className="font-bold text-slate-800 text-sm">Solicitações de ajuste</h2>
+                {!isManager && (
+                  <button
+                    onClick={() => setShowNewAdjustmentForm((v) => !v)}
+                    className="bg-[#ff8b00] hover:bg-[#fc9314] text-white text-xs font-medium px-4 py-2 rounded transition-colors"
+                  >
+                    {showNewAdjustmentForm ? 'Cancelar' : 'Nova solicitação'}
+                  </button>
+                )}
+              </div>
+
+              {!isManager && showNewAdjustmentForm && (
+                <div className="p-4 border-b border-slate-100 space-y-3 bg-slate-50/50 text-xs">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <div>
+                      <label className="block text-[11px] text-slate-500 mb-1">Data</label>
+                      <input
+                        type="date"
+                        value={newAdjustment.record_date}
+                        onChange={(e) => setNewAdjustment((p) => ({ ...p, record_date: e.target.value }))}
+                        className="w-full border rounded p-2 text-xs focus:outline-none focus:border-[#ff8b00]"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] text-slate-500 mb-1">Entrada correta (opcional)</label>
+                      <input
+                        type="time"
+                        value={newAdjustment.proposed_entrada}
+                        onChange={(e) => setNewAdjustment((p) => ({ ...p, proposed_entrada: e.target.value }))}
+                        className="w-full border rounded p-2 text-xs focus:outline-none focus:border-[#ff8b00]"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] text-slate-500 mb-1">Saída correta (opcional)</label>
+                      <input
+                        type="time"
+                        value={newAdjustment.proposed_saida}
+                        onChange={(e) => setNewAdjustment((p) => ({ ...p, proposed_saida: e.target.value }))}
+                        className="w-full border rounded p-2 text-xs focus:outline-none focus:border-[#ff8b00]"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-[11px] text-slate-500 mb-1">O que aconteceu?</label>
+                    <textarea
+                      value={newAdjustment.description}
+                      onChange={(e) => setNewAdjustment((p) => ({ ...p, description: e.target.value }))}
+                      rows={3}
+                      placeholder="Ex: Esqueci de bater o ponto de saída às 18h"
+                      className="w-full border rounded p-2 text-xs focus:outline-none focus:border-[#ff8b00] resize-y"
+                    />
+                  </div>
+                  <div className="flex justify-end">
+                    <button
+                      onClick={handleSubmitAdjustment}
+                      disabled={savingAdjustment}
+                      className="bg-[#ff8b00] hover:bg-[#fc9314] text-white text-xs font-medium px-5 py-2 rounded transition-colors disabled:opacity-50 flex items-center gap-1.5"
+                    >
+                      {savingAdjustment && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                      Enviar solicitação
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              <div className="divide-y divide-slate-100">
+                {loadingAdjustments ? (
+                  <div className="p-8 text-center text-slate-400 flex items-center justify-center gap-2 text-xs">
+                    <Loader2 className="w-4 h-4 animate-spin" /> Carregando...
+                  </div>
+                ) : adjustmentRequests.length === 0 ? (
+                  <div className="p-8 text-center text-slate-400 text-xs">Nenhuma solicitação registrada.</div>
+                ) : (
+                  adjustmentRequests.map((req) => (
+                    <div key={req.id} className="p-4 flex items-start justify-between gap-4 text-xs">
+                      <div>
+                        <p className="font-semibold text-slate-700">{formatDDMMYYYY(req.record_date)}</p>
+                        <p className="text-slate-600 mt-0.5">{req.description}</p>
+                        {(req.proposed_entrada || req.proposed_saida) && (
+                          <p className="text-slate-400 mt-1">
+                            Proposto: {req.proposed_entrada || '-'} → {req.proposed_saida || '-'}
+                          </p>
+                        )}
+                        <p className="text-slate-400 mt-1">
+                          {new Date(req.created_at).toLocaleString('pt-BR')}
+                        </p>
+                      </div>
+                      <div className="flex flex-col items-end gap-2 shrink-0">
+                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${
+                          req.status === 'pendente' ? 'bg-amber-100 text-amber-700' :
+                          req.status === 'aprovado' ? 'bg-[#ff8b00]/10 text-[#ff8b00]' : 'bg-red-100 text-red-600'
+                        }`}>
+                          {req.status === 'pendente' ? 'Pendente' : req.status === 'aprovado' ? 'Aprovado' : 'Rejeitado'}
+                        </span>
+                        {isManager && req.status === 'pendente' && (
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => handleReviewAdjustment(req, 'aprovado')}
+                              disabled={reviewingId === req.id}
+                              className="bg-[#ff8b00] hover:bg-[#fc9314] text-white px-3 py-1 rounded text-[11px] font-medium transition-colors disabled:opacity-50"
+                            >
+                              Aprovar
+                            </button>
+                            <button
+                              onClick={() => handleReviewAdjustment(req, 'rejeitado')}
+                              disabled={reviewingId === req.id}
+                              className="border border-red-300 text-red-500 hover:bg-red-50 px-3 py-1 rounded text-[11px] font-medium transition-colors disabled:opacity-50"
+                            >
+                              Rejeitar
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          )}
         </main>
       </div>
 
@@ -1396,50 +1750,6 @@ export default function AdminPonto() {
       )}
 
       {/* MODAL: FALTA JUSTIFICADA */}
-      {showAbsenceModal && (
-        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg shadow-2xl max-w-sm w-full p-6 space-y-4">
-            <h3 className="font-bold text-slate-800 text-sm">Falta justificada — {formatDDMMYYYY(absenceTargetItemId)}</h3>
-            <div>
-              <label className="block text-[11px] text-slate-500 mb-1">Descrição</label>
-              <input
-                type="text"
-                value={absenceForm.description}
-                onChange={(e) => setAbsenceForm((p) => ({ ...p, description: e.target.value }))}
-                placeholder="Ex: Atestado médico"
-                className="w-full border rounded p-2 text-xs focus:outline-none focus:border-[#ff8b00]"
-              />
-            </div>
-            <label className="flex items-center gap-2 text-xs text-slate-600 cursor-pointer select-none">
-              <input
-                type="checkbox"
-                checked={absenceForm.countAsWorked}
-                onChange={(e) => setAbsenceForm((p) => ({ ...p, countAsWorked: e.target.checked }))}
-                className="accent-[#ff8b00]"
-              />
-              Contar como hora trabalhada
-            </label>
-            <div className="flex justify-end gap-2 pt-2">
-              <button
-                onClick={() => setShowAbsenceModal(false)}
-                disabled={savingAbsence}
-                className="px-4 py-2 border rounded text-xs font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-50"
-              >
-                Cancelar
-              </button>
-              <button
-                onClick={handleConfirmAbsence}
-                disabled={savingAbsence}
-                className="px-4 py-2 rounded text-xs font-semibold text-white bg-[#ff8b00] hover:bg-[#fc9314] disabled:opacity-50 flex items-center gap-1.5"
-              >
-                {savingAbsence && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
-                Salvar
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* MODAL: ANOTAÇÃO */}
       {showAnnotationModal && (
         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center z-50 p-4">

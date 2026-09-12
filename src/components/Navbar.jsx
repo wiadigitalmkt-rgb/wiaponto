@@ -99,25 +99,25 @@ export default function Navbar({ selectedCompany = 'PontoMax' }) {
                   Atalhos <ChevronDown size={14} className="opacity-80" />
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="start" className="bg-white text-slate-800">  
-                  <DropdownMenuItem onClick={() => navigate('/admin/ponto')}>
+                  <DropdownMenuItem className="cursor-pointer hover:!bg-[#1a2c6a] hover:!text-white focus:!bg-[#1a2c6a] focus:!text-white data-[highlighted]:!bg-[#1a2c6a] data-[highlighted]:!text-white" onClick={() => navigate('/admin/ponto')}>
                     Ponto Eletrônico
                   </DropdownMenuItem> 
-                  <DropdownMenuItem onClick={() => navigate('/admin/colaboradores')}>
+                  <DropdownMenuItem className="cursor-pointer hover:!bg-[#1a2c6a] hover:!text-white focus:!bg-[#1a2c6a] focus:!text-white data-[highlighted]:!bg-[#1a2c6a] data-[highlighted]:!text-white" onClick={() => navigate('/admin/colaboradores')}>
                     Usuários
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => navigate('/admin/admissao')}>
+                  <DropdownMenuItem className="cursor-pointer hover:!bg-[#1a2c6a] hover:!text-white focus:!bg-[#1a2c6a] focus:!text-white data-[highlighted]:!bg-[#1a2c6a] data-[highlighted]:!text-white" onClick={() => navigate('/admin/admissao')}>
                     Admissão
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => navigate('/admin/contratos')}>
+                  <DropdownMenuItem className="cursor-pointer hover:!bg-[#1a2c6a] hover:!text-white focus:!bg-[#1a2c6a] focus:!text-white data-[highlighted]:!bg-[#1a2c6a] data-[highlighted]:!text-white" onClick={() => navigate('/admin/contratos')}>
                     Contratos
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => navigate('/admin/banco-horas')}>
+                  <DropdownMenuItem className="cursor-pointer hover:!bg-[#1a2c6a] hover:!text-white focus:!bg-[#1a2c6a] focus:!text-white data-[highlighted]:!bg-[#1a2c6a] data-[highlighted]:!text-white" onClick={() => navigate('/admin/banco-horas')}>
                     Banco de Horas
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => navigate('/admin/documentos')}>
+                  <DropdownMenuItem className="cursor-pointer hover:!bg-[#1a2c6a] hover:!text-white focus:!bg-[#1a2c6a] focus:!text-white data-[highlighted]:!bg-[#1a2c6a] data-[highlighted]:!text-white" onClick={() => navigate('/admin/documentos')}>
                     Distribuição de docs
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => navigate('/ajuda')}>
+                  <DropdownMenuItem className="cursor-pointer hover:!bg-[#1a2c6a] hover:!text-white focus:!bg-[#1a2c6a] focus:!text-white data-[highlighted]:!bg-[#1a2c6a] data-[highlighted]:!text-white" onClick={() => navigate('/ajuda')}>
                     Central de ajuda
                   </DropdownMenuItem>     
                 </DropdownMenuContent>
@@ -128,8 +128,8 @@ export default function Navbar({ selectedCompany = 'PontoMax' }) {
                   Relatórios <ChevronDown size={14} className="opacity-80" />
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="start" className="bg-[#ffffff] text-slate-800">
-                  <DropdownMenuItem>Espelho de Ponto</DropdownMenuItem>
-                  <DropdownMenuItem>Horas Extras</DropdownMenuItem>
+                  <DropdownMenuItem className="cursor-pointer hover:!bg-[#1a2c6a] hover:!text-white focus:!bg-[#1a2c6a] focus:!text-white data-[highlighted]:!bg-[#1a2c6a] data-[highlighted]:!text-white">Espelho de Ponto</DropdownMenuItem>
+                  <DropdownMenuItem className="cursor-pointer hover:!bg-[#1a2c6a] hover:!text-white focus:!bg-[#1a2c6a] focus:!text-white data-[highlighted]:!bg-[#1a2c6a] data-[highlighted]:!text-white">Horas Extras</DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
 
@@ -138,8 +138,8 @@ export default function Navbar({ selectedCompany = 'PontoMax' }) {
                   Configurações <ChevronDown size={14} className="opacity-80" />
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="start" className="bg-white text-slate-800">
-                  <DropdownMenuItem>Empresa</DropdownMenuItem>
-                  <DropdownMenuItem>Colaboradores</DropdownMenuItem>
+                  <DropdownMenuItem className="cursor-pointer hover:!bg-[#1a2c6a] hover:!text-white focus:!bg-[#1a2c6a] focus:!text-white data-[highlighted]:!bg-[#1a2c6a] data-[highlighted]:!text-white">Empresa</DropdownMenuItem>
+                  <DropdownMenuItem className="cursor-pointer hover:!bg-[#1a2c6a] hover:!text-white focus:!bg-[#1a2c6a] focus:!text-white data-[highlighted]:!bg-[#1a2c6a] data-[highlighted]:!text-white">Colaboradores</DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
 
@@ -191,7 +191,7 @@ export default function Navbar({ selectedCompany = 'PontoMax' }) {
                     className={`cursor-pointer text-xs font-bold px-3 py-2.5 rounded-none focus:outline-none transition ${
                       isSelected
                         ? 'bg-[#ff6a00] text-white focus:bg-[#ff7614] focus:text-white'
-                        : 'text-slate-700 hover:bg-slate-100 focus:bg-slate-100'
+                        : 'text-slate-700 hover:!bg-[#1a2c6a] hover:!text-white focus:!bg-[#1a2c6a] focus:!text-white'
                     }`}
                   >
                     {company}
@@ -221,7 +221,7 @@ export default function Navbar({ selectedCompany = 'PontoMax' }) {
             {!isAdmin && (
               <DropdownMenuItem
                 onClick={() => window.location.href = 'https://wiaponto.vercel.app/ponto'}
-                className="cursor-pointer flex items-center"
+                className="cursor-pointer flex items-center hover:!bg-[#1a2c6a] hover:!text-white focus:!bg-[#1a2c6a] focus:!text-white data-[highlighted]:!bg-[#1a2c6a] data-[highlighted]:!text-white"
               >
                 Bater Ponto
               </DropdownMenuItem>

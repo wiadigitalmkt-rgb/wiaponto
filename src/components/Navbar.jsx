@@ -99,7 +99,7 @@ export default function Navbar({ selectedCompany = 'PontoMax' }) {
                   Atalhos <ChevronDown size={14} className="opacity-80" />
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="start" className="bg-white text-slate-800">  
-                  <DropdownMenuItem className="cursor-pointer hover:!bg-[#1a2c6a] hover:!text-white focus:!bg-[#1a2c6a] focus:!text-white data-[highlighted]:!bg-[#1a2c6a] data-[highlighted]:!text-white" onClick={() => navigate('/admin/espelho')}>
+                  <DropdownMenuItem className="cursor-pointer hover:!bg-[#1a2c6a] hover:!text-white focus:!bg-[#1a2c6a] focus:!text-white data-[highlighted]:!bg-[#1a2c6a] data-[highlighted]:!text-white" onClick={() => navigate('/espelho')}>
                     Espelho de ponto
                   </DropdownMenuItem> 
                   <DropdownMenuItem className="cursor-pointer hover:!bg-[#1a2c6a] hover:!text-white focus:!bg-[#1a2c6a] focus:!text-white data-[highlighted]:!bg-[#1a2c6a] data-[highlighted]:!text-white" onClick={() => navigate('/admin/colaboradores')}>
@@ -114,7 +114,7 @@ export default function Navbar({ selectedCompany = 'PontoMax' }) {
                   <DropdownMenuItem className="cursor-pointer hover:!bg-[#1a2c6a] hover:!text-white focus:!bg-[#1a2c6a] focus:!text-white data-[highlighted]:!bg-[#1a2c6a] data-[highlighted]:!text-white" onClick={() => navigate('/espelho?section=banco')}>
                     Banco de Horas
                   </DropdownMenuItem>
-                  <DropdownMenuItem className="cursor-pointer hover:!bg-[#1a2c6a] hover:!text-white focus:!bg-[#1a2c6a] focus:!text-white data-[highlighted]:!bg-[#1a2c6a] data-[highlighted]:!text-white" onClick={() => navigate('/admin/documentos')}>
+                  <DropdownMenuItem className="cursor-pointer hover:!bg-[#1a2c6a] hover:!text-white focus:!bg-[#1a2c6a] focus:!text-white data-[highlighted]:!bg-[#1a2c6a] data-[highlighted]:!text-white" onClick={() => navigate('/documentos')}>
                     Distribuição de docs
                   </DropdownMenuItem>
                   <DropdownMenuItem className="cursor-pointer hover:!bg-[#1a2c6a] hover:!text-white focus:!bg-[#1a2c6a] focus:!text-white data-[highlighted]:!bg-[#1a2c6a] data-[highlighted]:!text-white" onClick={() => navigate('/ajuda')}>

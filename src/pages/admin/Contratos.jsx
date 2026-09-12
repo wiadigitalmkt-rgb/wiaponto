@@ -59,6 +59,7 @@ const CONTRATO_TOKEN_GROUPS = [
       ['Data de hoje', 'CONTRATO_DATA_ATUAL'],
       ['Assinatura do colaborador', 'ASSINATURA_COLABORADOR'],
       ['Assinatura do gestor', 'ASSINATURA_GESTOR'],
+      ['Assinatura da empregadora', 'ASSINATURA_EMPREGADORA'],
     ],
   },
 ];
@@ -114,8 +115,8 @@ function renderContractText(content, employee) {
 
 // Renderiza o texto já processado, trocando {ASSINATURA_COLABORADOR} e
 // {ASSINATURA_GESTOR} por uma imagem de verdade (ou um aviso de pendente).
-function ContractBody({ text, employeeSignatureUrl, managerSignatureUrl }) {
-  const parts = text.split(/(\{ASSINATURA_COLABORADOR\}|\{ASSINATURA_GESTOR\})/g);
+function ContractBody({ text, employeeSignatureUrl, managerSignatureUrl, employerSignatureUrl }) {
+  const parts = text.split(/(\{ASSINATURA_COLABORADOR\}|\{ASSINATURA_GESTOR\}|\{ASSINATURA_EMPREGADORA\})/g);
   return (
     <div className="whitespace-pre-wrap leading-relaxed text-slate-700">
       {parts.map((part, idx) => {
@@ -131,6 +132,13 @@ function ContractBody({ text, employeeSignatureUrl, managerSignatureUrl }) {
             <img key={idx} src={managerSignatureUrl} alt="Assinatura do gestor" className="h-16 inline-block align-middle" />
           ) : (
             <span key={idx} className="text-amber-600 font-medium">[assinatura do gestor pendente]</span>
+          );
+        }
+        if (part === '{ASSINATURA_EMPREGADORA}') {
+          return employerSignatureUrl ? (
+            <img key={idx} src={employerSignatureUrl} alt="Assinatura da empregadora" className="h-16 inline-block align-middle" />
+          ) : (
+            <span key={idx} className="text-amber-600 font-medium">[assinatura da empregadora pendente]</span>
           );
         }
         return <span key={idx}>{part}</span>;
@@ -171,6 +179,25 @@ export default function Contratos() {
   const [loadingContracts, setLoadingContracts] = useState(false);
 
   const [viewingContract, setViewingContract] = useState(null); // pra pré-visualizar um contrato assinado/pendente
+
+  const [currentUserAccessType, setCurrentUserAccessType] = useState(null);
+  const [currentUserSignature, setCurrentUserSignature] = useState(null);
+  const [signingId, setSigningId] = useState(null); // qual contrato está sendo assinado agora (mostra loading só nele)
+
+  useEffect(() => {
+    if (!loggedInUser?.id) return;
+    supabase
+      .from('Employees')
+      .select('access_type, signature_path')
+      .eq('id', loggedInUser.id)
+      .maybeSingle()
+      .then(({ data }) => {
+        setCurrentUserAccessType(data?.access_type || null);
+        setCurrentUserSignature(data?.signature_path || null);
+      });
+  }, [loggedInUser]);
+
+  const isAccountOwner = currentUserAccessType === 'Dono da Conta';
 
   useEffect(() => {
     fetchTemplates();
@@ -409,6 +436,56 @@ export default function Contratos() {
   useEffect(() => {
     if (section === 'assinaturas') fetchContractsOverview();
   }, [section]);
+
+  // Qualquer gestor (ou dono da conta) pode assinar como "gestor
+  // responsável" — usa a própria assinatura salva em "Minha Assinatura".
+  async function handleSignAsManager(contract) {
+    if (!loggedInUser?.id) return;
+    if (!currentUserSignature) {
+      alert('Você ainda não tem uma assinatura salva. Vá em Configurações → Minha Assinatura pra criar uma.');
+      return;
+    }
+    setSigningId(contract.id);
+    try {
+      const { error } = await supabase.from('employee_contracts').update({
+        manager_signature_url: currentUserSignature,
+        manager_signed_at: new Date().toISOString(),
+        manager_signed_by: loggedInUser.id,
+      }).eq('id', contract.id);
+      if (error) throw error;
+      await fetchContractsOverview();
+    } catch (err) {
+      console.error(err);
+      alert('Erro ao assinar como gestor: ' + err.message);
+    } finally {
+      setSigningId(null);
+    }
+  }
+
+  // Só quem tem access_type = "Dono da Conta" pode assinar como
+  // EMPREGADORA (representando a empresa formalmente no contrato).
+  async function handleSignAsEmployer(contract) {
+    if (!loggedInUser?.id || !isAccountOwner) return;
+    if (!currentUserSignature) {
+      alert('Você ainda não tem uma assinatura salva. Vá em Configurações → Minha Assinatura pra criar uma.');
+      return;
+    }
+    setSigningId(contract.id);
+    try {
+      const { error } = await supabase.from('employee_contracts').update({
+        employer_signature_url: currentUserSignature,
+        employer_signed_at: new Date().toISOString(),
+        employer_signed_by: loggedInUser.id,
+      }).eq('id', contract.id);
+      if (error) throw error;
+      await fetchContractsOverview();
+    } catch (err) {
+      console.error(err);
+      alert('Erro ao assinar como empregadora: ' + err.message);
+    } finally {
+      setSigningId(null);
+    }
+  }
 
   const pendingContracts = contractsList.filter((c) => c.status === 'pendente');
   const signedContracts = contractsList.filter((c) => c.status === 'assinado');
@@ -779,15 +856,16 @@ export default function Contratos() {
                   <tr className="text-slate-500 font-semibold uppercase tracking-wider text-[11px] border-b border-slate-100">
                     <th className="py-2.5 px-4">Colaborador</th>
                     <th className="py-2.5 px-4">Contrato</th>
-                    <th className="py-2.5 px-4">Status</th>
+                    <th className="py-2.5 px-4">Colaborador assinou</th>
+                    <th className="py-2.5 px-4">Gestor / Empregadora</th>
                     <th className="py-2.5 px-4"></th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                   {loadingContracts ? (
-                    <tr><td colSpan={4} className="py-10 text-center text-slate-400"><Loader2 className="w-5 h-5 animate-spin mx-auto" /></td></tr>
+                    <tr><td colSpan={5} className="py-10 text-center text-slate-400"><Loader2 className="w-5 h-5 animate-spin mx-auto" /></td></tr>
                   ) : (assinaturasTab === 'pendentes' ? pendingContracts : signedContracts).length === 0 ? (
-                    <tr><td colSpan={4} className="py-10 text-center text-slate-400">Nenhum resultado</td></tr>
+                    <tr><td colSpan={5} className="py-10 text-center text-slate-400">Nenhum resultado</td></tr>
                   ) : (
                     (assinaturasTab === 'pendentes' ? pendingContracts : signedContracts).map((c) => (
                       <tr key={c.id} className="hover:bg-slate-50">
@@ -800,10 +878,42 @@ export default function Contratos() {
                             {c.status === 'assinado' ? 'Assinado' : 'Aguardando'}
                           </span>
                           {c.signed_at && (
-                            <span className="text-slate-400 ml-2">{new Date(c.signed_at).toLocaleString('pt-BR')}</span>
+                            <span className="text-slate-400 ml-2 block mt-1">{new Date(c.signed_at).toLocaleString('pt-BR')}</span>
                           )}
                         </td>
-                        <td className="py-3 px-4 text-right">
+                        <td className="py-3 px-4">
+                          <div className="flex flex-col gap-1.5 items-start">
+                            {c.manager_signature_url ? (
+                              <span className="bg-[#1a2c6a]/10 text-[#1a2c6a] px-2 py-0.5 rounded-full text-[10px] font-semibold">
+                                Gestor assinou
+                              </span>
+                            ) : (
+                              <button
+                                onClick={() => handleSignAsManager(c)}
+                                disabled={signingId === c.id}
+                                className="border border-[#1a2c6a] text-[#1a2c6a] hover:bg-[#1a2c6a]/10 px-2.5 py-1 rounded text-[10px] font-semibold transition-colors disabled:opacity-50"
+                              >
+                                Assinar como Gestor
+                              </button>
+                            )}
+                            {c.employer_signature_url ? (
+                              <span className="bg-slate-200 text-slate-600 px-2 py-0.5 rounded-full text-[10px] font-semibold">
+                                Empregadora assinou
+                              </span>
+                            ) : isAccountOwner ? (
+                              <button
+                                onClick={() => handleSignAsEmployer(c)}
+                                disabled={signingId === c.id}
+                                className="border border-slate-400 text-slate-600 hover:bg-slate-100 px-2.5 py-1 rounded text-[10px] font-semibold transition-colors disabled:opacity-50"
+                              >
+                                Assinar como Empregadora
+                              </button>
+                            ) : (
+                              <span className="text-slate-400 text-[10px]">Só o Dono da Conta assina</span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="py-3 px-4 text-right align-top">
                           <button
                             onClick={() => setViewingContract(c)}
                             className="text-[#ff8b00] hover:underline font-medium"
@@ -888,7 +998,8 @@ export default function Contratos() {
               <ContractBody
                 text={renderContractText(viewingContract.contract_templates?.content, viewingContract.Employees || {})}
                 employeeSignatureUrl={viewingContract.status === 'assinado' ? viewingContract.Employees?.signature_path : null}
-                managerSignatureUrl={null}
+                managerSignatureUrl={viewingContract.manager_signature_url}
+                employerSignatureUrl={viewingContract.employer_signature_url}
               />
             </div>
           </div>

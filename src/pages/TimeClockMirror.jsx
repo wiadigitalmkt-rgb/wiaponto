@@ -66,6 +66,16 @@ const minutesToFullDisplay = (mins) => {
   return `${String(h).padStart(2, '0')}h ${String(m).padStart(2, '0')}min`;
 };
 
+// Formata minutos podendo ser negativo (banco de horas em débito) —
+// os helpers acima assumem sempre positivo.
+const formatSignedHours = (mins) => {
+  const sign = mins < 0 ? '-' : '';
+  const abs = Math.abs(mins || 0);
+  const h = Math.floor(abs / 60);
+  const m = abs % 60;
+  return `${sign}${h}h ${String(m).padStart(2, '0')}min`;
+};
+
 // Domingo de Páscoa (algoritmo de Meeus/Jones/Butcher) — base pros feriados
 // móveis (Carnaval, Sexta-feira Santa, Corpus Christi).
 const getEasterDate = (year) => {
@@ -151,7 +161,8 @@ const AUDIT_ACTION_LABELS = {
   trocar_jornada: 'Jornada trocada',
   anotacao: 'Anotação',
   ajuste_aprovado: 'Solicitação de ajuste aprovada',
-  ajuste_rejeitado: 'Solicitação de ajuste rejeitada'
+  ajuste_rejeitado: 'Solicitação de ajuste rejeitada',
+  banco_horas: 'Lançamento no banco de horas'
 };
 
 const processDayRecord = (record, targetDailyMinutes = 480) => {
@@ -220,7 +231,10 @@ function generateRecentMonths(count = 12) {
 export default function AdminPonto() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const [activeTab, setActiveTab] = useState(searchParams.get('section') === 'ajustes' ? 'ajustes' : 'pontos'); // 'pontos' | 'resumo' | 'ajustes'
+  const [activeTab, setActiveTab] = useState(
+    searchParams.get('section') === 'ajustes' ? 'ajustes' :
+    searchParams.get('section') === 'banco' ? 'banco' : 'pontos'
+  ); // 'pontos' | 'resumo' | 'ajustes' | 'banco'
   const [selectedMonth, setSelectedMonth] = useState(() => getMonthLabel(new Date()));
   const [selectedDepartment, setSelectedDepartment] = useState('Todos');
   
@@ -258,6 +272,13 @@ export default function AdminPonto() {
   const [annotationTargetItemId, setAnnotationTargetItemId] = useState(null);
   const [annotationText, setAnnotationText] = useState('');
   const [savingAnnotation, setSavingAnnotation] = useState(false);
+
+  // Banco de Horas (do colaborador selecionado no topo da página)
+  const [bankEntries, setBankEntries] = useState([]);
+  const [loadingBank, setLoadingBank] = useState(false);
+  const [showNewBankEntryForm, setShowNewBankEntryForm] = useState(false);
+  const [newBankEntry, setNewBankEntry] = useState({ entry_date: '', hours: '', tipo: 'credito', description: '' });
+  const [savingBankEntry, setSavingBankEntry] = useState(false);
   const [showJornadaModal, setShowJornadaModal] = useState(false);
   const [selectedPhotoModal, setSelectedPhotoModal] = useState(null);
 
@@ -615,6 +636,84 @@ export default function AdminPonto() {
     if (activeTab === 'ajustes') fetchAdjustmentRequests();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab, selectedUser]);
+
+  // BANCO DE HORAS — lançamentos de crédito (horas extras guardadas) ou
+  // débito (horas usadas/compensadas) do colaborador selecionado. O saldo
+  // é sempre a soma de todos os lançamentos, nunca um número solto editado
+  // à mão — assim sempre bate com o histórico.
+  const fetchBankEntries = async () => {
+    if (!selectedUser?.id) return;
+    setLoadingBank(true);
+    const { data, error } = await supabase
+      .from('time_bank_entries')
+      .select('*')
+      .eq('employee_id', selectedUser.id)
+      .order('entry_date', { ascending: false });
+    if (error) console.error('Erro ao buscar banco de horas:', error);
+    setBankEntries(data || []);
+    setLoadingBank(false);
+  };
+
+  useEffect(() => {
+    if (activeTab === 'banco') fetchBankEntries();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab, selectedUser]);
+
+  const bankBalanceMinutes = bankEntries.reduce((sum, e) => sum + Math.round(Number(e.hours) * 60), 0);
+
+  const handleAddBankEntry = async () => {
+    if (!selectedUser?.id || !newBankEntry.entry_date || !newBankEntry.hours) {
+      alert('Preencha a data e a quantidade de horas.');
+      return;
+    }
+    const horasNum = Math.abs(parseFloat(newBankEntry.hours.toString().replace(',', '.')));
+    if (isNaN(horasNum) || horasNum <= 0) {
+      alert('Digite um número de horas válido (ex: 2 ou 1,5).');
+      return;
+    }
+    const signedHours = newBankEntry.tipo === 'debito' ? -horasNum : horasNum;
+
+    setSavingBankEntry(true);
+    try {
+      const { error } = await supabase.from('time_bank_entries').insert([{
+        employee_id: selectedUser.id,
+        entry_date: newBankEntry.entry_date,
+        hours: signedHours,
+        description: newBankEntry.description || null,
+        created_by: currentManagerId,
+      }]);
+      if (error) throw error;
+
+      await logAudit(
+        newBankEntry.entry_date,
+        'banco_horas',
+        `${newBankEntry.tipo === 'debito' ? 'Débito' : 'Crédito'} de ${horasNum}h no banco de horas${newBankEntry.description ? ` — ${newBankEntry.description}` : ''}`
+      );
+
+      setNewBankEntry({ entry_date: '', hours: '', tipo: 'credito', description: '' });
+      setShowNewBankEntryForm(false);
+      fetchBankEntries();
+      showToast('Lançamento adicionado ao banco de horas!');
+    } catch (err) {
+      console.error(err);
+      alert('Erro ao adicionar lançamento: ' + err.message);
+    } finally {
+      setSavingBankEntry(false);
+    }
+  };
+
+  const handleDeleteBankEntry = async (entry) => {
+    if (!window.confirm('Remover este lançamento do banco de horas?')) return;
+    try {
+      const { error } = await supabase.from('time_bank_entries').delete().eq('id', entry.id);
+      if (error) throw error;
+      fetchBankEntries();
+      showToast('Lançamento removido.');
+    } catch (err) {
+      console.error(err);
+      alert('Erro ao remover: ' + err.message);
+    }
+  };
 
   const handleSubmitAdjustment = async () => {
     if (!selectedUser?.id || !newAdjustment.record_date || !newAdjustment.description.trim()) {
@@ -991,6 +1090,18 @@ export default function AdminPonto() {
                 <MessageSquare className="w-4 h-4 shrink-0" />
                 <span className="whitespace-nowrap max-md:truncate">Solicitações de Ajuste</span>
               </button>
+
+              <button 
+                onClick={() => setActiveTab('banco')}
+                className={`w-full flex items-center space-x-3 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                  activeTab === 'banco'
+                    ? 'bg-white text-slate-700 hover:bg-[#fc9314] hover:text-white border-l-4 border-[#ff8b00] shadow-sm font-semibold'
+                    : 'bg-white text-slate-500 hover:bg-[#fc9314] hover:text-white'
+                }`}
+              >
+                <Clock className="w-4 h-4 shrink-0" />
+                <span className="whitespace-nowrap max-md:truncate">Banco de Horas</span>
+              </button>
             </nav>
           </div>
         </aside>
@@ -1007,7 +1118,7 @@ export default function AdminPonto() {
               </a> 
               <ChevronRight className="w-3 h-3 inline mx-1" />{' '}
               <span className="text-[#ff8b00] font-medium">
-                {activeTab === 'pontos' ? 'Pontos registrados' : activeTab === 'resumo' ? 'Resumo das horas' : 'Solicitações de Ajuste'}
+                {activeTab === 'pontos' ? 'Pontos registrados' : activeTab === 'resumo' ? 'Resumo das horas' : activeTab === 'banco' ? 'Banco de horas' : 'Solicitações de Ajuste'}
               </span>
             </div>
             
@@ -1608,6 +1719,122 @@ export default function AdminPonto() {
                       </div>
                     </div>
                   ))
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* CONTEÚDO DA ABA: BANCO DE HORAS */}
+          {activeTab === 'banco' && (
+            <div className="bg-white rounded-lg border border-slate-200 shadow-sm">
+              <div className="p-5 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <div>
+                  <p className="text-slate-500 text-xs">Saldo atual de {selectedUser?.full_name || 'colaborador'}</p>
+                  <p className={`text-2xl font-bold ${bankBalanceMinutes < 0 ? 'text-red-500' : 'text-slate-800'}`}>
+                    {formatSignedHours(bankBalanceMinutes)}
+                  </p>
+                </div>
+                {isManager && (
+                  <button
+                    onClick={() => setShowNewBankEntryForm((v) => !v)}
+                    className="bg-[#ff8b00] hover:bg-[#fc9314] text-white text-xs font-medium px-4 py-2 rounded transition-colors self-start"
+                  >
+                    {showNewBankEntryForm ? 'Cancelar' : '+ Novo lançamento'}
+                  </button>
+                )}
+              </div>
+
+              {isManager && showNewBankEntryForm && (
+                <div className="p-5 border-b border-slate-100 space-y-3 bg-slate-50/50 text-xs">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <div>
+                      <label className="block text-[11px] text-slate-500 mb-1">Data</label>
+                      <input
+                        type="date"
+                        value={newBankEntry.entry_date}
+                        onChange={(e) => setNewBankEntry((p) => ({ ...p, entry_date: e.target.value }))}
+                        className="w-full border rounded p-2 text-xs focus:outline-none focus:border-[#ff8b00]"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] text-slate-500 mb-1">Tipo</label>
+                      <select
+                        value={newBankEntry.tipo}
+                        onChange={(e) => setNewBankEntry((p) => ({ ...p, tipo: e.target.value }))}
+                        className="w-full border rounded p-2 text-xs focus:outline-none focus:border-[#ff8b00]"
+                      >
+                        <option value="credito">Crédito (colaborador ganha horas)</option>
+                        <option value="debito">Débito (colaborador usa/compensa horas)</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-[11px] text-slate-500 mb-1">Quantidade de horas</label>
+                      <input
+                        type="text"
+                        inputMode="decimal"
+                        value={newBankEntry.hours}
+                        onChange={(e) => setNewBankEntry((p) => ({ ...p, hours: e.target.value }))}
+                        placeholder="Ex: 2 ou 1,5"
+                        className="w-full border rounded p-2 text-xs focus:outline-none focus:border-[#ff8b00]"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-[11px] text-slate-500 mb-1">Motivo (opcional)</label>
+                    <input
+                      type="text"
+                      value={newBankEntry.description}
+                      onChange={(e) => setNewBankEntry((p) => ({ ...p, description: e.target.value }))}
+                      placeholder="Ex: Hora extra do plantão de sábado"
+                      className="w-full border rounded p-2 text-xs focus:outline-none focus:border-[#ff8b00]"
+                    />
+                  </div>
+                  <div className="flex justify-end">
+                    <button
+                      onClick={handleAddBankEntry}
+                      disabled={savingBankEntry}
+                      className="bg-[#ff8b00] hover:bg-[#fc9314] text-white text-xs font-medium px-5 py-2 rounded transition-colors disabled:opacity-50 flex items-center gap-1.5"
+                    >
+                      {savingBankEntry && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                      Adicionar lançamento
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              <div className="divide-y divide-slate-100">
+                {loadingBank ? (
+                  <div className="p-8 text-center text-slate-400 flex items-center justify-center gap-2 text-xs">
+                    <Loader2 className="w-4 h-4 animate-spin" /> Carregando...
+                  </div>
+                ) : bankEntries.length === 0 ? (
+                  <div className="p-8 text-center text-slate-400 text-xs">Nenhum lançamento no banco de horas ainda.</div>
+                ) : (
+                  bankEntries.map((entry) => {
+                    const mins = Math.round(Number(entry.hours) * 60);
+                    return (
+                      <div key={entry.id} className="p-4 flex items-center justify-between gap-4 text-xs">
+                        <div>
+                          <p className="font-semibold text-slate-700">{formatDDMMYYYY(entry.entry_date)}</p>
+                          {entry.description && <p className="text-slate-500 mt-0.5">{entry.description}</p>}
+                        </div>
+                        <div className="flex items-center gap-3 shrink-0">
+                          <span className={`font-bold ${mins < 0 ? 'text-red-500' : 'text-[#ff8b00]'}`}>
+                            {formatSignedHours(mins)}
+                          </span>
+                          {isManager && (
+                            <button
+                              onClick={() => handleDeleteBankEntry(entry)}
+                              className="text-slate-400 hover:text-red-500"
+                              title="Remover lançamento"
+                            >
+                              <X className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })
                 )}
               </div>
             </div>

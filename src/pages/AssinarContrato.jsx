@@ -53,8 +53,8 @@ function renderContractText(content, employee) {
   return text;
 }
 
-function ContractBody({ text, employeeSignatureUrl }) {
-  const parts = text.split(/(\{ASSINATURA_COLABORADOR\}|\{ASSINATURA_GESTOR\})/g);
+function ContractBody({ text, employeeSignatureUrl, managerSignatureUrl, employerSignatureUrl }) {
+  const parts = text.split(/(\{ASSINATURA_COLABORADOR\}|\{ASSINATURA_GESTOR\}|\{ASSINATURA_EMPREGADORA\})/g);
   return (
     <div className="whitespace-pre-wrap leading-relaxed text-slate-700 text-sm">
       {parts.map((part, idx) => {
@@ -66,7 +66,18 @@ function ContractBody({ text, employeeSignatureUrl }) {
           );
         }
         if (part === '{ASSINATURA_GESTOR}') {
-          return <span key={idx} className="text-amber-600 font-medium">[assinatura do gestor pendente]</span>;
+          return managerSignatureUrl ? (
+            <img key={idx} src={managerSignatureUrl} alt="Assinatura do gestor" className="h-16 inline-block align-middle" />
+          ) : (
+            <span key={idx} className="text-amber-600 font-medium">[assinatura do gestor pendente]</span>
+          );
+        }
+        if (part === '{ASSINATURA_EMPREGADORA}') {
+          return employerSignatureUrl ? (
+            <img key={idx} src={employerSignatureUrl} alt="Assinatura da empregadora" className="h-16 inline-block align-middle" />
+          ) : (
+            <span key={idx} className="text-amber-600 font-medium">[assinatura da empregadora pendente]</span>
+          );
         }
         return <span key={idx}>{part}</span>;
       })}
@@ -217,6 +228,8 @@ export default function AssinarContrato() {
               <ContractBody
                 text={renderContractText(selectedContract.contract_templates?.content, employee || {})}
                 employeeSignatureUrl={selectedContract.status === 'assinado' ? employee?.signature_path : null}
+                managerSignatureUrl={selectedContract.manager_signature_url}
+                employerSignatureUrl={selectedContract.employer_signature_url}
               />
             </div>
             <div className="p-4 border-t border-slate-100 flex justify-end gap-2">

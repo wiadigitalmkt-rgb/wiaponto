@@ -31,6 +31,7 @@ import PunchClock from './pages/PunchClock';
 import TimeClockMirror from './pages/TimeClockMirror';
 import Requests from './pages/Requests';
 import PreencherAdmissao from './pages/PreencherAdmissao';
+import AssinarContrato from './pages/AssinarContrato';
 
 
 // Imports do Novo Painel Admin
@@ -93,6 +94,7 @@ const AuthenticatedApp = () => {
         <Route path="/ponto" element={<PunchClock />} />
         <Route path="/espelho" element={<TimeClockMirror />} />
         <Route path="/documentos" element={<Documentos />} />
+        <Route path="/meus-contratos" element={<AssinarContrato />} />
         <Route path="/ajuda" element={<Ajuda />} />
         <Route path="/ajuda/artigo/:id" element={<ArtigoDetalhes />} />
         <Route path="/ajuda/categoria/:slug" element={<CategoriaDetalhes />} />

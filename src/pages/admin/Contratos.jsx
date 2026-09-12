@@ -143,7 +143,7 @@ export default function Contratos() {
   const { user: loggedInUser } = useAuth();
 
   const [section, setSection] = useState('contratos'); // 'contratos' | 'assinaturas'
-  const [subView, setSubView] = useState('list'); // 'list' | 'editor' | 'vinculos'
+  const [subView, setSubView] = useState('list'); // 'list' | 'detalhe' | 'editor' | 'vinculos'
 
   const [templates, setTemplates] = useState([]);
   const [loadingTemplates, setLoadingTemplates] = useState(true);
@@ -200,6 +200,22 @@ export default function Contratos() {
     setSubView('editor');
   }
 
+  // "Abrir" na lista leva pra cá — mostra o contrato (nome + texto), com
+  // botão pra editar e outro pra ir direto vincular colaboradores.
+  function openTemplateDetail(template) {
+    setCurrentTemplate(template);
+    setSubView('detalhe');
+  }
+
+  // Botão "Editar" dentro do detalhe — pré-preenche o editor com o que já
+  // existe (antes só dava pra criar um novo, nunca editar um salvo).
+  function openEditTemplate(template) {
+    setCurrentTemplate(template);
+    setEditorName(template.name || '');
+    setEditorContent(template.content || '');
+    setSubView('editor');
+  }
+
   function insertToken(token) {
     const el = contentRef.current;
     if (!el) {
@@ -225,22 +241,31 @@ export default function Contratos() {
     }
     setSavingTemplate(true);
     try {
+      let savedTemplate = currentTemplate;
       if (currentTemplate) {
-        const { error } = await supabase
+        const { data, error } = await supabase
           .from('contract_templates')
           .update({ name: editorName.trim(), content: editorContent })
-          .eq('id', currentTemplate.id);
+          .eq('id', currentTemplate.id)
+          .select()
+          .single();
         if (error) throw error;
+        savedTemplate = data;
       } else {
-        const { error } = await supabase.from('contract_templates').insert([{
+        const { data, error } = await supabase.from('contract_templates').insert([{
           name: editorName.trim(),
           content: editorContent,
           created_by: loggedInUser?.id || null,
-        }]);
+        }]).select().single();
         if (error) throw error;
+        savedTemplate = data;
       }
       await fetchTemplates();
-      setSubView('list');
+      // Volta pra tela de detalhe do próprio contrato (recém-criado ou
+      // recém-editado) em vez de voltar pra lista — assim o gestor já vê
+      // o resultado e pode ir direto vincular colaboradores.
+      setCurrentTemplate(savedTemplate);
+      setSubView('detalhe');
     } catch (err) {
       console.error(err);
       alert('Erro ao salvar o contrato: ' + err.message);
@@ -401,7 +426,10 @@ export default function Contratos() {
             Painel <ChevronRight className="w-3 h-3 inline mx-1" />
             <span className="text-[#ff8b00] font-medium">
               {section === 'contratos'
-                ? (subView === 'editor' ? 'Novo contrato' : subView === 'vinculos' ? 'Vínculos do contrato' : 'Contratos')
+                ? (subView === 'editor' ? (currentTemplate ? 'Editar contrato' : 'Novo contrato')
+                   : subView === 'vinculos' ? 'Vínculos do contrato'
+                   : subView === 'detalhe' ? (currentTemplate?.name || 'Contrato')
+                   : 'Contratos')
                 : 'Assinatura de contratos'}
             </span>
           </div>
@@ -452,7 +480,7 @@ export default function Contratos() {
                         <td className="py-3 px-4 text-slate-500">{new Date(t.created_at).toLocaleDateString('pt-BR')}</td>
                         <td className="py-3 px-4 text-right">
                           <button
-                            onClick={() => openLinks(t)}
+                            onClick={() => openTemplateDetail(t)}
                             className="bg-[#ff8b00] hover:bg-[#fc9314] text-white text-[11px] font-semibold px-3 py-1.5 rounded transition-colors"
                           >
                             Abrir
@@ -466,16 +494,58 @@ export default function Contratos() {
             </div>
           )}
 
+          {/* ===================== DETALHE DO CONTRATO (botão "Abrir") ===================== */}
+          {section === 'contratos' && subView === 'detalhe' && currentTemplate && (
+            <div className="bg-white rounded-lg border border-slate-200 shadow-sm">
+              <div className="p-4 border-b border-slate-100 flex items-center justify-between">
+                <button onClick={() => setSubView('list')} className="flex items-center gap-1.5 text-xs font-semibold text-slate-700 hover:text-slate-900">
+                  <ArrowLeft className="w-4 h-4" /> Voltar
+                </button>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => openEditTemplate(currentTemplate)}
+                    className="border border-[#ff8b00] text-[#ff8b00] hover:bg-[#ff8b00]/10 text-xs font-bold px-4 py-2 rounded-md transition-colors"
+                  >
+                    Editar
+                  </button>
+                  <button
+                    onClick={() => openLinks(currentTemplate)}
+                    className="bg-[#ff8b00] hover:bg-[#fc9314] text-white text-xs font-bold px-4 py-2 rounded-md transition-colors"
+                  >
+                    Vincular ao colaborador
+                  </button>
+                </div>
+              </div>
+
+              <div className="p-6 space-y-4">
+                <div>
+                  <h2 className="font-bold text-slate-800 text-lg">{currentTemplate.name}</h2>
+                  <p className="text-slate-400 text-[11px] mt-0.5">
+                    Criado em {new Date(currentTemplate.created_at).toLocaleDateString('pt-BR')}
+                  </p>
+                </div>
+                <div className="bg-slate-50 border border-slate-200 rounded-lg p-5">
+                  <p className="whitespace-pre-wrap leading-relaxed text-slate-700 text-xs">
+                    {currentTemplate.content || <span className="text-slate-400 italic">Este contrato ainda não tem conteúdo. Clique em "Editar" pra escrever.</span>}
+                  </p>
+                </div>
+                <p className="text-slate-400 text-[11px]">
+                  As variáveis (como {'{COLABORADOR_NOME_COMPLETO}'}) aparecem aqui como texto — elas só são trocadas pelos dados reais quando o contrato é visualizado ou assinado por um colaborador específico, em "Vincular ao colaborador" ou em "Gerenciar Assinaturas".
+                </p>
+              </div>
+            </div>
+          )}
+
           {/* ===================== EDITOR DE TEMPLATE ===================== */}
           {section === 'contratos' && subView === 'editor' && (
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 items-start">
               <div className="lg:col-span-2 bg-white rounded-lg border border-slate-200 shadow-sm p-6 space-y-4">
-                <button onClick={() => setSubView('list')} className="flex items-center gap-1.5 text-xs font-semibold text-slate-700 hover:text-slate-900">
+                <button
+                  onClick={() => setSubView(currentTemplate ? 'detalhe' : 'list')}
+                  className="flex items-center gap-1.5 text-xs font-semibold text-slate-700 hover:text-slate-900"
+                >
                   <ArrowLeft className="w-4 h-4" /> Voltar
                 </button>
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Nome*</label>
-                  <input
                     type="text"
                     value={editorName}
                     onChange={(e) => setEditorName(e.target.value)}
@@ -549,7 +619,7 @@ export default function Contratos() {
           {section === 'contratos' && subView === 'vinculos' && currentTemplate && (
             <div className="bg-white rounded-lg border border-slate-200 shadow-sm">
               <div className="p-4 border-b border-slate-100 flex items-center justify-between">
-                <button onClick={() => setSubView('list')} className="flex items-center gap-1.5 text-xs font-semibold text-slate-700 hover:text-slate-900">
+                <button onClick={() => setSubView('detalhe')} className="flex items-center gap-1.5 text-xs font-semibold text-slate-700 hover:text-slate-900">
                   <ArrowLeft className="w-4 h-4" /> Voltar
                 </button>
                 <div className="flex gap-2">

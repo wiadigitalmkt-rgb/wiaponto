@@ -1137,7 +1137,7 @@ export default function Admissao() {
                                         setOpenAdmissionMenuId(null);
                                         handleOpenAdmissionView(adm);
                                       }}
-                                      className="w-full flex items-center gap-2 px-3 py-2 text-xs font-medium text-slate-600 hover:bg-slate-50 transition-colors"
+                                      className="w-full flex items-center gap-2 px-3 py-2 text-xs font-medium text-slate-600 hover:bg-[#1a2c6a] hover:text-white transition-colors"
                                     >
                                       <ChevronRight className="w-3.5 h-3.5" />
                                       Ver detalhes
@@ -1213,7 +1213,7 @@ export default function Admissao() {
                                       setOpenTemplateMenuId(null);
                                       handleOpenEditTemplate(tmpl);
                                     }}
-                                    className="w-full flex items-center gap-2 px-3 py-2 text-xs font-medium text-slate-600 hover:bg-slate-50 transition-colors"
+                                    className="w-full flex items-center gap-2 px-3 py-2 text-xs font-medium text-slate-600 hover:bg-[#1a2c6a] hover:text-white transition-colors"
                                   >
                                     <Pencil className="w-3.5 h-3.5" />
                                     Editar Template

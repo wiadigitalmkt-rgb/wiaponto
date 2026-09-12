@@ -163,7 +163,9 @@ export default function Usuario() {
             login: emp.email || (emp.cpf ? emp.cpf.replace(/\D/g, '') : ''),
             senhaAtual: emp.password_hash || '',
             fotoUrl: emp.photo_url || '',
-            tipoAcesso: emp.role === 'gestor' || emp.role === 'admin' || emp.access_type === 'Gestor' ? 'Gestor' : 'Colaborador',
+            tipoAcesso: emp.access_type === 'Dono da Conta'
+              ? 'Dono da Conta'
+              : (emp.role === 'gestor' || emp.role === 'admin' || emp.access_type === 'Gestor' ? 'Gestor' : 'Colaborador'),
             statusUsuario: emp.status || 'Ativo'
           });
         }
@@ -254,10 +256,13 @@ export default function Usuario() {
   const handleChangeAccessType = (e) => {
     const novoTipo = e.target.value;
     if (novoTipo === usuarioData.tipoAcesso) return;
+    const isFullAccess = novoTipo === 'Gestor' || novoTipo === 'Dono da Conta';
     openConfirm({
-      title: novoTipo === 'Gestor' ? 'Dar acesso de Gestor?' : 'Remover acesso de Gestor?',
-      message: novoTipo === 'Gestor'
-        ? `${usuarioData.primeiroNome || 'Este usuário'} vai passar a ter acesso TOTAL ao sistema — as mesmas páginas, funções e botões que uma conta de gestor tem, sem exceção.`
+      title: isFullAccess ? `Dar acesso de ${novoTipo}?` : 'Remover acesso de Gestor?',
+      message: isFullAccess
+        ? `${usuarioData.primeiroNome || 'Este usuário'} vai passar a ter acesso TOTAL ao sistema — as mesmas páginas, funções e botões que uma conta de gestor tem, sem exceção.${
+            novoTipo === 'Dono da Conta' ? ' Além disso, só quem é "Dono da Conta" pode assinar contratos como EMPREGADORA (a empresa).' : ''
+          }`
         : `${usuarioData.primeiroNome || 'Este usuário'} volta a ter só o acesso de colaborador (ponto e área do colaborador).`,
       confirmLabel: 'Confirmar',
       danger: false,
@@ -269,9 +274,14 @@ export default function Usuario() {
     setUsuarioData(prev => ({ ...prev, tipoAcesso: novoTipo }));
     if (!supabase || !userId) return;
     try {
+      // "Dono da Conta" tem o mesmo acesso de rota que "Gestor" (role
+      // continua 'gestor', reconhecido pelo ProtectedRoute) — a diferença
+      // fica só no access_type, usado especificamente pra decidir quem
+      // pode assinar um contrato como EMPREGADORA.
+      const isFullAccess = novoTipo === 'Gestor' || novoTipo === 'Dono da Conta';
       const { error } = await supabase.from('Employees').update({
         access_type: novoTipo,
-        role: novoTipo === 'Gestor' ? 'gestor' : 'colaborador'
+        role: isFullAccess ? 'gestor' : 'colaborador'
       }).eq('id', userId);
       if (error) throw error;
     } catch (err) {
@@ -1081,7 +1091,8 @@ export default function Usuario() {
                     <div>
                       <h3 className="font-semibold text-slate-800 text-sm">Tipo de acesso</h3>
                       <p className="text-slate-500 mt-1">
-                        Gestor tem acesso total ao sistema. Colaborador mantém o acesso atual (ponto e área do colaborador).
+                        Gestor e Dono da Conta têm acesso total ao sistema. Só o Dono da Conta pode
+                        assinar contratos como EMPREGADORA (a empresa). Colaborador mantém o acesso atual.
                       </p>
                     </div>
                     <div className="md:justify-self-end w-full md:w-56">
@@ -1092,6 +1103,7 @@ export default function Usuario() {
                       >
                         <option value="Colaborador">Colaborador</option>
                         <option value="Gestor">Gestor</option>
+                        <option value="Dono da Conta">Dono da Conta</option>
                       </select>
                     </div>
                   </div>
@@ -2278,8 +2290,8 @@ function renderSignedContractText(content, employee) {
   return text;
 }
 
-function SignedContractBody({ text, employeeSignatureUrl }) {
-  const parts = text.split(/(\{ASSINATURA_COLABORADOR\}|\{ASSINATURA_GESTOR\})/g);
+function SignedContractBody({ text, employeeSignatureUrl, managerSignatureUrl, employerSignatureUrl }) {
+  const parts = text.split(/(\{ASSINATURA_COLABORADOR\}|\{ASSINATURA_GESTOR\}|\{ASSINATURA_EMPREGADORA\})/g);
   return (
     <div className="whitespace-pre-wrap leading-relaxed text-slate-700">
       {parts.map((part, idx) => {
@@ -2291,7 +2303,18 @@ function SignedContractBody({ text, employeeSignatureUrl }) {
           );
         }
         if (part === '{ASSINATURA_GESTOR}') {
-          return <span key={idx} className="text-amber-600 font-medium">[assinatura do gestor pendente]</span>;
+          return managerSignatureUrl ? (
+            <img key={idx} src={managerSignatureUrl} alt="Assinatura do gestor" className="h-16 inline-block align-middle" />
+          ) : (
+            <span key={idx} className="text-amber-600 font-medium">[assinatura do gestor pendente]</span>
+          );
+        }
+        if (part === '{ASSINATURA_EMPREGADORA}') {
+          return employerSignatureUrl ? (
+            <img key={idx} src={employerSignatureUrl} alt="Assinatura da empregadora" className="h-16 inline-block align-middle" />
+          ) : (
+            <span key={idx} className="text-amber-600 font-medium">[assinatura da empregadora pendente]</span>
+          );
         }
         return <span key={idx}>{part}</span>;
       })}
@@ -2358,15 +2381,29 @@ function SignedContractsTab({ employeeId }) {
                 Assinado em {new Date(c.signed_at).toLocaleString('pt-BR')}
               </p>
             </div>
-            <span className="bg-[#ff8b00]/10 text-[#ff8b00] px-2 py-0.5 rounded-full text-[10px] font-semibold shrink-0">
-              Assinado
-            </span>
+            <div className="flex items-center gap-1.5 shrink-0">
+              <span className="bg-[#ff8b00]/10 text-[#ff8b00] px-2 py-0.5 rounded-full text-[10px] font-semibold">
+                Colaborador assinou
+              </span>
+              {c.manager_signature_url && (
+                <span className="bg-[#1a2c6a]/10 text-[#1a2c6a] px-2 py-0.5 rounded-full text-[10px] font-semibold">
+                  Gestor assinou
+                </span>
+              )}
+              {c.employer_signature_url && (
+                <span className="bg-slate-200 text-slate-600 px-2 py-0.5 rounded-full text-[10px] font-semibold">
+                  Empregadora assinou
+                </span>
+              )}
+            </div>
           </button>
           {openContractId === c.id && (
             <div className="p-4 border-t border-slate-100">
               <SignedContractBody
                 text={renderSignedContractText(c.contract_templates?.content, employee || {})}
                 employeeSignatureUrl={employee?.signature_path}
+                managerSignatureUrl={c.manager_signature_url}
+                employerSignatureUrl={c.employer_signature_url}
               />
             </div>
           )}

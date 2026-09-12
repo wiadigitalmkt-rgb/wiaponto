@@ -7,8 +7,8 @@
  * 1. Encapsula a aplicação com os provedores globais de autenticação (AuthProvider), 
  *    gerenciamento de requisições de dados (QueryClientProvider do React Query) e roteamento (BrowserRouter).
  * 2. Gerencia os estados de autenticação do usuário (exibe tela de carregamento/spinner durante a validação ou 
- *    redireciona para o login quando necessário). 
- * 3. Mapeia e protege as rotas da aplicação: 
+ *    redireciona para o login quando necessário).
+ * 3. Mapeia e protege as rotas da aplicação:
  *    - Rotas Públicas: Login, Cadastro e Recuperação de Senha.
  *    - Rotas de Colaborador (Protegidas): Bate-ponto (/ponto), Espelho de Ponto (/espelho), Documentos e Ajuda.
  *    - Rotas do Painel Administrativo (Protegidas por perfil 'gestor'/'admin'): Dashboard, Gestão de Colaboradores, 
@@ -44,7 +44,6 @@ import Admissao from './pages/admin/Admissao';
 
 // Imports das Páginas Admin Criadas
 import Contratos from './pages/admin/Contratos';
-import Banco from './pages/admin/Banco';
 
 // Import da Página de Documentos do Colaborador
 import Documentos from './pages/documentos';
@@ -112,7 +111,6 @@ const AuthenticatedApp = () => {
           <Route path="/admin/usuario" element={<Usuario />} />
           <Route path="/admin/admissao" element={<Admissao />} />
           <Route path="/admin/contratos" element={<Contratos />} />
-          <Route path="/admin/banco-horas" element={<Banco />} />
         </Route>
 
       </Route>

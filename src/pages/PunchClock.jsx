@@ -6,7 +6,7 @@ import { useAuth } from '@/lib/AuthContext';
 import { 
   Scan, Calendar, Clock, ChevronDown, User, LogOut, 
   Eye, EyeOff, Upload, CheckCircle2, MapPin, Check, FileText,
-  Camera, RefreshCw, AlertCircle
+  Camera, RefreshCw, AlertCircle, PenLine
 } from 'lucide-react';
 
 // ============================================================================
@@ -609,6 +609,14 @@ export default function PunchClock() {
               >
                 <FileText size={14} className="text-slate-500" />
                 <span>Ver documentos</span>
+              </button>
+
+              <button
+                onClick={() => navigate('/meus-contratos')}
+                className="w-full border border-slate-300 text-slate-700 hover:bg-slate-100 font-bold text-xs py-2.5 rounded-md transition duration-150 flex items-center justify-center gap-2 cursor-pointer"
+              >
+                <PenLine size={14} className="text-slate-500" />
+                <span>Meus contratos</span>
               </button>
 
               <button

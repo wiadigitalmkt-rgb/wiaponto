@@ -7,7 +7,7 @@
  * 1. Encapsula a aplicação com os provedores globais de autenticação (AuthProvider), 
  *    gerenciamento de requisições de dados (QueryClientProvider do React Query) e roteamento (BrowserRouter).
  * 2. Gerencia os estados de autenticação do usuário (exibe tela de carregamento/spinner durante a validação ou 
- *    redireciona para o login quando necessário).
+ *    redireciona para o login quando necessário). 
  * 3. Mapeia e protege as rotas da aplicação:
  *    - Rotas Públicas: Login, Cadastro e Recuperação de Senha.
  *    - Rotas de Colaborador (Protegidas): Bate-ponto (/ponto), Espelho de Ponto (/espelho), Documentos e Ajuda.

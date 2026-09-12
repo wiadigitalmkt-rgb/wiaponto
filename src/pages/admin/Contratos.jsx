@@ -197,7 +197,7 @@ export default function Contratos() {
       });
   }, [loggedInUser]);
 
-  const isAccountOwner = currentUserAccessType === 'Dono da Conta';
+  const isAccountOwner = currentUserAccessType === 'Dono da Empresa';
 
   useEffect(() => {
     fetchTemplates();
@@ -462,7 +462,7 @@ export default function Contratos() {
     }
   }
 
-  // Só quem tem access_type = "Dono da Conta" pode assinar como
+  // Só quem tem access_type = "Dono da Empresa" pode assinar como
   // EMPREGADORA (representando a empresa formalmente no contrato).
   async function handleSignAsEmployer(contract) {
     if (!loggedInUser?.id || !isAccountOwner) return;
@@ -909,7 +909,7 @@ export default function Contratos() {
                                 Assinar como Empregadora
                               </button>
                             ) : (
-                              <span className="text-slate-400 text-[10px]">Só o Dono da Conta assina</span>
+                              <span className="text-slate-400 text-[10px]">Só o Dono da Empresa assina</span>
                             )}
                           </div>
                         </td>

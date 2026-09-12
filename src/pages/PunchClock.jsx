@@ -30,6 +30,30 @@ const minutesToHHMM = (mins) => {
   return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
 };
 
+// Detecta o tipo de dispositivo usado pra bater o ponto. Usa a API moderna
+// (userAgentData, mais confiável, disponível em navegadores Chromium) com
+// fallback pra uma checagem por regex no user agent — cobre praticamente
+// todo navegador/aparelho em uso hoje.
+const detectDeviceType = () => {
+  const ua = navigator.userAgent || '';
+
+  if (navigator.userAgentData && typeof navigator.userAgentData.mobile === 'boolean') {
+    if (navigator.userAgentData.mobile) {
+      // "mobile: true" cobre celular; ainda differencia tablet Android
+      // (que também reporta mobile:true em alguns casos) via UA.
+      if (/ipad|tablet/i.test(ua)) return 'tablet';
+      return 'mobile';
+    }
+  }
+
+  if (/ipad|tablet|kindle|silk|playbook/i.test(ua)) return 'tablet';
+  // Android sem "Mobile" no UA = tablet; Android com "Mobile" = celular.
+  if (/android/i.test(ua)) return /mobile/i.test(ua) ? 'mobile' : 'tablet';
+  if (/iphone|ipod|blackberry|iemobile|opera mini|windows phone/i.test(ua)) return 'mobile';
+
+  return 'desktop';
+};
+
 // Distância em metros entre duas coordenadas (fórmula de Haversine).
 // Usada para checar se o colaborador está dentro do raio de alguma cerca
 // geográfica cadastrada pelo gestor (tabela `geofences`).
@@ -450,6 +474,7 @@ export default function PunchClock() {
                 latitude: location.lat,
                 longitude: location.lng,
                 photo_url: selfieImage,
+                device_type: detectDeviceType(),
                 ...approvalFields
               })
               .eq('id', openRecord.id);
@@ -465,6 +490,7 @@ export default function PunchClock() {
                 latitude: location.lat,
                 longitude: location.lng,
                 photo_url: selfieImage,
+                device_type: detectDeviceType(),
                 ...approvalFields
               }
             ]);
@@ -585,12 +611,12 @@ export default function PunchClock() {
                 <span>Ver documentos</span>
               </button>
 
-              <a
-                href="https://wiaponto.vercel.app/solicitacoes"
-                className="w-full border border-slate-300 text-slate-700 hover:bg-slate-100 font-bold text-xs py-2.5 rounded-md transition duration-150 flex items-center justify-center gap-2 cursor-pointer block text-center"
+              <button
+                onClick={() => navigate('/espelho?section=ajustes')}
+                className="w-full border border-slate-300 text-slate-700 hover:bg-slate-100 font-bold text-xs py-2.5 rounded-md transition duration-150 flex items-center justify-center gap-2 cursor-pointer"
               >
                 Solicitar ajuste
-              </a>
+              </button>
             </div>
           </div>
         </main>

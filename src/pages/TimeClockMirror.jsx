@@ -831,7 +831,7 @@ export default function AdminPonto() {
           </div>
         ) : (
           <DropdownMenu modal={false}>
-            <DropdownMenuTrigger className="flex items-center justify-between border border-slate-300 rounded px-3 py-1 bg-white text-xs text-slate-700 hover:border-[#2a3c7e] transition-colors min-w-[170px] focus:outline-none shadow-xs">
+            <DropdownMenuTrigger className="flex items-center justify-between border border-slate-300 rounded px-3 py-1 bg-white text-xs text-slate-700 hover:border-[#1a2c6a] transition-colors min-w-[170px] focus:outline-none shadow-xs">
               <span className="truncate pr-2">{selectedUser ? selectedUser.full_name : 'Carregando...'}</span>
               <ChevronDown className="w-3.5 h-3.5 text-slate-400 shrink-0 ml-2" />
             </DropdownMenuTrigger>
@@ -843,7 +843,7 @@ export default function AdminPonto() {
                   placeholder="Buscar usuário..."
                   value={userSearchTerm}
                   onChange={(e) => setUserSearchTerm(e.target.value)}
-                  className="w-full pl-8 pr-2 py-1 text-xs border border-slate-200 rounded text-slate-700 focus:outline-none focus:border-[#2a3c7e]"
+                  className="w-full pl-8 pr-2 py-1 text-xs border border-slate-200 rounded text-slate-700 focus:outline-none focus:border-[#1a2c6a]"
                   onClick={(e) => e.stopPropagation()}
                 />
               </div>
@@ -857,7 +857,7 @@ export default function AdminPonto() {
                         setSelectedUser(user);
                         setUserSearchTerm('');
                       }}
-                      className="cursor-pointer text-xs px-2.5 py-2 rounded text-slate-700 transition-colors hover:bg-[#2a3c7e] hover:text-white focus:bg-[#2a3c7e] focus:text-white data-[highlighted]:bg-[#2a3c7e] data-[highlighted]:text-white focus:outline-none"
+                      className="cursor-pointer text-xs px-2.5 py-2 rounded text-slate-700 transition-colors hover:!bg-[#1a2c6a] hover:!text-white focus:!bg-[#1a2c6a] focus:!text-white data-[highlighted]:!bg-[#1a2c6a] data-[highlighted]:!text-white focus:outline-none"
                     >
                       {user.full_name}
                     </DropdownMenuItem>
@@ -880,14 +880,14 @@ export default function AdminPonto() {
       <div className="flex items-center space-x-2">
         <span className="text-xs font-semibold text-slate-600">Departamento</span>
         <DropdownMenu modal={false}>
-          <DropdownMenuTrigger className="flex items-center justify-between border border-slate-300 rounded px-3 py-1 bg-white text-xs text-slate-700 hover:border-[#2a3c7e] transition-colors focus:outline-none shadow-xs">
+          <DropdownMenuTrigger className="flex items-center justify-between border border-slate-300 rounded px-3 py-1 bg-white text-xs text-slate-700 hover:border-[#1a2c6a] transition-colors focus:outline-none shadow-xs">
             <span>{selectedDepartment}</span>
             <ChevronDown className="w-3.5 h-3.5 text-slate-400 shrink-0 ml-2" />
           </DropdownMenuTrigger>
           <DropdownMenuContent align="start" className="w-40 p-1.5 bg-white rounded-md shadow-xl border border-slate-200 z-50">
             <DropdownMenuItem 
               onClick={() => setSelectedDepartment('Todos')}
-              className="cursor-pointer text-xs px-2.5 py-2 rounded text-slate-700 transition-colors hover:bg-[#2a3c7e] hover:text-white focus:bg-[#2a3c7e] focus:text-white data-[highlighted]:bg-[#2a3c7e] data-[highlighted]:text-white focus:outline-none"
+              className="cursor-pointer text-xs px-2.5 py-2 rounded text-slate-700 transition-colors hover:!bg-[#1a2c6a] hover:!text-white focus:!bg-[#1a2c6a] focus:!text-white data-[highlighted]:!bg-[#1a2c6a] data-[highlighted]:!text-white focus:outline-none"
             >
               Todos
             </DropdownMenuItem>
@@ -904,7 +904,7 @@ export default function AdminPonto() {
       <div className="flex items-center space-x-2">
         <span className="text-xs font-semibold text-slate-600">Mês</span>
         <DropdownMenu modal={false}>
-          <DropdownMenuTrigger className="flex items-center justify-between border border-slate-300 rounded px-3 py-1 bg-white text-xs text-slate-700 hover:border-[#2a3c7e] transition-colors focus:outline-none shadow-xs">
+          <DropdownMenuTrigger className="flex items-center justify-between border border-slate-300 rounded px-3 py-1 bg-white text-xs text-slate-700 hover:border-[#1a2c6a] transition-colors focus:outline-none shadow-xs">
             <span>{selectedMonth}</span>
             <ChevronDown className="w-3.5 h-3.5 text-slate-400 shrink-0 ml-2" />
           </DropdownMenuTrigger>
@@ -913,7 +913,7 @@ export default function AdminPonto() {
               <DropdownMenuItem 
                 key={month}
                 onClick={() => setSelectedMonth(month)}
-                className="cursor-pointer text-xs px-2.5 py-2 rounded text-slate-700 transition-colors hover:bg-[#2a3c7e] hover:text-white focus:bg-[#2a3c7e] focus:text-white data-[highlighted]:bg-[#2a3c7e] data-[highlighted]:text-white focus:outline-none"
+                className="cursor-pointer text-xs px-2.5 py-2 rounded text-slate-700 transition-colors hover:!bg-[#1a2c6a] hover:!text-white focus:!bg-[#1a2c6a] focus:!text-white data-[highlighted]:!bg-[#1a2c6a] data-[highlighted]:!text-white focus:outline-none"
               >
                 {month}
               </DropdownMenuItem>
@@ -1095,7 +1095,7 @@ export default function AdminPonto() {
                                   <DropdownMenuContent align="start" className="bg-white">
                                     <DropdownMenuItem 
                                       onClick={() => handleAddPointToDb(item.id)}
-                                      className="cursor-pointer"
+                                      className="cursor-pointer hover:!bg-[#1a2c6a] hover:!text-white focus:!bg-[#1a2c6a] focus:!text-white data-[highlighted]:!bg-[#1a2c6a] data-[highlighted]:!text-white"
                                     >
                                       Adicionar ponto
                                     </DropdownMenuItem>
@@ -1105,7 +1105,7 @@ export default function AdminPonto() {
                                         setSwapDate('');
                                         setShowSwapModal(true);
                                       }}
-                                      className="cursor-pointer"
+                                      className="cursor-pointer hover:!bg-[#1a2c6a] hover:!text-white focus:!bg-[#1a2c6a] focus:!text-white data-[highlighted]:!bg-[#1a2c6a] data-[highlighted]:!text-white"
                                     >
                                       Trocar jornada
                                     </DropdownMenuItem>
@@ -1115,7 +1115,7 @@ export default function AdminPonto() {
                                         setAnnotationText('');
                                         setShowAnnotationModal(true);
                                       }}
-                                      className="cursor-pointer"
+                                      className="cursor-pointer hover:!bg-[#1a2c6a] hover:!text-white focus:!bg-[#1a2c6a] focus:!text-white data-[highlighted]:!bg-[#1a2c6a] data-[highlighted]:!text-white"
                                     >
                                       Anotação
                                     </DropdownMenuItem>
@@ -1188,7 +1188,7 @@ export default function AdminPonto() {
                                           placeholder="Max 15 caractere"
                                           value={editFormData.obs}
                                           onChange={(e) => setEditFormData({ ...editFormData, obs: e.target.value })}
-                                          className="border border-slate-300 rounded px-2 py-1 text-xs w-32 focus:outline-none focus:border-[#2a3c7e]"
+                                          className="border border-slate-300 rounded px-2 py-1 text-xs w-32 focus:outline-none focus:border-[#1a2c6a]"
                                         />
                                       </div>
 

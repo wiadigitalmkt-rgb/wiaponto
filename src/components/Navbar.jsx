@@ -140,6 +140,12 @@ export default function Navbar({ selectedCompany = 'PontoMax' }) {
                 <DropdownMenuContent align="start" className="bg-white text-slate-800">
                   <DropdownMenuItem className="cursor-pointer hover:!bg-[#1a2c6a] hover:!text-white focus:!bg-[#1a2c6a] focus:!text-white data-[highlighted]:!bg-[#1a2c6a] data-[highlighted]:!text-white">Empresa</DropdownMenuItem>
                   <DropdownMenuItem className="cursor-pointer hover:!bg-[#1a2c6a] hover:!text-white focus:!bg-[#1a2c6a] focus:!text-white data-[highlighted]:!bg-[#1a2c6a] data-[highlighted]:!text-white">Colaboradores</DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => navigate('/minha-assinatura')}
+                    className="cursor-pointer hover:!bg-[#1a2c6a] hover:!text-white focus:!bg-[#1a2c6a] focus:!text-white data-[highlighted]:!bg-[#1a2c6a] data-[highlighted]:!text-white"
+                  >
+                    Minha Assinatura
+                  </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
 

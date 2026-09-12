@@ -546,6 +546,9 @@ export default function Contratos() {
                 >
                   <ArrowLeft className="w-4 h-4" /> Voltar
                 </button>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">Nome*</label>
+                  <input
                     type="text"
                     value={editorName}
                     onChange={(e) => setEditorName(e.target.value)}

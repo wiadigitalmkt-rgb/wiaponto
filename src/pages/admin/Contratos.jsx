@@ -158,6 +158,8 @@ export default function Contratos() {
 
   const [allEmployees, setAllEmployees] = useState([]);
   const [linkedIds, setLinkedIds] = useState(new Set());
+  const [linkedStatusMap, setLinkedStatusMap] = useState({}); // { employeeId: 'pendente' | 'assinado' }
+  const [duplicateWarning, setDuplicateWarning] = useState(null); // { names: string[] } | null
   const [selectedToLink, setSelectedToLink] = useState(new Set());
   const [linkTab, setLinkTab] = useState('todos'); // 'todos' | 'vinculados' | 'nao_vinculados'
   const [linkSearch, setLinkSearch] = useState('');
@@ -291,9 +293,10 @@ export default function Contratos() {
 
     const { data: links } = await supabase
       .from('employee_contracts')
-      .select('employee_id')
+      .select('employee_id, status')
       .eq('template_id', template.id);
     setLinkedIds(new Set((links || []).map((l) => l.employee_id)));
+    setLinkedStatusMap(Object.fromEntries((links || []).map((l) => [l.employee_id, l.status])));
   }
 
   const linkSearchLower = linkSearch.toLowerCase();
@@ -316,20 +319,39 @@ export default function Contratos() {
 
   async function handleConfirmLink() {
     if (!currentTemplate || selectedToLink.size === 0) return;
+
+    // Quem já tem ESTE template assinado não pode ser vinculado de novo —
+    // pra reemitir, o gestor precisa desvincular o contrato atual dele
+    // primeiro (ou usar outro template). Colaboradores com vínculo ainda
+    // "pendente" (não assinado) não entram nesse bloqueio, só os assinados.
+    const alreadySigned = Array.from(selectedToLink).filter((id) => linkedStatusMap[id] === 'assinado');
+    if (alreadySigned.length > 0) {
+      const names = allEmployees
+        .filter((e) => alreadySigned.includes(e.id))
+        .map((e) => e.full_name);
+      setDuplicateWarning({ names });
+    }
+
+    const idsToLink = Array.from(selectedToLink).filter(
+      (id) => !linkedIds.has(id) && !alreadySigned.includes(id)
+    );
+    if (idsToLink.length === 0) return;
+
     setSavingLink(true);
     try {
-      const rows = Array.from(selectedToLink)
-        .filter((id) => !linkedIds.has(id))
-        .map((employee_id) => ({
-          template_id: currentTemplate.id,
-          employee_id,
-          status: 'pendente',
-        }));
-      if (rows.length > 0) {
-        const { error } = await supabase.from('employee_contracts').insert(rows);
-        if (error) throw error;
-      }
-      setLinkedIds((prev) => new Set([...prev, ...selectedToLink]));
+      const rows = idsToLink.map((employee_id) => ({
+        template_id: currentTemplate.id,
+        employee_id,
+        status: 'pendente',
+      }));
+      const { error } = await supabase.from('employee_contracts').insert(rows);
+      if (error) throw error;
+
+      setLinkedIds((prev) => new Set([...prev, ...idsToLink]));
+      setLinkedStatusMap((prev) => ({
+        ...prev,
+        ...Object.fromEntries(idsToLink.map((id) => [id, 'pendente'])),
+      }));
       setSelectedToLink(new Set());
     } catch (err) {
       console.error(err);
@@ -353,6 +375,11 @@ export default function Contratos() {
       setLinkedIds((prev) => {
         const next = new Set(prev);
         selectedToLink.forEach((id) => next.delete(id));
+        return next;
+      });
+      setLinkedStatusMap((prev) => {
+        const next = { ...prev };
+        selectedToLink.forEach((id) => delete next[id]);
         return next;
       });
       setSelectedToLink(new Set());
@@ -713,7 +740,14 @@ export default function Contratos() {
                               className="accent-[#ff8b00]"
                             />
                           </td>
-                          <td className="py-2.5 px-2 font-medium text-slate-700">{emp.full_name}</td>
+                          <td className="py-2.5 px-2 font-medium text-slate-700 flex items-center gap-2">
+                            {emp.full_name}
+                            {linkedStatusMap[emp.id] === 'assinado' && (
+                              <span className="bg-[#ff8b00]/10 text-[#ff8b00] px-2 py-0.5 rounded-full text-[10px] font-semibold">
+                                Já assinado
+                              </span>
+                            )}
+                          </td>
                           <td className="py-2.5 px-2 text-slate-500">{emp.status || 'Ativo'}</td>
                           <td className="py-2.5 px-2 text-slate-500">{emp.position || '(Preencher)'}</td>
                         </tr>
@@ -801,6 +835,37 @@ export default function Contratos() {
               </button>
               <button onClick={handleConfirmUnlink} className="px-4 py-2 bg-[#ff8b00] hover:bg-[#fc9314] text-white rounded text-xs font-medium transition-colors">
                 Sim, desvincular
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: CONTRATO JÁ ASSINADO (bloqueia vínculo duplicado) */}
+      {duplicateWarning && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-sm w-full p-6 space-y-4 text-center">
+            <h3 className="font-bold text-slate-800 text-sm">Contrato já assinado</h3>
+            <p className="text-xs text-slate-500">
+              {duplicateWarning.names.length === 1 ? (
+                <>
+                  <strong>{duplicateWarning.names[0]}</strong> já tem este contrato ativo e assinado —
+                  não é possível vincular de novo o mesmo template.
+                </>
+              ) : (
+                <>
+                  Os colaboradores abaixo já têm este contrato ativo e assinado — não é possível
+                  vincular de novo o mesmo template pra eles:
+                  <br /><strong>{duplicateWarning.names.join(', ')}</strong>
+                </>
+              )}
+            </p>
+            <p className="text-[11px] text-slate-400">
+              Pra reemitir, use outro contrato ou desvincule o atual dele(s) primeiro (aba "Vinculados" → selecionar → "Desvincular").
+            </p>
+            <div className="flex justify-center pt-2">
+              <button onClick={() => setDuplicateWarning(null)} className="px-5 py-2 bg-[#ff8b00] hover:bg-[#fc9314] text-white rounded text-xs font-medium transition-colors">
+                Entendi
               </button>
             </div>
           </div>

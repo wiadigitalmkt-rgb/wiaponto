@@ -21,7 +21,8 @@ import {
   Eye,
   EyeOff,
   Camera,
-  X
+  X,
+  PenLine
 } from 'lucide-react';
 
 export default function Usuario() {
@@ -94,6 +95,7 @@ export default function Usuario() {
 
   // Estados dos Recursos Específicos
   const [notes, setNotes] = useState([]);
+  const [hasSignedContract, setHasSignedContract] = useState(false);
   const [newNoteText, setNewNoteText] = useState('');
   const [savingNote, setSavingNote] = useState(false);
   const [showNotesModal, setShowNotesModal] = useState(false);
@@ -173,6 +175,13 @@ export default function Usuario() {
           .eq('employee_id', userId)
           .order('created_at', { ascending: false });
         if (notesData) setNotes(notesData);
+
+        const { count: signedCount } = await supabase
+          .from('employee_contracts')
+          .select('id', { count: 'exact', head: true })
+          .eq('employee_id', userId)
+          .eq('status', 'assinado');
+        setHasSignedContract((signedCount || 0) > 0);
 
         const { data: vacs } = await supabase.from('employee_vacations').select('*').eq('employee_id', userId);
         if (vacs) setVacations(vacs);
@@ -620,6 +629,7 @@ export default function Usuario() {
     { id: 'ferias', label: 'Férias', icon: Plane },
     { id: 'dependentes', label: 'Dependentes', icon: Users },
     { id: 'formulario_admissao', label: 'Formulário de Admissão', icon: FileText },
+    ...(hasSignedContract ? [{ id: 'contrato', label: 'Contrato', icon: PenLine }] : []),
     { id: 'acesso', label: 'Acesso ao sistema', icon: KeyRound },
   ];
 
@@ -1167,6 +1177,10 @@ export default function Usuario() {
               {/* 7. FORMULÁRIO DE ADMISSÃO — lê o processo de admissão real
                   (preenchido pelo colaborador em PreencherAdmissao.jsx) */}
               {activeTab === 'formulario_admissao' && <AdmissionInfoTab employeeId={userId} />}
+
+              {/* 8. CONTRATO — só existe no menu quando há pelo menos um
+                  contrato assinado (hasSignedContract) */}
+              {activeTab === 'contrato' && <SignedContractsTab employeeId={userId} />}
             </div>
           </div>
         </div>
@@ -2208,6 +2222,156 @@ function AdmissionInfoTab({ employeeId }) {
           })}
         </div>
       )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// CONTRATO — mostra o(s) contrato(s) assinados pelo colaborador (lê
+// employee_contracts + contract_templates, mesma lógica de variáveis usada
+// em admin/Contratos.jsx e AssinarContrato.jsx). Só é chamada quando
+// hasSignedContract é true, então aqui já se assume que existe pelo menos
+// um contrato assinado.
+// ---------------------------------------------------------------------------
+
+function formatContractDate(isoDate) {
+  if (!isoDate) return '';
+  const [y, m, d] = isoDate.split('-');
+  return `${d}/${m}/${y}`;
+}
+
+function renderSignedContractText(content, employee) {
+  const map = {
+    COLABORADOR_NOME_COMPLETO: employee.full_name,
+    COLABORADOR_PRIMEIRO_NOME: employee.first_name,
+    COLABORADOR_SOBRENOME: employee.last_name,
+    COLABORADOR_GENERO: employee.gender,
+    COLABORADOR_DATA_NASCIMENTO: formatContractDate(employee.birth_date),
+    COLABORADOR_CPF: employee.cpf,
+    COLABORADOR_RG: employee.rg,
+    COLABORADOR_PIS: employee.pis_pasep,
+    COLABORADOR_ESTADO_CIVIL: employee.marital_status,
+    COLABORADOR_EMAIL: employee.email,
+    COLABORADOR_TELEFONE: employee.phone,
+    COLABORADOR_DADOS_BANCARIOS: [employee.bank_name, employee.bank_agency, employee.bank_account]
+      .filter(Boolean).join(' / '),
+    COLABORADOR_ENDERECO_COMPLETO: [employee.street, employee.number, employee.neighborhood, employee.city, employee.state, employee.cep]
+      .filter(Boolean).join(', '),
+    COLABORADOR_CEP: employee.cep,
+    COLABORADOR_RUA: employee.street,
+    COLABORADOR_NUMERO: employee.number,
+    COLABORADOR_COMPLEMENTO: employee.complement,
+    COLABORADOR_BAIRRO: employee.neighborhood,
+    COLABORADOR_CIDADE: employee.city,
+    COLABORADOR_ESTADO: employee.state,
+    CONTRATO_TIPO: employee.contract_type,
+    CONTRATO_CARGO: employee.position,
+    CONTRATO_DEPARTAMENTO: employee.department,
+    CONTRATO_REMUNERACAO: employee.salary,
+    CONTRATO_DATA_ADMISSAO: formatContractDate(employee.admission_date),
+    CONTRATO_DATA_ATUAL: formatContractDate(new Date().toISOString().split('T')[0]),
+  };
+  let text = content || '';
+  Object.entries(map).forEach(([token, value]) => {
+    text = text.split(`{${token}}`).join(value ? String(value) : '_______________');
+  });
+  return text;
+}
+
+function SignedContractBody({ text, employeeSignatureUrl }) {
+  const parts = text.split(/(\{ASSINATURA_COLABORADOR\}|\{ASSINATURA_GESTOR\})/g);
+  return (
+    <div className="whitespace-pre-wrap leading-relaxed text-slate-700">
+      {parts.map((part, idx) => {
+        if (part === '{ASSINATURA_COLABORADOR}') {
+          return employeeSignatureUrl ? (
+            <img key={idx} src={employeeSignatureUrl} alt="Assinatura do colaborador" className="h-16 inline-block align-middle" />
+          ) : (
+            <span key={idx} className="text-amber-600 font-medium">[assinatura pendente]</span>
+          );
+        }
+        if (part === '{ASSINATURA_GESTOR}') {
+          return <span key={idx} className="text-amber-600 font-medium">[assinatura do gestor pendente]</span>;
+        }
+        return <span key={idx}>{part}</span>;
+      })}
+    </div>
+  );
+}
+
+function SignedContractsTab({ employeeId }) {
+  const [loading, setLoading] = useState(true);
+  const [contracts, setContracts] = useState([]);
+  const [employee, setEmployee] = useState(null);
+  const [openContractId, setOpenContractId] = useState(null);
+
+  useEffect(() => {
+    if (!employeeId || !supabase) return;
+    (async () => {
+      setLoading(true);
+      const [{ data: emp }, { data: contractsData, error }] = await Promise.all([
+        supabase.from('Employees').select('*').eq('id', employeeId).maybeSingle(),
+        supabase
+          .from('employee_contracts')
+          .select('*, contract_templates(name, content)')
+          .eq('employee_id', employeeId)
+          .eq('status', 'assinado')
+          .order('signed_at', { ascending: false }),
+      ]);
+      if (error) console.error(error);
+      setEmployee(emp || null);
+      setContracts(contractsData || []);
+      setLoading(false);
+    })();
+  }, [employeeId]);
+
+  if (loading) {
+    return (
+      <div className="p-10 flex items-center justify-center text-slate-400 text-xs gap-2">
+        <Loader2 className="w-4 h-4 animate-spin" /> Carregando contrato...
+      </div>
+    );
+  }
+
+  if (contracts.length === 0) {
+    return (
+      <div className="p-6 text-xs">
+        <div className="border-2 border-dashed border-slate-200 rounded-lg p-12 text-center text-slate-400 space-y-2">
+          <PenLine className="w-8 h-8 mx-auto text-slate-300" />
+          <p className="font-medium text-slate-600">Nenhum contrato assinado ainda.</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="p-6 text-xs space-y-3">
+      {contracts.map((c) => (
+        <div key={c.id} className="border rounded-lg overflow-hidden">
+          <button
+            onClick={() => setOpenContractId(openContractId === c.id ? null : c.id)}
+            className="w-full flex items-center justify-between px-4 py-3 bg-slate-50 hover:bg-slate-100 transition-colors text-left"
+          >
+            <div>
+              <p className="font-semibold text-slate-800">{c.contract_templates?.name}</p>
+              <p className="text-slate-500 text-[11px] mt-0.5">
+                Assinado em {new Date(c.signed_at).toLocaleString('pt-BR')}
+              </p>
+            </div>
+            <span className="bg-[#ff8b00]/10 text-[#ff8b00] px-2 py-0.5 rounded-full text-[10px] font-semibold shrink-0">
+              Assinado
+            </span>
+          </button>
+          {openContractId === c.id && (
+            <div className="p-4 border-t border-slate-100">
+              <SignedContractBody
+                text={renderSignedContractText(c.contract_templates?.content, employee || {})}
+                employeeSignatureUrl={employee?.signature_path}
+              />
+            </div>
+          )}
+        </div>
+      ))}
     </div>
   );
 }

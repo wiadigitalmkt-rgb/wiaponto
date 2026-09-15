@@ -61,10 +61,15 @@ export default function Dashboard() {
 
       const uniqueEmployeesToday = new Set(todayRecords?.map(r => r.employee_id)).size;
 
+      const { count: pendingAdjustments } = await supabase
+        .from('adjustment_requests')
+        .select('id', { count: 'exact', head: true })
+        .eq('status', 'pendente');
+
       setPontoHoje({
         presentes: uniqueEmployeesToday,
         totalColaboradores: totalEmp || 0,
-        pendentesJustificativa: 0
+        pendentesJustificativa: pendingAdjustments || 0
       });
 
       const extraList = [];
@@ -119,6 +124,13 @@ export default function Dashboard() {
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'time_records' },
+        () => {
+          loadTodayStats();
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'adjustment_requests' },
         () => {
           loadTodayStats();
         }

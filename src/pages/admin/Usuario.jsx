@@ -26,6 +26,62 @@ import {
   Upload
 } from 'lucide-react';
 
+// ---------------------------------------------------------------------------
+// PRÉ-VISUALIZAÇÃO DE ARQUIVOS — usado em qualquer lugar que hoje abriria um
+// anexo (foto, PDF, vídeo) em nova aba. Detecta o tipo pela extensão e
+// mostra num popup, sem sair do app; "Baixar arquivo" cobre tipos que não
+// dá pra pré-visualizar direto no navegador.
+// ---------------------------------------------------------------------------
+function getFileKind(url, fileName) {
+  const name = (fileName || url || '').toLowerCase();
+  if (/\.(png|jpe?g|gif|webp|bmp|svg)(\?|$)/.test(name)) return 'image';
+  if (/\.(mp4|webm|mov|ogv)(\?|$)/.test(name)) return 'video';
+  if (/\.pdf(\?|$)/.test(name)) return 'pdf';
+  return 'other';
+}
+
+function FilePreviewModal({ file, onClose }) {
+  if (!file) return null;
+  const kind = getFileKind(file.url, file.name);
+  return (
+    <div
+      className="fixed inset-0 bg-black/70 flex items-center justify-center z-[70] p-4"
+      onClick={onClose}
+    >
+      <div
+        className="bg-white rounded-lg shadow-xl max-w-3xl w-full max-h-[90vh] flex flex-col"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between p-3 border-b border-slate-100">
+          <p className="text-xs font-semibold text-slate-700 truncate pr-4">{file.name || 'Arquivo'}</p>
+          <button onClick={onClose} className="text-slate-400 hover:text-slate-600 shrink-0">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+        <div className="flex-1 overflow-auto bg-slate-50 flex items-center justify-center p-2">
+          {kind === 'image' && (
+            <img src={file.url} alt={file.name || 'Arquivo'} className="max-w-full max-h-[75vh] object-contain" />
+          )}
+          {kind === 'video' && (
+            <video src={file.url} controls className="max-w-full max-h-[75vh]" />
+          )}
+          {kind === 'pdf' && (
+            <iframe src={file.url} title={file.name || 'Arquivo'} className="w-full h-[75vh] border-0" />
+          )}
+          {kind === 'other' && (
+            <div className="text-center p-10 text-slate-500 text-xs space-y-3">
+              <p>Não é possível pré-visualizar este tipo de arquivo.</p>
+              <a href={file.url} target="_blank" rel="noopener noreferrer" className="text-[#ff8b00] hover:underline font-medium">
+                Baixar arquivo
+              </a>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function Usuario() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
@@ -2189,6 +2245,7 @@ function isAdmissionFieldEmpty(value) {
 function AdmissionInfoTab({ employeeId }) {
   const [loading, setLoading] = useState(true);
   const [admission, setAdmission] = useState(null);
+  const [previewFile, setPreviewFile] = useState(null);
 
   useEffect(() => {
     if (!employeeId || !supabase) return;
@@ -2270,14 +2327,12 @@ function AdmissionInfoTab({ employeeId }) {
                     <AlertCircle className="w-3.5 h-3.5" /> Não enviado
                   </span>
                 ) : isFileUpload ? (
-                  <a
-                    href={displayValue}
-                    target="_blank"
-                    rel="noreferrer"
+                  <button
+                    onClick={() => setPreviewFile({ url: displayValue, name: field.label })}
                     className="text-[#ff8b00] hover:underline flex items-center gap-1"
                   >
                     <CheckCircle2 className="w-3.5 h-3.5" /> Ver arquivo enviado
-                  </a>
+                  </button>
                 ) : (
                   <span className="text-slate-700 text-right break-words max-w-xs">{displayValue}</span>
                 )}
@@ -2286,6 +2341,7 @@ function AdmissionInfoTab({ employeeId }) {
           })}
         </div>
       )}
+      <FilePreviewModal file={previewFile} onClose={() => setPreviewFile(null)} />
     </div>
   );
 }
@@ -2480,6 +2536,7 @@ function DocumentsTab({ employeeId, canManage, uploaderId }) {
   const [category, setCategory] = useState(DOCUMENT_CATEGORIES[0]);
   const [selectedFile, setSelectedFile] = useState(null);
   const [uploading, setUploading] = useState(false);
+  const [previewFile, setPreviewFile] = useState(null);
 
   useEffect(() => {
     if (!employeeId) return;
@@ -2609,9 +2666,12 @@ function DocumentsTab({ employeeId, canManage, uploaderId }) {
           {documents.map((doc) => (
             <div key={doc.id} className="flex items-center justify-between px-4 py-3">
               <div>
-                <a href={doc.file_url} target="_blank" rel="noopener noreferrer" className="font-medium text-slate-700 hover:text-[#ff8b00] hover:underline">
+                <button
+                  onClick={() => setPreviewFile({ url: doc.file_url, name: doc.file_name })}
+                  className="font-medium text-slate-700 hover:text-[#ff8b00] hover:underline text-left"
+                >
                   {doc.file_name}
-                </a>
+                </button>
                 <p className="text-slate-400 text-[11px] mt-0.5">
                   {doc.category} — {new Date(doc.created_at).toLocaleDateString('pt-BR')}
                 </p>
@@ -2625,6 +2685,7 @@ function DocumentsTab({ employeeId, canManage, uploaderId }) {
           ))}
         </div>
       )}
+      <FilePreviewModal file={previewFile} onClose={() => setPreviewFile(null)} />
     </div>
   );
 }

@@ -233,8 +233,9 @@ export default function AdminPonto() {
   const [searchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState(
     searchParams.get('section') === 'ajustes' ? 'ajustes' :
-    searchParams.get('section') === 'banco' ? 'banco' : 'pontos'
-  ); // 'pontos' | 'resumo' | 'ajustes' | 'banco'
+    searchParams.get('section') === 'banco' ? 'banco' :
+    searchParams.get('section') === 'holerite' ? 'holerite' : 'pontos'
+  ); // 'pontos' | 'resumo' | 'ajustes' | 'banco' | 'holerite'
   const [selectedMonth, setSelectedMonth] = useState(() => getMonthLabel(new Date()));
   const [selectedDepartment, setSelectedDepartment] = useState('Todos');
   
@@ -279,6 +280,13 @@ export default function AdminPonto() {
   const [showNewBankEntryForm, setShowNewBankEntryForm] = useState(false);
   const [newBankEntry, setNewBankEntry] = useState({ entry_date: '', hours: '', tipo: 'credito', description: '' });
   const [savingBankEntry, setSavingBankEntry] = useState(false);
+
+  // Holerite (do colaborador selecionado no topo da página)
+  const [payslips, setPayslips] = useState([]);
+  const [loadingPayslips, setLoadingPayslips] = useState(false);
+  const [showNewPayslipForm, setShowNewPayslipForm] = useState(false);
+  const [newPayslip, setNewPayslip] = useState({ reference_month: '', file: null });
+  const [savingPayslip, setSavingPayslip] = useState(false);
   const [showJornadaModal, setShowJornadaModal] = useState(false);
   const [selectedPhotoModal, setSelectedPhotoModal] = useState(null);
 
@@ -715,6 +723,83 @@ export default function AdminPonto() {
     }
   };
 
+  // HOLERITE — PDFs do contracheque, organizados por mês de referência.
+  // Reaproveita o mesmo bucket "documents" já usado pra documentos gerais.
+  const fetchPayslips = async () => {
+    if (!selectedUser?.id) return;
+    setLoadingPayslips(true);
+    const { data, error } = await supabase
+      .from('employee_payslips')
+      .select('*')
+      .eq('employee_id', selectedUser.id)
+      .order('reference_month', { ascending: false });
+    if (error) console.error('Erro ao buscar holerites:', error);
+    setPayslips(data || []);
+    setLoadingPayslips(false);
+  };
+
+  useEffect(() => {
+    if (activeTab === 'holerite') fetchPayslips();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab, selectedUser]);
+
+  const handleAddPayslip = async () => {
+    if (!selectedUser?.id || !newPayslip.reference_month || !newPayslip.file) {
+      alert('Escolha o mês de referência e o arquivo do holerite.');
+      return;
+    }
+    setSavingPayslip(true);
+    try {
+      const file = newPayslip.file;
+      const fileExt = file.name.split('.').pop();
+      const fileName = `holerites/${selectedUser.id}/${Date.now()}_${Math.random().toString(36).slice(2)}.${fileExt}`;
+
+      const { error: uploadError } = await supabase.storage.from('documents').upload(fileName, file);
+      if (uploadError) throw uploadError;
+
+      const { data: urlData } = supabase.storage.from('documents').getPublicUrl(fileName);
+
+      const { error } = await supabase.from('employee_payslips').insert([{
+        employee_id: selectedUser.id,
+        reference_month: newPayslip.reference_month,
+        file_name: file.name,
+        file_url: urlData.publicUrl,
+        uploaded_by: currentManagerId,
+      }]);
+      if (error) throw error;
+
+      setNewPayslip({ reference_month: '', file: null });
+      setShowNewPayslipForm(false);
+      fetchPayslips();
+      showToast('Holerite anexado!');
+    } catch (err) {
+      console.error(err);
+      alert('Erro ao anexar holerite: ' + err.message);
+    } finally {
+      setSavingPayslip(false);
+    }
+  };
+
+  const handleDeletePayslip = async (payslip) => {
+    if (!window.confirm('Excluir este holerite?')) return;
+    try {
+      const { error } = await supabase.from('employee_payslips').delete().eq('id', payslip.id);
+      if (error) throw error;
+      fetchPayslips();
+      showToast('Holerite removido.');
+    } catch (err) {
+      console.error(err);
+      alert('Erro ao remover: ' + err.message);
+    }
+  };
+
+  const formatReferenceMonth = (val) => {
+    if (!val) return '';
+    const [y, m] = val.split('-');
+    const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+    return `${MESES[parseInt(m, 10) - 1]}/${y}`;
+  };
+
   const handleSubmitAdjustment = async () => {
     if (!selectedUser?.id || !newAdjustment.record_date || !newAdjustment.description.trim()) {
       alert('Preencha pelo menos a data e a descrição do que aconteceu.');
@@ -1102,6 +1187,18 @@ export default function AdminPonto() {
                 <Clock className="w-4 h-4 shrink-0" />
                 <span className="whitespace-nowrap max-md:truncate">Banco de Horas</span>
               </button>
+
+              <button 
+                onClick={() => setActiveTab('holerite')}
+                className={`w-full flex items-center space-x-3 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                  activeTab === 'holerite'
+                    ? 'bg-white text-slate-700 hover:bg-[#fc9314] hover:text-white border-l-4 border-[#ff8b00] shadow-sm font-semibold'
+                    : 'bg-white text-slate-500 hover:bg-[#fc9314] hover:text-white'
+                }`}
+              >
+                <FileText className="w-4 h-4 shrink-0" />
+                <span className="whitespace-nowrap max-md:truncate">Holerite</span>
+              </button>
             </nav>
           </div>
         </aside>
@@ -1118,7 +1215,7 @@ export default function AdminPonto() {
               </a> 
               <ChevronRight className="w-3 h-3 inline mx-1" />{' '}
               <span className="text-[#ff8b00] font-medium">
-                {activeTab === 'pontos' ? 'Pontos registrados' : activeTab === 'resumo' ? 'Resumo das horas' : activeTab === 'banco' ? 'Banco de horas' : 'Solicitações de Ajuste'}
+                {activeTab === 'pontos' ? 'Pontos registrados' : activeTab === 'resumo' ? 'Resumo das horas' : activeTab === 'banco' ? 'Banco de horas' : activeTab === 'holerite' ? 'Holerite' : 'Solicitações de Ajuste'}
               </span>
             </div>
             
@@ -1835,6 +1932,91 @@ export default function AdminPonto() {
                       </div>
                     );
                   })
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* CONTEÚDO DA ABA: HOLERITE */}
+          {activeTab === 'holerite' && (
+            <div className="bg-white rounded-lg border border-slate-200 shadow-sm">
+              <div className="p-5 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <div>
+                  <p className="text-slate-500 text-xs">Holerites de {selectedUser?.full_name || 'colaborador'}</p>
+                  <p className="text-slate-800 font-bold text-sm mt-0.5">Contracheques anexados</p>
+                </div>
+                {isManager && (
+                  <button
+                    onClick={() => setShowNewPayslipForm((v) => !v)}
+                    className="bg-[#ff8b00] hover:bg-[#fc9314] text-white text-xs font-medium px-4 py-2 rounded transition-colors self-start"
+                  >
+                    {showNewPayslipForm ? 'Cancelar' : '+ Anexar holerite'}
+                  </button>
+                )}
+              </div>
+
+              {isManager && showNewPayslipForm && (
+                <div className="p-5 border-b border-slate-100 space-y-3 bg-slate-50/50 text-xs">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-[11px] text-slate-500 mb-1">Mês de referência</label>
+                      <input
+                        type="month"
+                        value={newPayslip.reference_month}
+                        onChange={(e) => setNewPayslip((p) => ({ ...p, reference_month: e.target.value }))}
+                        className="w-full border rounded p-2 text-xs focus:outline-none focus:border-[#ff8b00]"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] text-slate-500 mb-1">Arquivo (PDF)</label>
+                      <input
+                        type="file"
+                        accept=".pdf"
+                        onChange={(e) => setNewPayslip((p) => ({ ...p, file: e.target.files?.[0] || null }))}
+                        className="w-full text-xs"
+                      />
+                    </div>
+                  </div>
+                  <div className="flex justify-end">
+                    <button
+                      onClick={handleAddPayslip}
+                      disabled={savingPayslip}
+                      className="bg-[#ff8b00] hover:bg-[#fc9314] text-white text-xs font-medium px-5 py-2 rounded transition-colors disabled:opacity-50 flex items-center gap-1.5"
+                    >
+                      {savingPayslip && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                      Anexar
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              <div className="divide-y divide-slate-100">
+                {loadingPayslips ? (
+                  <div className="p-8 text-center text-slate-400 flex items-center justify-center gap-2 text-xs">
+                    <Loader2 className="w-4 h-4 animate-spin" /> Carregando...
+                  </div>
+                ) : payslips.length === 0 ? (
+                  <div className="p-8 text-center text-slate-400 text-xs">Nenhum holerite anexado ainda.</div>
+                ) : (
+                  payslips.map((p) => (
+                    <div key={p.id} className="p-4 flex items-center justify-between gap-4 text-xs">
+                      <div>
+                        <p className="font-semibold text-slate-700 capitalize">{formatReferenceMonth(p.reference_month)}</p>
+                        <a href={p.file_url} target="_blank" rel="noopener noreferrer" className="text-[#ff8b00] hover:underline">
+                          {p.file_name}
+                        </a>
+                      </div>
+                      {isManager && (
+                        <button
+                          onClick={() => handleDeletePayslip(p)}
+                          className="text-slate-400 hover:text-red-500"
+                          title="Remover holerite"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </div>
+                  ))
                 )}
               </div>
             </div>

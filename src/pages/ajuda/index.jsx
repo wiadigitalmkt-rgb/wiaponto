@@ -21,9 +21,15 @@ export default function Ajuda() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [recentArticles, setRecentArticles] = useState([]);
-  
-  const [userRole, setUserRole] = useState('gestor'); 
-  const [activeTab, setActiveTab] = useState('gestor');
+
+  // O que a pessoa vê é decidido pelo login real, não por um botão de
+  // alternância — antes dava pra qualquer um clicar em "Área do Gestor" e
+  // ver conteúdo que não era pra ele ver.
+  const sessionUser = JSON.parse(
+    localStorage.getItem('userSession') || sessionStorage.getItem('userSession') || '{}'
+  );
+  const isManager = sessionUser.role === 'gestor' || sessionUser.role === 'admin';
+  const activeTab = isManager ? 'gestor' : 'colaborador';
 
   // Categorias alinhadas com os IDs e nomes do sistema
   const categoriesByRole = {
@@ -120,35 +126,6 @@ export default function Ajuda() {
       </div>
 
       <main className="flex-1 max-w-6xl w-full mx-auto px-4 py-8 space-y-8">
-        {userRole === 'gestor' && (
-          <div className="flex justify-center">
-            <div className="bg-slate-200/80 p-1 rounded-xl flex gap-1 text-sm font-medium">
-              <button
-                onClick={() => { setActiveTab('gestor'); setSelectedCategory(null); }}
-                className={`px-5 py-2.5 rounded-lg transition-all flex items-center gap-2 cursor-pointer ${
-                  activeTab === 'gestor'
-                    ? 'bg-white text-[#fc9314] shadow-sm font-semibold'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                <ShieldCheck className="w-4 h-4" />
-                Área do Gestor / RH
-              </button>
-              <button
-                onClick={() => { setActiveTab('colaborador'); setSelectedCategory(null); }}
-                className={`px-5 py-2.5 rounded-lg transition-all flex items-center gap-2 cursor-pointer ${
-                  activeTab === 'colaborador'
-                    ? 'bg-white text-[#fc9314] shadow-sm font-semibold'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                <UserCheck className="w-4 h-4" />
-                Visão do Colaborador
-              </button>
-            </div>
-          </div>
-        )}
-
         <section className="space-y-4">
           <div className="flex justify-between items-baseline">
             <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2">

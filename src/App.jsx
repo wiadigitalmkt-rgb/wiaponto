@@ -33,6 +33,8 @@ import Requests from './pages/Requests';
 import PreencherAdmissao from './pages/PreencherAdmissao';
 import AssinarContrato from './pages/AssinarContrato';
 import MinhaAssinatura from './pages/MinhaAssinatura';
+import Perfil from './pages/Perfil';
+import Avisos from './pages/Avisos';
 
 
 // Imports do Novo Painel Admin
@@ -96,6 +98,8 @@ const AuthenticatedApp = () => {
         <Route path="/documentos" element={<Documentos />} />
         <Route path="/meus-contratos" element={<AssinarContrato />} />
         <Route path="/minha-assinatura" element={<MinhaAssinatura />} />
+        <Route path="/perfil" element={<Perfil />} />
+        <Route path="/avisos" element={<Avisos />} />
         <Route path="/ajuda" element={<Ajuda />} />
         <Route path="/ajuda/artigo/:id" element={<ArtigoDetalhes />} />
         <Route path="/ajuda/categoria/:slug" element={<CategoriaDetalhes />} />

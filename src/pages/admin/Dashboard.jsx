@@ -11,7 +11,8 @@ import {
   MessageSquare, 
   Briefcase, 
   ShieldCheck, 
-  Calendar
+  Calendar,
+  Wallet
 } from 'lucide-react';
 
 const timeToMinutes = (timeStr) => {
@@ -135,7 +136,7 @@ export default function Dashboard() {
     { title: 'Admissão', icon: UserPlus, path: '/admin/admissao' },
     { title: 'Contratos', icon: FileText, path: '/admin/contratos' },
     { title: 'Banco de horas', icon: Calendar, path: '/espelho?section=banco' },
-    { title: 'Documentos', icon: FileText, path: '/documentos' },
+    { title: 'Holerite', icon: Wallet, path: '/espelho?section=holerite' },
     { title: 'Central de Ajuda', icon: HelpCircle, path: '/ajuda' },
     { 
       title: 'Comunicação interna', 

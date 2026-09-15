@@ -5,8 +5,8 @@ import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/AuthContext';
 import { 
   Scan, Calendar, Clock, ChevronDown, User, LogOut, 
-  Eye, EyeOff, Upload, CheckCircle2, MapPin, Check, FileText,
-  Camera, RefreshCw, AlertCircle, PenLine
+  Eye, EyeOff, Upload, CheckCircle2, MapPin, Check,
+  Camera, RefreshCw, AlertCircle
 } from 'lucide-react';
 
 // ============================================================================
@@ -579,7 +579,7 @@ export default function PunchClock() {
               </button>
             </div>
 
-            <div className="grid grid-cols-3 divide-x divide-slate-100 bg-slate-50/30 text-center py-6 border-b border-slate-100">
+            <div className="grid grid-cols-3 divide-x divide-slate-100 bg-slate-50/30 text-center py-6">
               <div>
                 <span className="block text-xs font-medium text-slate-500 mb-2">Dias trabalhados</span>
                 <span className="text-xl font-bold text-slate-800">{stats.diasTrabalhados}</span>
@@ -592,39 +592,6 @@ export default function PunchClock() {
                 <span className="block text-xs font-medium text-slate-500 mb-2">Banco de horas</span>
                 <span className="text-xl font-bold text-slate-800">{stats.bancoDeHoras}</span>
               </div>
-            </div>
-
-            <div className="p-6 space-y-3">
-              <button
-                onClick={() => navigate('/espelho')}
-                className="w-full border border-[#fc9314] text-[#ff8b00] hover:bg-orange-50/50 font-bold text-xs py-2.5 rounded-md transition duration-150 flex items-center justify-center gap-2 cursor-pointer"
-              >
-                <Calendar size={14} />
-                <span>Ver histórico de pontos</span>
-              </button>
-
-              <button
-                onClick={() => navigate('/perfil?section=documentos')}
-                className="w-full border border-slate-300 text-slate-700 hover:bg-slate-100 font-bold text-xs py-2.5 rounded-md transition duration-150 flex items-center justify-center gap-2 cursor-pointer"
-              >
-                <FileText size={14} className="text-slate-500" />
-                <span>Ver documentos</span>
-              </button>
-
-              <button
-                onClick={() => navigate('/meus-contratos')}
-                className="w-full border border-slate-300 text-slate-700 hover:bg-slate-100 font-bold text-xs py-2.5 rounded-md transition duration-150 flex items-center justify-center gap-2 cursor-pointer"
-              >
-                <PenLine size={14} className="text-slate-500" />
-                <span>Meus contratos</span>
-              </button>
-
-              <button
-                onClick={() => navigate('/espelho?section=ajustes')}
-                className="w-full border border-slate-300 text-slate-700 hover:bg-slate-100 font-bold text-xs py-2.5 rounded-md transition duration-150 flex items-center justify-center gap-2 cursor-pointer"
-              >
-                Solicitar ajuste
-              </button>
             </div>
           </div>
         </main>

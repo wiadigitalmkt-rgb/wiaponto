@@ -96,6 +96,7 @@ export default function Usuario() {
   // Estados dos Recursos Específicos
   const [notes, setNotes] = useState([]);
   const [hasSignedContract, setHasSignedContract] = useState(false);
+  const [profileRequests, setProfileRequests] = useState([]);
   const [newNoteText, setNewNoteText] = useState('');
   const [savingNote, setSavingNote] = useState(false);
   const [showNotesModal, setShowNotesModal] = useState(false);
@@ -184,6 +185,13 @@ export default function Usuario() {
           .eq('employee_id', userId)
           .eq('status', 'assinado');
         setHasSignedContract((signedCount || 0) > 0);
+
+        const { data: reqsData } = await supabase
+          .from('profile_change_requests')
+          .select('*')
+          .eq('employee_id', userId)
+          .order('created_at', { ascending: false });
+        setProfileRequests(reqsData || []);
 
         const { data: vacs } = await supabase.from('employee_vacations').select('*').eq('employee_id', userId);
         if (vacs) setVacations(vacs);
@@ -753,6 +761,26 @@ export default function Usuario() {
                       </button>
                     ))}
                   </div>
+
+                  {profileRequests.some((r) => r.status === 'pendente') && (
+                    <div className="mx-6 mt-4 space-y-2">
+                      {profileRequests.filter((r) => r.status === 'pendente').map((req) => (
+                        <div key={req.id} className="bg-amber-50 border border-amber-200 rounded-lg p-3 flex items-start justify-between gap-3 text-xs">
+                          <div>
+                            <p className="font-semibold text-amber-700">Solicitação de alteração de dados</p>
+                            <p className="text-slate-600 mt-1">{req.description}</p>
+                            <p className="text-slate-400 mt-1">{new Date(req.created_at).toLocaleString('pt-BR')}</p>
+                          </div>
+                          <button
+                            onClick={() => handleResolveProfileRequest(req.id)}
+                            className="border border-amber-400 text-amber-700 hover:bg-amber-100 px-3 py-1.5 rounded font-medium transition-colors whitespace-nowrap"
+                          >
+                            Marcar como analisado
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
 
                   {/* SUB-ABA: DADOS DO PERFIL */}
                   {profileSubTab === 'dados' && (
@@ -1920,6 +1948,24 @@ function GeofenceMapTab({ employeeId }) {
       longitude: fence.longitude,
       radius_meters: Number(fence.radius_meters) || 100,
     };
+
+  // Marca a solicitação como analisada — o gestor já leu e vai fazer a
+  // alteração manualmente nos campos acima; o sistema não aplica nada
+  // sozinho.
+  const handleResolveProfileRequest = async (reqId) => {
+    if (!supabase) return;
+    try {
+      const { error } = await supabase
+        .from('profile_change_requests')
+        .update({ status: 'analisado', reviewed_by: loggedInUser?.id, reviewed_at: new Date().toISOString() })
+        .eq('id', reqId);
+      if (error) throw error;
+      setProfileRequests((prev) => prev.map((r) => (r.id === reqId ? { ...r, status: 'analisado' } : r)));
+    } catch (err) {
+      console.error(err);
+      alert('Erro ao atualizar a solicitação.');
+    }
+  };
 
     if (fence._isNew) {
       const { data, error } = await supabase.from('geofences').insert([payload]).select().single();

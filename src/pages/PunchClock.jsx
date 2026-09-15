@@ -8,6 +8,8 @@ import {
   Eye, EyeOff, Upload, CheckCircle2, MapPin, Check,
   Camera, RefreshCw, AlertCircle
 } from 'lucide-react';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
 
 // ============================================================================
 // FUNÇÕES UTILITÁRIAS DE CÁLCULO DE HORAS
@@ -115,6 +117,10 @@ export default function PunchClock() {
   const [punchOutsideFence, setPunchOutsideFence] = useState(false);
   const [punchDateTimeModal, setPunchDateTimeModal] = useState({ date: '', time: '' });
 
+  // Etapa atual do fluxo de bater ponto: 'map' (localiza no mapa) -> 'selfie' -> 'review' (confirmação final)
+  const [punchStep, setPunchStep] = useState('map');
+  const [showLocationPopup, setShowLocationPopup] = useState(false);
+
   // Novas validações obrigatórias
   const [location, setLocation] = useState({ lat: null, lng: null, loading: false, error: null });
   const [selfieImage, setSelfieImage] = useState(null);
@@ -123,6 +129,11 @@ export default function PunchClock() {
 
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
+  const mapContainerRef = useRef(null);
+  const mapInstanceRef = useRef(null);
+  const markerRef = useRef(null);
+  const reviewMapContainerRef = useRef(null);
+  const reviewMapInstanceRef = useRef(null);
   const mediaStreamRef = useRef(null);
 
   // Estados da Sessão Perfil
@@ -276,6 +287,114 @@ export default function PunchClock() {
     }
   }, [currentView]);
 
+  // Liga a câmera automaticamente ao entrar na etapa de selfie
+  useEffect(() => {
+    if (currentView === 'map' && punchStep === 'selfie' && !selfieImage) {
+      startCamera();
+    }
+  }, [currentView, punchStep]);
+
+  // Inicializa o mapa Leaflet (OpenStreetMap) assim que a localização do
+  // colaborador é obtida, com um pino FIXO (não arrastável) na coordenada
+  // exata do GPS. Depois de 3s exibindo o mapa, mostra o popup de confirmação.
+  useEffect(() => {
+    if (currentView === 'map' && punchStep === 'map' && location.lat && location.lng && mapContainerRef.current) {
+      if (!mapInstanceRef.current) {
+        const map = L.map(mapContainerRef.current, {
+          center: [location.lat, location.lng],
+          zoom: 17,
+        });
+
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          maxZoom: 19,
+          attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+        }).addTo(map);
+
+        const pinIcon = L.divIcon({
+          className: '',
+          html: `<div style="width:36px;height:36px;background:#ff8b00;border-radius:50% 50% 50% 0;transform:rotate(-45deg);display:flex;align-items:center;justify-content:center;box-shadow:0 3px 10px rgba(0,0,0,0.35);border:3px solid #ffffff;">
+                   <div style="width:10px;height:10px;background:#ffffff;border-radius:50%;transform:rotate(45deg);"></div>
+                 </div>`,
+          iconSize: [36, 36],
+          iconAnchor: [18, 36],
+        });
+
+        // draggable: false garante que o colaborador não consiga mover o
+        // pino — ele sempre reflete a coordenada real do GPS.
+        const marker = L.marker([location.lat, location.lng], {
+          icon: pinIcon,
+          draggable: false,
+          keyboard: false,
+        }).addTo(map);
+
+        mapInstanceRef.current = map;
+        markerRef.current = marker;
+      } else {
+        mapInstanceRef.current.setView([location.lat, location.lng], mapInstanceRef.current.getZoom());
+        markerRef.current.setLatLng([location.lat, location.lng]);
+      }
+
+      if (!showLocationPopup) {
+        const popupTimer = setTimeout(() => setShowLocationPopup(true), 3000);
+        return () => clearTimeout(popupTimer);
+      }
+    }
+  }, [currentView, punchStep, location.lat, location.lng]);
+
+  // Destrói a instância do mapa principal ao sair da etapa 'map', evitando
+  // o erro "Map container is already initialized" do Leaflet ao reabrir.
+  useEffect(() => {
+    if ((currentView !== 'map' || punchStep !== 'map') && mapInstanceRef.current) {
+      mapInstanceRef.current.remove();
+      mapInstanceRef.current = null;
+      markerRef.current = null;
+    }
+  }, [currentView, punchStep]);
+
+  // Mini-mapa estático (somente leitura) exibido na etapa final de revisão,
+  // mostrando a localização exata já validada junto com a selfie.
+  useEffect(() => {
+    if (currentView === 'map' && punchStep === 'review' && location.lat && location.lng && reviewMapContainerRef.current) {
+      if (!reviewMapInstanceRef.current) {
+        const map = L.map(reviewMapContainerRef.current, {
+          center: [location.lat, location.lng],
+          zoom: 16,
+          zoomControl: false,
+          dragging: false,
+          scrollWheelZoom: false,
+          doubleClickZoom: false,
+          boxZoom: false,
+          keyboard: false,
+          touchZoom: false,
+          attributionControl: false,
+        });
+
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          maxZoom: 19,
+        }).addTo(map);
+
+        const pinIcon = L.divIcon({
+          className: '',
+          html: `<div style="width:28px;height:28px;background:#ff8b00;border-radius:50% 50% 50% 0;transform:rotate(-45deg);display:flex;align-items:center;justify-content:center;box-shadow:0 2px 6px rgba(0,0,0,0.35);border:2px solid #ffffff;">
+                   <div style="width:8px;height:8px;background:#ffffff;border-radius:50%;transform:rotate(45deg);"></div>
+                 </div>`,
+          iconSize: [28, 28],
+          iconAnchor: [14, 28],
+        });
+
+        L.marker([location.lat, location.lng], { icon: pinIcon, draggable: false, keyboard: false }).addTo(map);
+        reviewMapInstanceRef.current = map;
+      } else {
+        reviewMapInstanceRef.current.setView([location.lat, location.lng], 16);
+      }
+    }
+
+    if (punchStep !== 'review' && reviewMapInstanceRef.current) {
+      reviewMapInstanceRef.current.remove();
+      reviewMapInstanceRef.current = null;
+    }
+  }, [currentView, punchStep, location.lat, location.lng]);
+
   const updateDateTime = () => {
     const now = new Date();
     const optionsDate = { day: 'numeric', month: 'long', year: 'numeric' };
@@ -367,14 +486,18 @@ export default function PunchClock() {
     const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
     setSelfieImage(dataUrl);
     stopCamera();
+    setPunchStep('review');
   };
 
-  const retakeSelfie = () => {
+  // Volta da etapa de revisão para a selfie, permitindo tirar a foto de novo
+  const handleRetakeSelfie = () => {
     setSelfieImage(null);
-    startCamera();
+    setPunchStep('selfie');
   };
 
-  // Redireciona para o Mapa de Ponto e inicia a validação dos requisitos
+  // Redireciona para o Mapa de Ponto e inicia a validação dos requisitos.
+  // O fluxo agora é sequencial: mapa com localização exata (pino fixo) ->
+  // popup de confirmação -> selfie -> revisão final -> confirmar ponto.
   const handleOpenMap = () => {
     setIsMenuOpen(false);
     const now = new Date();
@@ -391,12 +514,27 @@ export default function PunchClock() {
     setMapSuccess(false);
     setPunchOutsideFence(false);
     setSelfieImage(null);
-    
+    setShowLocationPopup(false);
+    setPunchStep('map');
+
     setCurrentView('map');
 
-    // Inicia a captura imediata da localização e da câmera
+    // Inicia a captura imediata da localização (a câmera só liga na etapa de selfie)
     requestLocation();
-    setTimeout(() => startCamera(), 300);
+  };
+
+  // Colaborador confirmou que a localização mostrada no mapa está correta
+  const handleGoToSelfie = () => {
+    setShowLocationPopup(false);
+    setPunchStep('selfie');
+  };
+
+  // Cancela o processo de bater ponto e volta para a tela principal do /ponto
+  const handleCancelPunch = () => {
+    stopCamera();
+    setShowLocationPopup(false);
+    setPunchStep('map');
+    setCurrentView('home');
   };
 
   // Confirms Punch in Map view
@@ -664,196 +802,14 @@ export default function PunchClock() {
         </main>
       )}
 
-      {/* VIEW 3: MAPA E CONFIRMAÇÃO DE PONTO COM LOCALIZAÇÃO + SELFIE */}
+      {/* VIEW 3: FLUXO DE BATER PONTO — MAPA REAL -> POPUP -> SELFIE -> REVISÃO -> SUCESSO */}
       {currentView === 'map' && (
-        <div className="relative flex-1 w-full bg-slate-200 overflow-y-auto py-8 min-h-[calc(100vh-60px)] flex items-center justify-center">
-          <div className="absolute inset-0 bg-[#d4dadc] opacity-60 flex items-center justify-center">
-            <div className="relative flex items-center justify-center">
-              <div className="p-3 bg-[#ff8b00] text-white rounded-full shadow-2xl relative z-10 animate-bounce">
-                <MapPin size={28} />
-              </div>
-            </div>
-          </div>
+        <div className="relative flex-1 w-full min-h-[calc(100vh-60px)] bg-slate-200">
 
-          <div className="relative z-20 w-full max-w-md px-4">
-            {!mapSuccess ? (
-              <div className="bg-white rounded-xl shadow-2xl p-6 text-center space-y-4 animate-in zoom-in-95">
-                
-                {/* CABEÇALHO COM DATA E HORA */}
-                <div>
-                  <h3 className="text-base font-bold text-slate-800">Validação de Ponto</h3>
-                  <p className="text-xs text-slate-500">Localização e Selfie são obrigatórias</p>
-                </div>
-
-                <div className="bg-slate-50/80 p-3 rounded-md flex justify-around items-center text-left text-xs border border-slate-100">
-                  <div className="flex items-center gap-2">
-                    <Calendar size={16} className="text-slate-400" />
-                    <div>
-                      <span className="block text-[10px] text-slate-400">Data do registro</span>
-                      <strong className="text-slate-800">{punchDateTimeModal.date}</strong>
-                    </div>
-                  </div>
-
-                  <div className="h-6 w-px bg-slate-200"></div>
-
-                  <div className="flex items-center gap-2">
-                    <Clock size={16} className="text-slate-400" />
-                    <div>
-                      <span className="block text-[10px] text-slate-400">Horário do registro</span>
-                      <strong className="text-slate-800">{punchDateTimeModal.time}</strong>
-                    </div>
-                  </div>
-                </div>
-
-                {/* PAINEL 1: GEOLOCALIZAÇÃO OBRIGATÓRIA */}
-                <div className="border border-slate-200 rounded-lg p-3.5 bg-slate-50/50 text-left space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
-                      <MapPin size={14} className="text-[#ff8b00]" />
-                      Localização (GPS)
-                    </span>
-                    {location.lat && location.lng ? (
-                      <span className="text-[10px] bg-green-100 text-green-700 font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
-                        <Check size={12} /> Validada
-                      </span>
-                    ) : (
-                      <span className="text-[10px] bg-amber-100 text-amber-700 font-bold px-2 py-0.5 rounded-full">
-                        Obrigatória
-                      </span>
-                    )}
-                  </div>
-
-                  {location.loading && (
-                    <p className="text-xs text-slate-500 animate-pulse flex items-center gap-1.5">
-                      <RefreshCw size={12} className="animate-spin" /> Obtendo coordenadas de GPS...
-                    </p>
-                  )}
-
-                  {location.error && (
-                    <div className="space-y-1.5">
-                      <p className="text-xs text-red-600 flex items-center gap-1">
-                        <AlertCircle size={12} /> {location.error}
-                      </p>
-                      <button
-                        onClick={requestLocation}
-                        className="text-xs font-bold text-[#ff8b00] hover:underline flex items-center gap-1"
-                      >
-                        <RefreshCw size={11} /> Tentar obter localização novamente
-                      </button>
-                    </div>
-                  )}
-
-                  {location.lat && location.lng && (
-                    <p className="text-[11px] font-mono text-slate-600 bg-white p-1.5 rounded border border-slate-200">
-                      Lat: {location.lat.toFixed(6)}, Lng: {location.lng.toFixed(6)}
-                    </p>
-                  )}
-                </div>
-
-                {/* PAINEL 2: CÂMERA / SELFIE OBRIGATÓRIA */}
-                <div className="border border-slate-200 rounded-lg p-3.5 bg-slate-50/50 text-left space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
-                      <Camera size={14} className="text-[#ff8b00]" />
-                      Selfie de Confirmação
-                    </span>
-                    {selfieImage ? (
-                      <span className="text-[10px] bg-green-100 text-green-700 font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
-                        <Check size={12} /> Foto Tirada
-                      </span>
-                    ) : (
-                      <span className="text-[10px] bg-amber-100 text-amber-700 font-bold px-2 py-0.5 rounded-full">
-                        Obrigatória
-                      </span>
-                    )}
-                  </div>
-
-                  <canvas ref={canvasRef} className="hidden" />
-
-                  {cameraError && (
-                    <div className="space-y-1.5">
-                      <p className="text-xs text-red-600 flex items-center gap-1">
-                        <AlertCircle size={12} /> {cameraError}
-                      </p>
-                      <button
-                        onClick={startCamera}
-                        className="text-xs font-bold text-[#ff8b00] hover:underline flex items-center gap-1"
-                      >
-                        <RefreshCw size={11} /> Tentar abrir câmera novamente
-                      </button>
-                    </div>
-                  )}
-
-                  {!selfieImage ? (
-                    <div className="space-y-2">
-                      <div className="relative w-full h-44 bg-slate-900 rounded-md overflow-hidden flex items-center justify-center border border-slate-300">
-                        <video
-                          ref={videoRef}
-                          autoPlay
-                          playsInline
-                          muted
-                          className="w-full h-full object-cover transform -scale-x-100"
-                        />
-                        {cameraLoading && (
-                          <div className="absolute inset-0 bg-slate-900/80 flex items-center justify-center text-white text-xs">
-                            Iniciando câmera...
-                          </div>
-                        )}
-                      </div>
-
-                      <button
-                        onClick={captureSelfie}
-                        disabled={cameraLoading || !!cameraError}
-                        className="w-full bg-slate-800 hover:bg-slate-900 text-white font-bold text-xs py-2 rounded flex items-center justify-center gap-1.5 transition disabled:opacity-50 cursor-pointer"
-                      >
-                        <Camera size={14} /> Tirar Foto
-                      </button>
-                    </div>
-                  ) : (
-                    <div className="space-y-2">
-                      <div className="w-full h-44 rounded-md overflow-hidden border border-slate-300 bg-black">
-                        <img src={selfieImage} alt="Selfie do colaborador" className="w-full h-full object-cover" />
-                      </div>
-
-                      <button
-                        onClick={retakeSelfie}
-                        className="w-full text-xs font-bold text-slate-600 hover:text-slate-800 py-1 flex items-center justify-center gap-1 cursor-pointer"
-                      >
-                        <RefreshCw size={12} /> Tirar Foto Novamente
-                      </button>
-                    </div>
-                  )}
-                </div>
-
-                {/* BOTÕES DE AÇÃO */}
-                <div className="space-y-2 pt-2">
-                  <button
-                    onClick={handleConfirmPunch}
-                    disabled={!isFormValid}
-                    className="w-full bg-[#ff8b00] hover:bg-[#e07a00] text-white font-bold text-xs py-3.5 rounded uppercase tracking-wider transition shadow-sm disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
-                  >
-                    {loading ? 'CONFIRMANDO...' : 'CONFIRMAR PONTO'}
-                  </button>
-
-                  {!isFormValid && (
-                    <p className="text-[10px] text-slate-400">
-                      * O botão será liberado assim que a localização for obtida e a selfie for tirada.
-                    </p>
-                  )}
-
-                  <button
-                    onClick={() => {
-                      stopCamera();
-                      setCurrentView('home');
-                    }}
-                    className="w-full text-xs font-bold text-[#ff8b00] hover:text-[#e07a00] py-1 cursor-pointer"
-                  >
-                    Cancelar Ponto
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <div className="bg-white rounded-xl shadow-2xl p-8 text-center space-y-5 animate-in zoom-in-95">
+          {mapSuccess ? (
+            /* ETAPA FINAL: PONTO REGISTRADO COM SUCESSO */
+            <div className="w-full min-h-[calc(100vh-60px)] flex items-center justify-center p-4">
+              <div className="bg-white rounded-xl shadow-2xl p-8 text-center space-y-5 max-w-md w-full animate-in zoom-in-95">
                 <div className={`w-14 h-14 rounded-full text-white mx-auto flex items-center justify-center shadow-md ${punchOutsideFence ? 'bg-amber-500' : 'bg-[#ff8b00]'}`}>
                   {punchOutsideFence ? <AlertCircle size={32} /> : <Check size={32} />}
                 </div>
@@ -871,17 +827,227 @@ export default function PunchClock() {
                 </div>
 
                 <button
-                  onClick={() => {
-                    stopCamera();
-                    setCurrentView('home');
-                  }}
+                  onClick={handleCancelPunch}
                   className="w-full border-2 border-[#ff8b00] text-[#ff8b00] hover:bg-orange-50 font-bold text-xs py-2.5 rounded transition uppercase tracking-wider cursor-pointer"
                 >
                   OK
                 </button>
               </div>
-            )}
-          </div>
+            </div>
+
+          ) : punchStep === 'map' ? (
+            /* ETAPA 1: MAPA REAL COM A LOCALIZAÇÃO EXATA (PINO FIXO, NÃO ARRASTÁVEL) */
+            <div className="relative w-full h-full min-h-[calc(100vh-60px)]">
+              {(!location.lat || !location.lng) ? (
+                <div className="absolute inset-0 flex items-center justify-center bg-slate-100 p-4">
+                  {location.loading && (
+                    <div className="text-center space-y-3">
+                      <RefreshCw size={28} className="animate-spin text-[#ff8b00] mx-auto" />
+                      <p className="text-xs font-semibold text-slate-500">Obtendo sua localização exata via GPS...</p>
+                    </div>
+                  )}
+                  {location.error && (
+                    <div className="text-center space-y-3 max-w-xs mx-auto bg-white rounded-xl shadow-lg p-6">
+                      <AlertCircle size={28} className="text-red-500 mx-auto" />
+                      <p className="text-xs text-red-600">{location.error}</p>
+                      <button
+                        onClick={requestLocation}
+                        className="text-xs font-bold text-[#ff8b00] hover:underline flex items-center gap-1 mx-auto"
+                      >
+                        <RefreshCw size={11} /> Tentar obter localização novamente
+                      </button>
+                      <button
+                        onClick={handleCancelPunch}
+                        className="text-xs font-bold text-slate-500 hover:text-slate-700 block mx-auto pt-1"
+                      >
+                        Cancelar Ponto
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div ref={mapContainerRef} className="absolute inset-0 z-0" />
+              )}
+
+              {/* POPUP DE CONFIRMAÇÃO, EXIBIDO 3s APÓS O MAPA CARREGAR */}
+              {showLocationPopup && location.lat && location.lng && (
+                <div className="absolute inset-0 z-30 flex items-end sm:items-center justify-center bg-black/10 p-4">
+                  <div className="bg-white rounded-xl shadow-2xl w-full max-w-md p-6 text-center space-y-4 animate-in zoom-in-95">
+                    <div className="w-12 h-12 rounded-full bg-emerald-50 text-emerald-600 mx-auto flex items-center justify-center">
+                      <Check size={26} />
+                    </div>
+
+                    <div>
+                      <h3 className="text-base font-bold text-slate-800">Localização validada com sucesso!</h3>
+                      <p className="text-xs text-slate-500 mt-0.5">Confira no mapa se o pino está no local correto.</p>
+                    </div>
+
+                    <div className="bg-slate-50/80 p-3 rounded-md flex justify-around items-center text-left text-xs border border-slate-100">
+                      <div className="flex items-center gap-2">
+                        <Calendar size={16} className="text-slate-400" />
+                        <div>
+                          <span className="block text-[10px] text-slate-400">Data do registro</span>
+                          <strong className="text-slate-800">{punchDateTimeModal.date}</strong>
+                        </div>
+                      </div>
+
+                      <div className="h-6 w-px bg-slate-200"></div>
+
+                      <div className="flex items-center gap-2">
+                        <Clock size={16} className="text-slate-400" />
+                        <div>
+                          <span className="block text-[10px] text-slate-400">Horário do registro</span>
+                          <strong className="text-slate-800">{punchDateTimeModal.time}</strong>
+                        </div>
+                      </div>
+                    </div>
+
+                    <button
+                      onClick={handleGoToSelfie}
+                      className="w-full bg-[#ff8b00] hover:bg-[#e07a00] text-white font-bold text-xs py-3.5 rounded uppercase tracking-wider transition shadow-sm cursor-pointer"
+                    >
+                      Registrar localização
+                    </button>
+
+                    <button
+                      onClick={handleCancelPunch}
+                      className="w-full text-xs font-bold text-[#ff8b00] hover:text-[#e07a00] py-1 cursor-pointer"
+                    >
+                      Cancelar Ponto
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+
+          ) : punchStep === 'selfie' ? (
+            /* ETAPA 2: SELFIE DE CONFIRMAÇÃO */
+            <div className="w-full min-h-[calc(100vh-60px)] flex items-center justify-center p-4">
+              <div className="bg-white rounded-xl shadow-2xl p-6 text-center space-y-4 max-w-md w-full animate-in zoom-in-95">
+                <div>
+                  <h3 className="text-base font-bold text-slate-800">Selfie de Confirmação</h3>
+                  <p className="text-xs text-slate-500">Precisamos confirmar que é você batendo o ponto</p>
+                </div>
+
+                <canvas ref={canvasRef} className="hidden" />
+
+                {cameraError && (
+                  <div className="space-y-1.5 text-left">
+                    <p className="text-xs text-red-600 flex items-center gap-1">
+                      <AlertCircle size={12} /> {cameraError}
+                    </p>
+                    <button
+                      onClick={startCamera}
+                      className="text-xs font-bold text-[#ff8b00] hover:underline flex items-center gap-1"
+                    >
+                      <RefreshCw size={11} /> Tentar abrir câmera novamente
+                    </button>
+                  </div>
+                )}
+
+                <div className="relative w-full h-64 bg-slate-900 rounded-md overflow-hidden flex items-center justify-center border border-slate-300">
+                  <video
+                    ref={videoRef}
+                    autoPlay
+                    playsInline
+                    muted
+                    className="w-full h-full object-cover transform -scale-x-100"
+                  />
+                  {cameraLoading && (
+                    <div className="absolute inset-0 bg-slate-900/80 flex items-center justify-center text-white text-xs">
+                      Iniciando câmera...
+                    </div>
+                  )}
+                </div>
+
+                <button
+                  onClick={captureSelfie}
+                  disabled={cameraLoading || !!cameraError}
+                  className="w-full bg-[#ff8b00] hover:bg-[#e07a00] text-white font-bold text-xs py-3.5 rounded uppercase tracking-wider flex items-center justify-center gap-1.5 transition shadow-sm disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+                >
+                  <Camera size={14} /> Registrar Selfie
+                </button>
+
+                <button
+                  onClick={handleCancelPunch}
+                  className="w-full text-xs font-bold text-[#ff8b00] hover:text-[#e07a00] py-1 cursor-pointer"
+                >
+                  Cancelar Ponto
+                </button>
+              </div>
+            </div>
+
+          ) : (
+            /* ETAPA 3: REVISÃO FINAL — LOCALIZAÇÃO EXATA + SELFIE + CONFIRMAR PONTO */
+            <div className="w-full min-h-[calc(100vh-60px)] flex items-center justify-center p-4">
+              <div className="bg-white rounded-xl shadow-2xl p-6 text-center space-y-4 max-w-md w-full animate-in zoom-in-95">
+                <div>
+                  <h3 className="text-base font-bold text-slate-800">Revise e confirme seu ponto</h3>
+                  <p className="text-xs text-slate-500">{punchDateTimeModal.date} às {punchDateTimeModal.time}</p>
+                </div>
+
+                {/* MINI-MAPA COM A LOCALIZAÇÃO EXATA JÁ VALIDADA */}
+                <div className="text-left space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                      <MapPin size={14} className="text-[#ff8b00]" />
+                      Localização (GPS)
+                    </span>
+                    <span className="text-[10px] bg-green-100 text-green-700 font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
+                      <Check size={12} /> Validada
+                    </span>
+                  </div>
+                  <div ref={reviewMapContainerRef} className="w-full h-32 rounded-md overflow-hidden border border-slate-200" />
+                  {location.lat && location.lng && (
+                    <p className="text-[10px] font-mono text-slate-500">
+                      Lat: {location.lat.toFixed(6)}, Lng: {location.lng.toFixed(6)}
+                    </p>
+                  )}
+                </div>
+
+                {/* SELFIE JÁ REGISTRADA */}
+                <div className="text-left space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                      <Camera size={14} className="text-[#ff8b00]" />
+                      Selfie de Confirmação
+                    </span>
+                    <span className="text-[10px] bg-green-100 text-green-700 font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
+                      <Check size={12} /> Foto Tirada
+                    </span>
+                  </div>
+                  <div className="w-full h-40 rounded-md overflow-hidden border border-slate-200 bg-black">
+                    {selfieImage && (
+                      <img src={selfieImage} alt="Selfie do colaborador" className="w-full h-full object-cover" />
+                    )}
+                  </div>
+                  <button
+                    onClick={handleRetakeSelfie}
+                    className="text-xs font-bold text-slate-500 hover:text-slate-700 flex items-center gap-1 cursor-pointer"
+                  >
+                    <RefreshCw size={12} /> Tirar selfie novamente
+                  </button>
+                </div>
+
+                <div className="space-y-2 pt-1">
+                  <button
+                    onClick={handleConfirmPunch}
+                    disabled={!isFormValid}
+                    className="w-full bg-[#ff8b00] hover:bg-[#e07a00] text-white font-bold text-xs py-3.5 rounded uppercase tracking-wider transition shadow-sm disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+                  >
+                    {loading ? 'CONFIRMANDO...' : 'CONFIRMAR PONTO'}
+                  </button>
+
+                  <button
+                    onClick={handleCancelPunch}
+                    className="w-full text-xs font-bold text-[#ff8b00] hover:text-[#e07a00] py-1 cursor-pointer"
+                  >
+                    Cancelar Ponto
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       )}
 

@@ -48,7 +48,6 @@ import Admissao from './pages/admin/Admissao';
 import Contratos from './pages/admin/Contratos';
 
 // Import da Página de Documentos do Colaborador
-import Documentos from './pages/documentos';
 import Ajuda from './pages/ajuda';
 import ArtigoDetalhes from './pages/ajuda/artigo/[id]';
 import CategoriaDetalhes from './pages/ajuda/categoria/[slug]';
@@ -95,7 +94,6 @@ const AuthenticatedApp = () => {
         <Route path="/" element={<PunchClock />} />
         <Route path="/ponto" element={<PunchClock />} />
         <Route path="/espelho" element={<TimeClockMirror />} />
-        <Route path="/documentos" element={<Documentos />} />
         <Route path="/meus-contratos" element={<AssinarContrato />} />
         <Route path="/minha-assinatura" element={<MinhaAssinatura />} />
         <Route path="/perfil" element={<Perfil />} />

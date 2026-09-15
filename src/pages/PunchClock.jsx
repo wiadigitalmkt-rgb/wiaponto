@@ -109,6 +109,7 @@ export default function PunchClock() {
     bancoDeHoras: '00:00',
   });
   const [pendingPunches, setPendingPunches] = useState([]);
+  const [todayPunches, setTodayPunches] = useState([]);
   const [currentDateTime, setCurrentDateTime] = useState('');
   const [greeting, setGreeting] = useState('Olá');
 
@@ -123,6 +124,7 @@ export default function PunchClock() {
 
   // Novas validações obrigatórias
   const [location, setLocation] = useState({ lat: null, lng: null, loading: false, error: null });
+  const [address, setAddress] = useState({ text: '', cep: '', loading: false, error: null });
   const [selfieImage, setSelfieImage] = useState(null);
   const [cameraError, setCameraError] = useState(null);
   const [cameraLoading, setCameraLoading] = useState(false);
@@ -134,6 +136,8 @@ export default function PunchClock() {
   const markerRef = useRef(null);
   const reviewMapContainerRef = useRef(null);
   const reviewMapInstanceRef = useRef(null);
+  const todayMapContainersRef = useRef({});
+  const todayMapInstancesRef = useRef({});
   const mediaStreamRef = useRef(null);
 
   // Estados da Sessão Perfil
@@ -199,8 +203,10 @@ export default function PunchClock() {
           
           const [yr, mo, dy] = todayStr.split('-');
           setLastPunch(`${dy}/${mo}/${yr} às ${lastTime}h`);
+          setTodayPunches(recordsToday);
         } else {
           setLastPunch('Nenhum registro hoje');
+          setTodayPunches([]);
         }
 
         const now = new Date();
@@ -395,6 +401,93 @@ export default function PunchClock() {
     }
   }, [currentView, punchStep, location.lat, location.lng]);
 
+  // Mini-mapas estáticos (somente leitura) dos pontos batidos hoje, exibidos
+  // na tela principal do /ponto, cada um ao lado da selfie daquele registro.
+  useEffect(() => {
+    if (currentView !== 'home') return;
+
+    todayPunches.forEach((rec) => {
+      const container = todayMapContainersRef.current[rec.id];
+      if (!container || !rec.latitude || !rec.longitude || todayMapInstancesRef.current[rec.id]) return;
+
+      const lat = Number(rec.latitude);
+      const lng = Number(rec.longitude);
+
+      const map = L.map(container, {
+        center: [lat, lng],
+        zoom: 15,
+        zoomControl: false,
+        dragging: false,
+        scrollWheelZoom: false,
+        doubleClickZoom: false,
+        boxZoom: false,
+        keyboard: false,
+        touchZoom: false,
+        attributionControl: false,
+      });
+
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
+
+      const pinIcon = L.divIcon({
+        className: '',
+        html: `<div style="width:20px;height:20px;background:#ff8b00;border-radius:50% 50% 50% 0;transform:rotate(-45deg);border:2px solid #ffffff;box-shadow:0 1px 4px rgba(0,0,0,0.35);"></div>`,
+        iconSize: [20, 20],
+        iconAnchor: [10, 20],
+      });
+
+      L.marker([lat, lng], { icon: pinIcon, draggable: false, keyboard: false }).addTo(map);
+      todayMapInstancesRef.current[rec.id] = map;
+    });
+  }, [currentView, todayPunches]);
+
+  // Destrói os mini-mapas dos pontos de hoje ao sair da tela principal
+  useEffect(() => {
+    if (currentView !== 'home') {
+      Object.values(todayMapInstancesRef.current).forEach((map) => map.remove());
+      todayMapInstancesRef.current = {};
+      todayMapContainersRef.current = {};
+    }
+  }, [currentView]);
+
+  // Busca o endereço completo (rua, número, bairro, cidade e CEP) a partir
+  // das coordenadas de GPS, via geocodificação reversa gratuita (Nominatim/OpenStreetMap).
+  const fetchAddress = async (lat, lng) => {
+    setAddress({ text: '', cep: '', loading: true, error: null });
+    try {
+      const res = await fetch(
+        `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=jsonv2&addressdetails=1&accept-language=pt-BR`
+      );
+      const data = await res.json();
+      const a = data.address || {};
+
+      const rua = a.road || a.pedestrian || a.footway || a.residential || '';
+      const numero = a.house_number || 'S/N';
+      const bairro = a.suburb || a.neighbourhood || a.village || a.quarter || '';
+      const cidade = a.city || a.town || a.municipality || '';
+      const uf = a.state_code || a.state || '';
+      const cep = a.postcode || '';
+
+      const parts = [];
+      if (rua) parts.push(`${rua}, ${numero}`);
+      if (bairro) parts.push(bairro);
+      if (cidade) parts.push(uf ? `${cidade} - ${uf}` : cidade);
+
+      const text = parts.join(' - ') || data.display_name || '';
+
+      setAddress({ text, cep, loading: false, error: text ? null : 'Não foi possível identificar o endereço exato.' });
+    } catch (err) {
+      console.error('Erro ao buscar endereço:', err);
+      setAddress({ text: '', cep: '', loading: false, error: 'Não foi possível obter o endereço.' });
+    }
+  };
+
+  // Dispara a busca de endereço sempre que uma nova coordenada de GPS é obtida
+  useEffect(() => {
+    if (location.lat && location.lng) {
+      fetchAddress(location.lat, location.lng);
+    }
+  }, [location.lat, location.lng]);
+
   const updateDateTime = () => {
     const now = new Date();
     const optionsDate = { day: 'numeric', month: 'long', year: 'numeric' };
@@ -515,6 +608,7 @@ export default function PunchClock() {
     setPunchOutsideFence(false);
     setSelfieImage(null);
     setShowLocationPopup(false);
+    setAddress({ text: '', cep: '', loading: false, error: null });
     setPunchStep('map');
 
     setCurrentView('map');
@@ -547,6 +641,11 @@ export default function PunchClock() {
       const recordDate = getLocalDateString(now);
       const timeFormatted = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
       const fullNameFormat = `${profileData.nome} ${profileData.sobrenome}`.trim();
+      // Endereço completo (rua, número, bairro, cidade/UF) + CEP, obtido por
+      // geocodificação reversa — salvo em time_records.location_address.
+      const formattedAddress = address.text
+        ? `${address.text}${address.cep ? ` - CEP: ${address.cep}` : ''}`
+        : null;
 
       if (supabase) {
         let { data: emp } = await supabase
@@ -611,6 +710,7 @@ export default function PunchClock() {
                 saida: timeFormatted,
                 latitude: location.lat,
                 longitude: location.lng,
+                location_address: formattedAddress,
                 photo_url: selfieImage,
                 device_type: detectDeviceType(),
                 ...approvalFields
@@ -627,6 +727,7 @@ export default function PunchClock() {
                 obs: 'Ponto Web (GPS + Selfie)',
                 latitude: location.lat,
                 longitude: location.lng,
+                location_address: formattedAddress,
                 photo_url: selfieImage,
                 device_type: detectDeviceType(),
                 ...approvalFields
@@ -731,6 +832,40 @@ export default function PunchClock() {
                 <span className="text-xl font-bold text-slate-800">{stats.bancoDeHoras}</span>
               </div>
             </div>
+
+            {todayPunches.length > 0 && (
+              <div className="p-6 border-t border-slate-100 text-left">
+                <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">Pontos de hoje</h3>
+                <div className="space-y-3">
+                  {todayPunches.map((rec) => (
+                    <div key={rec.id} className="flex items-center gap-3 border border-slate-100 rounded-lg p-3 bg-slate-50/40">
+                      <div
+                        ref={(el) => { if (el) todayMapContainersRef.current[rec.id] = el; }}
+                        className="w-16 h-16 rounded-md overflow-hidden border border-slate-200 shrink-0 bg-slate-200"
+                      />
+                      <div className="w-16 h-16 rounded-md overflow-hidden border border-slate-200 shrink-0 bg-black">
+                        {rec.photo_url && (
+                          <img src={rec.photo_url} alt="Selfie do ponto" className="w-full h-full object-cover" />
+                        )}
+                      </div>
+                      <div className="text-xs">
+                        <p className="font-bold text-slate-800">
+                          Entrada: {rec.entrada || '-'}
+                          {rec.saida && rec.saida !== '-' ? ` • Saída: ${rec.saida}` : ''}
+                        </p>
+                        {rec.location_address ? (
+                          <p className="text-slate-500 text-[10px] mt-0.5">{rec.location_address}</p>
+                        ) : rec.latitude && rec.longitude ? (
+                          <p className="text-slate-400 font-mono text-[10px] mt-0.5">
+                            Lat {Number(rec.latitude).toFixed(5)}, Lng {Number(rec.longitude).toFixed(5)}
+                          </p>
+                        ) : null}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </main>
       )}
@@ -902,6 +1037,23 @@ export default function PunchClock() {
                       </div>
                     </div>
 
+                    <div className="bg-slate-50/80 p-3 rounded-md text-left text-xs border border-slate-100 flex items-start gap-2">
+                      <MapPin size={14} className="text-[#ff8b00] mt-0.5 shrink-0" />
+                      <div>
+                        <span className="block text-[10px] text-slate-400 uppercase tracking-wider font-semibold mb-0.5">Endereço identificado</span>
+                        {address.loading ? (
+                          <span className="text-slate-400 flex items-center gap-1"><RefreshCw size={11} className="animate-spin" /> Buscando endereço...</span>
+                        ) : address.error ? (
+                          <span className="text-slate-400">{address.error}</span>
+                        ) : (
+                          <>
+                            <strong className="text-slate-800 block">{address.text}</strong>
+                            {address.cep && <span className="text-slate-500">CEP: {address.cep}</span>}
+                          </>
+                        )}
+                      </div>
+                    </div>
+
                     <button
                       onClick={handleGoToSelfie}
                       className="w-full bg-[#ff8b00] hover:bg-[#e07a00] text-white font-bold text-xs py-3.5 rounded uppercase tracking-wider transition shadow-sm cursor-pointer"
@@ -998,6 +1150,11 @@ export default function PunchClock() {
                     </span>
                   </div>
                   <div ref={reviewMapContainerRef} className="w-full h-32 rounded-md overflow-hidden border border-slate-200" />
+                  {!address.loading && !address.error && address.text && (
+                    <p className="text-xs text-slate-700 font-semibold">
+                      {address.text}{address.cep ? ` — CEP: ${address.cep}` : ''}
+                    </p>
+                  )}
                   {location.lat && location.lng && (
                     <p className="text-[10px] font-mono text-slate-500">
                       Lat: {location.lat.toFixed(6)}, Lng: {location.lng.toFixed(6)}

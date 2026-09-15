@@ -5,7 +5,6 @@ import { supabase } from '@/lib/supabase';
 import { 
   Clock, 
   FileText, 
-  MessageSquare, 
   Loader2, 
   Upload, 
   CheckCircle2, 
@@ -25,7 +24,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 
 export default function Documentos() {
-  const [activeMenu, setActiveMenu] = useState('espelho'); // 'espelho' | 'pdf' | 'avisos'
+  const [activeMenu, setActiveMenu] = useState('espelho'); // 'espelho' | 'pdf'
   const [activeTab, setActiveTab] = useState('espelhos'); // 'espelhos' (Pendentes) | 'downloads' (Assinados)
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [loading, setLoading] = useState(false);
@@ -37,12 +36,10 @@ export default function Documentos() {
 
   const [mirrors, setMirrors] = useState([]);
   const [attachments, setAttachments] = useState([]);
-  const [announcements, setAnnouncements] = useState([]);
 
   // Estados dos Modais
   const [showUploadMirrorModal, setShowUploadMirrorModal] = useState(false);
   const [showUploadPdfModal, setShowUploadPdfModal] = useState(false);
-  const [showAnnouncementModal, setShowAnnouncementModal] = useState(false);
   const [selectedCertificate, setSelectedCertificate] = useState(null);
 
   // Formulários Modais
@@ -51,10 +48,6 @@ export default function Documentos() {
   const [fileCategory, setFileCategory] = useState('Holerite');
   const [selectedFile, setSelectedFile] = useState(null);
   
-  // Form Aviso
-  const [noticeTitle, setNoticeTitle] = useState('');
-  const [noticeContent, setNoticeContent] = useState('');
-  const [noticeImageUrl, setNoticeImageUrl] = useState('');
 
   // Identificação do Usuário Logado na Sessão
   const sessionUser = JSON.parse(
@@ -102,9 +95,6 @@ export default function Documentos() {
 
         const { data } = await query;
         if (data) setAttachments(data);
-      } else if (activeMenu === 'avisos') {
-        const { data } = await supabase.from('company_announcements').select('*').order('created_at', { ascending: false });
-        if (data) setAnnouncements(data);
       }
     } catch (err) {
       console.error('Erro ao buscar dados:', err);
@@ -234,37 +224,6 @@ export default function Documentos() {
   };
 
   // --- CRIAR AVISO DA EMPRESA ---
-  const handleCreateAnnouncement = async (e) => {
-    e.preventDefault();
-    if (!noticeTitle || !noticeContent) {
-      alert('Informe o título e a mensagem.');
-      return;
-    }
-
-    setLoading(true);
-    try {
-      await supabase.from('company_announcements').insert([
-        {
-          title: noticeTitle,
-          content: noticeContent,
-          image_url: noticeImageUrl,
-          author_name: sessionUser.full_name || 'Gestão'
-        }
-      ]);
-
-      alert('Aviso publicado com sucesso!');
-      setShowAnnouncementModal(false);
-      setNoticeTitle('');
-      setNoticeContent('');
-      setNoticeImageUrl('');
-      fetchInitialData();
-    } catch (err) {
-      console.error('Erro ao criar aviso:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   // --- DELETAR ITENS ---
   const handleDeleteItem = async (table, id) => {
     if (!confirm('Tem certeza que deseja excluir este registro permanente?')) return;
@@ -387,18 +346,6 @@ export default function Documentos() {
             >
               <FileText className={`w-4 h-4 ${activeMenu === 'pdf' ? 'text-[#ff8b00]' : 'text-slate-500'}`} />
               <span>Arquivos em GERAL</span>
-            </button>
-
-            <button
-              onClick={() => setActiveMenu('avisos')}
-              className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded text-xs transition-colors ${
-                activeMenu === 'avisos'
-                  ? 'bg-white text-[#ff8b00] shadow-sm border border-slate-200/60 font-semibold'
-                  : 'text-slate-600 hover:bg-slate-200/50 font-medium'
-              }`}
-            >
-              <MessageSquare className={`w-4 h-4 ${activeMenu === 'avisos' ? 'text-[#ff8b00]' : 'text-slate-500'}`} />
-              <span>Avisos</span>
             </button>
           </nav>
         </aside>
@@ -652,67 +599,6 @@ export default function Documentos() {
             )}
 
             {/* SESSÃO 3: AVISOS COM FOTO E TEXTO */}
-            {activeMenu === 'avisos' && (
-              <div className="p-6 space-y-6">
-                <div className="flex justify-between items-center border-b border-slate-200 pb-4">
-                  <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider">
-                    Mural de Avisos da Empresa
-                  </h3>
-                  {isManager && (
-                    <button
-                      onClick={() => setShowAnnouncementModal(true)}
-                      className="bg-[#fc9314] hover:bg-[#ff8b00] text-white text-xs font-semibold px-4 py-2 rounded transition-colors shadow-sm flex items-center gap-1.5"
-                    >
-                      <Plus className="w-3.5 h-3.5" />
-                      Publicar Aviso
-                    </button>
-                  )}
-                </div>
-
-                {loading ? (
-                  <div className="py-12 text-center text-slate-400">
-                    <Loader2 className="w-6 h-6 animate-spin mx-auto mb-2 text-[#ff8b00]" />
-                    Carregando avisos...
-                  </div>
-                ) : announcements.length === 0 ? (
-                  <div className="py-16 text-center text-slate-500 text-xs">
-                    Nenhum aviso publicado até o momento.
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {announcements.map((ann) => (
-                      <div key={ann.id} className="border border-slate-200 rounded-lg overflow-hidden bg-white shadow-sm flex flex-col justify-between">
-                        <div>
-                          {ann.image_url && (
-                            <img
-                              src={ann.image_url}
-                              alt={ann.title}
-                              className="w-full h-48 object-cover"
-                            />
-                          )}
-                          <div className="p-4 space-y-2">
-                            <h4 className="font-bold text-slate-800 text-sm">{ann.title}</h4>
-                            <p className="text-xs text-slate-600 whitespace-pre-line leading-relaxed">{ann.content}</p>
-                          </div>
-                        </div>
-                        <div className="p-4 border-t border-slate-100 text-[11px] text-slate-400 flex justify-between items-center bg-slate-50/50">
-                          <span>Publicado por: {ann.author_name} - {new Date(ann.created_at).toLocaleDateString('pt-BR')}</span>
-                          {isManager && (
-                            <button
-                              onClick={() => handleDeleteItem('company_announcements', ann.id)}
-                              className="text-slate-400 hover:text-red-600 transition-colors"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
-
             {/* RODAPÉ E PAGINAÇÃO */}
             <div className="p-4 border-t border-slate-100 flex justify-between items-center text-xs text-slate-500">
               <span>Resultados cadastrados</span>
@@ -849,58 +735,6 @@ export default function Documentos() {
       )}
 
       {/* MODAL 3: PUBLICAR AVISO */}
-      {showAnnouncementModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg max-w-md w-full p-6 space-y-4">
-            <div className="flex justify-between items-center border-b pb-3">
-              <h3 className="font-bold text-slate-800 text-sm">Publicar Aviso Geral</h3>
-              <button onClick={() => setShowAnnouncementModal(false)}><X className="w-4 h-4 text-slate-400" /></button>
-            </div>
-            <form onSubmit={handleCreateAnnouncement} className="space-y-3 text-xs">
-              <div>
-                <label className="block font-medium mb-1">Título*</label>
-                <input
-                  type="text"
-                  value={noticeTitle}
-                  onChange={(e) => setNoticeTitle(e.target.value)}
-                  className="w-full border rounded p-2 focus:outline-none"
-                  placeholder="Ex: Reunião Geral de Fim de Ano"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block font-medium mb-1">URL da Imagem (Opcional)</label>
-                <input
-                  type="url"
-                  value={noticeImageUrl}
-                  onChange={(e) => setNoticeImageUrl(e.target.value)}
-                  className="w-full border rounded p-2 focus:outline-none"
-                  placeholder="https://exemplo.com/imagem.jpg"
-                />
-              </div>
-              <div>
-                <label className="block font-medium mb-1">Conteúdo/Mensagem*</label>
-                <textarea
-                  rows="4"
-                  value={noticeContent}
-                  onChange={(e) => setNoticeContent(e.target.value)}
-                  className="w-full border rounded p-2 focus:outline-none"
-                  placeholder="Escreva os detalhes do aviso..."
-                  required
-                ></textarea>
-              </div>
-              <button
-                type="submit"
-                disabled={loading}
-                className="w-full py-2 bg-[#ff8b00] hover:bg-[#e07a00] text-white font-semibold rounded transition-colors"
-              >
-                {loading ? 'Publicando...' : 'Publicar Aviso'}
-              </button>
-            </form>
-          </div>
-        </div>
-      )}
-
       {/* MODAL CERTIFICADO DIGITAL */}
       {selectedCertificate && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">

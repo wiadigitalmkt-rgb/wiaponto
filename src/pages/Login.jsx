@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { Eye, EyeOff, ArrowRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from '@/lib/supabase';
 import bgLoginImg from './bgloginponto.png';
 import { useAuth } from '@/lib/AuthContext';
 
@@ -15,131 +14,36 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
 
+  // A verificação de senha agora acontece inteiramente no servidor
+  // (/api/login.js), usando a service_role key. O navegador nunca mais
+  // consulta a tabela Employees nem o password_hash diretamente.
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
     setErrorMsg('');
 
     try {
-      const rawInput = userInput.trim();
-      const cleanCPF = rawInput.replace(/\D/g, '');
-      let loginEmail = rawInput;
-
-      // Se o usuário digitou CPF em vez de E-mail, busca o e-mail cadastrado na tabela Employees
-      if (!rawInput.includes('@') && cleanCPF.length > 0) {
-        const { data: empData } = await supabase
-          .from('Employees')
-          .select('email, password_hash, role, id, full_name, cpf, status')
-          .or(`cpf.eq.${cleanCPF},cpf.eq.${rawInput}`)
-          .maybeSingle();
-
-        if (empData?.email) {
-          loginEmail = empData.email;
-        } else if (empData) {
-          // Fallback se o colaborador não tiver e-mail cadastrado no Supabase Auth
-          if (empData.password_hash === password) {
-            if (String(empData.status || '').toLowerCase() === 'inativo') {
-              setErrorMsg('Este usuário está inativo. Fale com o gestor da sua empresa.');
-              setLoading(false);
-              return;
-            }
-            const sessionData = {
-              id: empData.id,
-              full_name: empData.full_name,
-              cpf: empData.cpf,
-              email: empData.email || '',
-              role: empData.role || 'colaborador',
-            };
-            if (rememberMe) localStorage.setItem('userSession', JSON.stringify(sessionData));
-            else sessionStorage.setItem('userSession', JSON.stringify(sessionData));
-
-            refreshSession();
-            navigate(empData.role === 'gestor' || empData.role === 'admin' ? '/admin' : '/ponto');
-            return;
-          } else {
-            setErrorMsg('Usuário ou senha incorretos.');
-            setLoading(false);
-            return;
-          }
-        }
-      }
-
-      // 1. Tenta autenticação nativa via Supabase Auth com o e-mail identificado
-      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
-        email: loginEmail,
-        password: password,
+      const res = await fetch('/api/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userInput, password }),
       });
 
-      if (!authError && authData?.user) {
-        // Atualiza a coluna password_hash da tabela Employees para manter sincronizado
-        await supabase
-          .from('Employees')
-          .update({ password_hash: password })
-          .eq('email', loginEmail);
+      const data = await res.json().catch(() => ({}));
 
-        // Busca os dados de perfil
-        const { data: emp } = await supabase
-          .from('Employees')
-          .select('*')
-          .eq('email', loginEmail)
-          .maybeSingle();
-
-        if (emp && String(emp.status || '').toLowerCase() === 'inativo') {
-          await supabase.auth.signOut();
-          setErrorMsg('Este usuário está inativo. Fale com o gestor da sua empresa.');
-          setLoading(false);
-          return;
-        }
-
-        const sessionData = {
-          id: emp?.id || authData.user.id,
-          full_name: emp?.full_name || authData.user.email,
-          cpf: emp?.cpf || '',
-          email: emp?.email || authData.user.email || loginEmail,
-          role: emp?.role || 'colaborador',
-        };
-
-        if (rememberMe) localStorage.setItem('userSession', JSON.stringify(sessionData));
-        else sessionStorage.setItem('userSession', JSON.stringify(sessionData));
-
-        refreshSession();
-        navigate(sessionData.role === 'gestor' || sessionData.role === 'admin' ? '/admin' : '/ponto');
+      if (!res.ok || !data.session) {
+        setErrorMsg(data.error || 'Usuário ou senha incorretos.');
+        setLoading(false);
         return;
       }
 
-      // 2. Validação Fallback caso o Supabase Auth falhe
-      let query = supabase.from('Employees').select('*');
-      if (cleanCPF.length > 0) {
-        query = query.or(`cpf.eq.${cleanCPF},email.eq.${rawInput}`);
-      } else {
-        query = query.eq('email', rawInput);
-      }
+      const sessionData = data.session;
 
-      const { data: employees } = await query;
-      const user = employees?.[0];
+      if (rememberMe) localStorage.setItem('userSession', JSON.stringify(sessionData));
+      else sessionStorage.setItem('userSession', JSON.stringify(sessionData));
 
-      if (user && user.password_hash === password) {
-        if (String(user.status || '').toLowerCase() === 'inativo') {
-          setErrorMsg('Este usuário está inativo. Fale com o gestor da sua empresa.');
-          setLoading(false);
-          return;
-        }
-        const sessionData = {
-          id: user.id,
-          full_name: user.full_name,
-          cpf: user.cpf,
-          email: user.email || '',
-          role: user.role || 'colaborador',
-        };
-
-        if (rememberMe) localStorage.setItem('userSession', JSON.stringify(sessionData));
-        else sessionStorage.setItem('userSession', JSON.stringify(sessionData));
-
-        refreshSession();
-        navigate(user.role === 'gestor' || user.role === 'admin' ? '/admin' : '/ponto');
-      } else {
-        setErrorMsg('Usuário ou senha incorretos.');
-      }
+      refreshSession();
+      navigate(sessionData.role === 'gestor' || sessionData.role === 'admin' ? '/admin' : '/ponto');
     } catch (err) {
       console.error('Erro na autenticação:', err);
       setErrorMsg('Falha na conexão com o servidor. Tente novamente.');

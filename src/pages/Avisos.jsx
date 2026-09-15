@@ -11,7 +11,7 @@ import { MessageSquare, Loader2, Plus, X, Trash2, ChevronRight } from 'lucide-re
 // ---------------------------------------------------------------------------
 export default function Avisos() {
   const [announcements, setAnnouncements] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(true); 
 
   const [showAnnouncementModal, setShowAnnouncementModal] = useState(false);
   const [noticeTitle, setNoticeTitle] = useState('');

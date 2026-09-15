@@ -83,7 +83,7 @@ export default function Navbar({ selectedCompany = 'PontoMax' }) {
   return (
     <header className="sticky top-0 z-50 bg-[#1a2c6a] text-white h-12 shadow-md w-full shrink-0 flex items-center justify-between px-6 border-b border-[#2a3c7e] select-none">
       <div className="flex items-center gap-8">
-        <Link to={isAdmin ? "/admin" : "/espelho"} className="flex items-center gap-2">
+        <Link to={isAdmin ? "/admin" : "/ponto"} className="flex items-center gap-2">
           <img 
             src={logoImg} 
             alt="WiaPonto Logo" 

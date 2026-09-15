@@ -22,7 +22,8 @@ import {
   EyeOff,
   Camera,
   X,
-  PenLine
+  PenLine,
+  Upload
 } from 'lucide-react';
 
 export default function Usuario() {
@@ -642,6 +643,7 @@ export default function Usuario() {
 
   const menuItems = [
     { id: 'informacoes', label: 'Informações', icon: User },
+    { id: 'documentos', label: 'Documentos', icon: FileText },
     { id: 'jornada', label: 'Jornada de trabalho', icon: Clock },
     { id: 'cercas', label: 'Cercas', icon: MapPin },
     { id: 'ferias', label: 'Férias', icon: Plane },
@@ -1217,6 +1219,10 @@ export default function Usuario() {
               {/* 7. FORMULÁRIO DE ADMISSÃO — lê o processo de admissão real
                   (preenchido pelo colaborador em PreencherAdmissao.jsx) */}
               {activeTab === 'formulario_admissao' && <AdmissionInfoTab employeeId={userId} />}
+
+              {/* DOCUMENTOS — arquivos gerais do colaborador (não inclui
+                  holerite, que agora fica em Espelho de Ponto) */}
+              {activeTab === 'documentos' && <DocumentsTab employeeId={userId} canManage={true} uploaderId={loggedInUser?.id} />}
 
               {/* 8. CONTRATO — só existe no menu quando há pelo menos um
                   contrato assinado (hasSignedContract) */}
@@ -2455,6 +2461,170 @@ function SignedContractsTab({ employeeId }) {
           )}
         </div>
       ))}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// DOCUMENTOS — arquivos gerais do colaborador (atestado, comprovante etc).
+// Reaproveita a tabela employee_attachments que já existia na antiga
+// página de Documentos. Holerite NÃO entra aqui — tem espaço próprio
+// dentro do Espelho de Ponto, organizado por mês.
+// ---------------------------------------------------------------------------
+const DOCUMENT_CATEGORIES = ['Documento Pessoal', 'Atestado', 'Comprovante', 'Contrato Físico', 'Outro'];
+
+function DocumentsTab({ employeeId, canManage, uploaderId }) {
+  const [documents, setDocuments] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [showUploadForm, setShowUploadForm] = useState(false);
+  const [category, setCategory] = useState(DOCUMENT_CATEGORIES[0]);
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [uploading, setUploading] = useState(false);
+
+  useEffect(() => {
+    if (!employeeId) return;
+    fetchDocuments();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [employeeId]);
+
+  async function fetchDocuments() {
+    setLoading(true);
+    const { data, error } = await supabase
+      .from('employee_attachments')
+      .select('*')
+      .eq('employee_id', employeeId)
+      .order('created_at', { ascending: false });
+    if (error) console.error('Erro ao buscar documentos:', error);
+    setDocuments(data || []);
+    setLoading(false);
+  }
+
+  async function handleUpload() {
+    if (!selectedFile) {
+      alert('Selecione um arquivo.');
+      return;
+    }
+    setUploading(true);
+    try {
+      const fileExt = selectedFile.name.split('.').pop();
+      const fileName = `anexos/${Date.now()}_${Math.random().toString(36).slice(2)}.${fileExt}`;
+
+      const { error: uploadError } = await supabase.storage.from('documents').upload(fileName, selectedFile);
+      if (uploadError) throw uploadError;
+
+      const { data: urlData } = supabase.storage.from('documents').getPublicUrl(fileName);
+
+      const { error } = await supabase.from('employee_attachments').insert([{
+        employee_id: employeeId,
+        file_name: selectedFile.name,
+        file_url: urlData.publicUrl,
+        file_size: selectedFile.size,
+        category,
+      }]);
+      if (error) throw error;
+
+      setSelectedFile(null);
+      setShowUploadForm(false);
+      fetchDocuments();
+    } catch (err) {
+      console.error(err);
+      alert('Erro ao anexar arquivo: ' + err.message);
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  async function handleDelete(doc) {
+    if (!window.confirm(`Excluir "${doc.file_name}"?`)) return;
+    try {
+      const { error } = await supabase.from('employee_attachments').delete().eq('id', doc.id);
+      if (error) throw error;
+      fetchDocuments();
+    } catch (err) {
+      console.error(err);
+      alert('Erro ao excluir: ' + err.message);
+    }
+  }
+
+  return (
+    <div className="p-6 text-xs space-y-4">
+      <div className="flex items-center justify-between">
+        <h3 className="font-semibold text-slate-800 text-sm">Documentos</h3>
+        {canManage && (
+          <button
+            onClick={() => setShowUploadForm((v) => !v)}
+            className="bg-[#ff8b00] hover:bg-[#fc9314] text-white font-medium px-4 py-2 rounded transition-colors flex items-center gap-1.5"
+          >
+            <Upload className="w-3.5 h-3.5" />
+            {showUploadForm ? 'Cancelar' : 'Anexar documento'}
+          </button>
+        )}
+      </div>
+
+      {canManage && showUploadForm && (
+        <div className="border rounded-lg p-4 bg-slate-50/50 space-y-3">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div>
+              <label className="block text-[11px] text-slate-500 mb-1">Categoria</label>
+              <select
+                value={category}
+                onChange={(e) => setCategory(e.target.value)}
+                className="w-full border rounded p-2 text-xs focus:outline-none focus:border-[#ff8b00]"
+              >
+                {DOCUMENT_CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="block text-[11px] text-slate-500 mb-1">Arquivo</label>
+              <input
+                type="file"
+                onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
+                className="w-full text-xs"
+              />
+            </div>
+          </div>
+          <div className="flex justify-end">
+            <button
+              onClick={handleUpload}
+              disabled={uploading}
+              className="bg-[#ff8b00] hover:bg-[#fc9314] text-white font-medium px-5 py-2 rounded transition-colors disabled:opacity-50 flex items-center gap-1.5"
+            >
+              {uploading && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+              Enviar
+            </button>
+          </div>
+        </div>
+      )}
+
+      {loading ? (
+        <div className="py-10 text-center text-slate-400 flex items-center justify-center gap-2">
+          <Loader2 className="w-4 h-4 animate-spin" /> Carregando...
+        </div>
+      ) : documents.length === 0 ? (
+        <div className="border-2 border-dashed border-slate-200 rounded-lg p-12 text-center text-slate-400">
+          Nenhum documento anexado ainda.
+        </div>
+      ) : (
+        <div className="divide-y divide-slate-100 border rounded-lg overflow-hidden">
+          {documents.map((doc) => (
+            <div key={doc.id} className="flex items-center justify-between px-4 py-3">
+              <div>
+                <a href={doc.file_url} target="_blank" rel="noopener noreferrer" className="font-medium text-slate-700 hover:text-[#ff8b00] hover:underline">
+                  {doc.file_name}
+                </a>
+                <p className="text-slate-400 text-[11px] mt-0.5">
+                  {doc.category} — {new Date(doc.created_at).toLocaleDateString('pt-BR')}
+                </p>
+              </div>
+              {canManage && (
+                <button onClick={() => handleDelete(doc)} className="text-slate-400 hover:text-red-500">
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

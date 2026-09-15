@@ -193,7 +193,7 @@ export default function Dashboard() {
                   >
                     {m.isNew && (
                       <span className="absolute top-2.5 right-2.5 text-[9px] font-extrabold bg-[#ff8b00] text-white px-2 py-0.5 rounded-md uppercase tracking-wider">
-                        Novo
+                        Em breve
                       </span>
                     )}
                     <div className="w-11 h-11 rounded-full bg-slate-100 group-hover:bg-orange-50 text-[#1a2c6a] group-hover:text-[#ff8b00] flex items-center justify-center mb-3 transition">

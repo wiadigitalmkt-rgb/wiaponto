@@ -604,7 +604,7 @@ export default function PunchClock() {
               </button>
 
               <button
-                onClick={() => navigate('/documentos')}
+                onClick={() => navigate('/perfil?section=documentos')}
                 className="w-full border border-slate-300 text-slate-700 hover:bg-slate-100 font-bold text-xs py-2.5 rounded-md transition duration-150 flex items-center justify-center gap-2 cursor-pointer"
               >
                 <FileText size={14} className="text-slate-500" />

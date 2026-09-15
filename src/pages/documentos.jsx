@@ -9,7 +9,7 @@ import {
   Upload, 
   CheckCircle2, 
   Trash2, 
-  Plus, 
+  Plus,  
   X,
   ExternalLink,
   ShieldCheck,

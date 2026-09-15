@@ -155,15 +155,13 @@ export default function Navbar({ selectedCompany = 'PontoMax' }) {
             </>
           ) : (
             <>
-              <Link to="/perfil?section=documentos" className="hover:text-white transition">
-                Documentos
+              <Link to="/espelho" className="hover:text-white transition">
+                Espelho de Ponto
               </Link>
               <Link to="/avisos" className="hover:text-white transition">
                 Avisos
               </Link>
-              <Link to="/espelho" className="hover:text-white transition">
-                Espelho de Ponto
-              </Link>
+              
               <Link to="/ajuda" className="hover:text-white transition">
                 Ajuda
               </Link>

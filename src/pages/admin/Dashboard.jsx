@@ -135,7 +135,7 @@ export default function Dashboard() {
     { title: 'Admissão', icon: UserPlus, path: '/admin/admissao' },
     { title: 'Contratos', icon: FileText, path: '/admin/contratos' },
     { title: 'Banco de horas', icon: Calendar, path: '/espelho?section=banco' },
-    { title: 'Distribuição de Docs', icon: FileText, path: '/documentos' },
+    { title: 'Documentos', icon: FileText, path: '/documentos' },
     { title: 'Central de Ajuda', icon: HelpCircle, path: '/ajuda' },
     { 
       title: 'Comunicação interna', 

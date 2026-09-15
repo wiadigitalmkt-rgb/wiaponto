@@ -11,7 +11,7 @@ import {
   Smartphone,  
   ShieldCheck, 
   ChevronRight,
-  Users,
+  Users, 
   Settings,
   HelpCircle,
   Briefcase

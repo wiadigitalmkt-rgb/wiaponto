@@ -228,6 +228,44 @@ function generateRecentMonths(count = 12) {
   return months;
 }
 
+function getFileKind(url, fileName) {
+  const name = (fileName || url || '').toLowerCase();
+  if (/\.(png|jpe?g|gif|webp|bmp|svg)(\?|$)/.test(name)) return 'image';
+  if (/\.(mp4|webm|mov|ogv)(\?|$)/.test(name)) return 'video';
+  if (/\.pdf(\?|$)/.test(name)) return 'pdf';
+  return 'other';
+}
+
+function FilePreviewModal({ file, onClose }) {
+  if (!file) return null;
+  const kind = getFileKind(file.url, file.name);
+  return (
+    <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-[70] p-4" onClick={onClose}>
+      <div className="bg-white rounded-lg shadow-xl max-w-3xl w-full max-h-[90vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between p-3 border-b border-slate-100">
+          <p className="text-xs font-semibold text-slate-700 truncate pr-4">{file.name || 'Arquivo'}</p>
+          <button onClick={onClose} className="text-slate-400 hover:text-slate-600 shrink-0">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+        <div className="flex-1 overflow-auto bg-slate-50 flex items-center justify-center p-2">
+          {kind === 'image' && <img src={file.url} alt={file.name || 'Arquivo'} className="max-w-full max-h-[75vh] object-contain" />}
+          {kind === 'video' && <video src={file.url} controls className="max-w-full max-h-[75vh]" />}
+          {kind === 'pdf' && <iframe src={file.url} title={file.name || 'Arquivo'} className="w-full h-[75vh] border-0" />}
+          {kind === 'other' && (
+            <div className="text-center p-10 text-slate-500 text-xs space-y-3">
+              <p>Não é possível pré-visualizar este tipo de arquivo.</p>
+              <a href={file.url} target="_blank" rel="noopener noreferrer" className="text-[#ff8b00] hover:underline font-medium">
+                Baixar arquivo
+              </a>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function AdminPonto() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -287,6 +325,7 @@ export default function AdminPonto() {
   const [showNewPayslipForm, setShowNewPayslipForm] = useState(false);
   const [newPayslip, setNewPayslip] = useState({ reference_month: '', file: null });
   const [savingPayslip, setSavingPayslip] = useState(false);
+  const [previewFile, setPreviewFile] = useState(null);
   const [showJornadaModal, setShowJornadaModal] = useState(false);
   const [selectedPhotoModal, setSelectedPhotoModal] = useState(null);
 
@@ -2002,9 +2041,12 @@ export default function AdminPonto() {
                     <div key={p.id} className="p-4 flex items-center justify-between gap-4 text-xs">
                       <div>
                         <p className="font-semibold text-slate-700 capitalize">{formatReferenceMonth(p.reference_month)}</p>
-                        <a href={p.file_url} target="_blank" rel="noopener noreferrer" className="text-[#ff8b00] hover:underline">
+                        <button
+                          onClick={() => setPreviewFile({ url: p.file_url, name: p.file_name })}
+                          className="text-[#ff8b00] hover:underline text-left"
+                        >
                           {p.file_name}
-                        </a>
+                        </button>
                       </div>
                       {isManager && (
                         <button
@@ -2040,6 +2082,8 @@ export default function AdminPonto() {
           </div>
         </div>
       )}
+
+      <FilePreviewModal file={previewFile} onClose={() => setPreviewFile(null)} />
 
       {/* Popup / Toast de feedback */}
       {toastMessage && (

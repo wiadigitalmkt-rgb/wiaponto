@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import Navbar from '@/components/Navbar';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/AuthContext';
@@ -85,13 +86,15 @@ const Field = ({ label, value }) => (
 
 export default function Perfil() {
   const { user: loggedInUser, isLoadingAuth } = useAuth();
-  const [activeTab, setActiveTab] = useState('informacoes');
+  const [searchParams] = useSearchParams();
+  const [activeTab, setActiveTab] = useState(searchParams.get('section') || 'informacoes');
   const [loading, setLoading] = useState(true);
   const [employee, setEmployee] = useState(null);
 
   const [schedule, setSchedule] = useState(null);
   const [vacations, setVacations] = useState([]);
   const [contracts, setContracts] = useState([]);
+  const [documents, setDocuments] = useState([]);
   const [openContractId, setOpenContractId] = useState(null);
 
   const [showRequestModal, setShowRequestModal] = useState(false);
@@ -107,18 +110,20 @@ export default function Perfil() {
 
   async function fetchAll() {
     setLoading(true);
-    const [{ data: emp }, { data: sched }, { data: vacs }, { data: contractsData }, { data: reqs }] = await Promise.all([
+    const [{ data: emp }, { data: sched }, { data: vacs }, { data: contractsData }, { data: reqs }, { data: docs }] = await Promise.all([
       supabase.from('Employees').select('*').eq('id', loggedInUser.id).maybeSingle(),
       supabase.from('employee_work_schedules').select('*').eq('employee_id', loggedInUser.id).maybeSingle(),
       supabase.from('employee_vacations').select('*').eq('employee_id', loggedInUser.id).order('start_date', { ascending: false }),
       supabase.from('employee_contracts').select('*, contract_templates(name, content)').eq('employee_id', loggedInUser.id).eq('status', 'assinado').order('signed_at', { ascending: false }),
       supabase.from('profile_change_requests').select('*').eq('employee_id', loggedInUser.id).order('created_at', { ascending: false }),
+      supabase.from('employee_attachments').select('*').eq('employee_id', loggedInUser.id).order('created_at', { ascending: false }),
     ]);
     setEmployee(emp || null);
     setSchedule(sched || null);
     setVacations(vacs || []);
     setContracts(contractsData || []);
     setMyRequests(reqs || []);
+    setDocuments(docs || []);
     setLoading(false);
   }
 
@@ -161,6 +166,7 @@ export default function Perfil() {
 
   const menuItems = [
     { id: 'informacoes', label: 'Informações', icon: User },
+    { id: 'documentos', label: 'Documentos', icon: FileText },
     { id: 'jornada', label: 'Jornada de trabalho', icon: Clock },
     { id: 'ferias', label: 'Férias', icon: Plane },
     { id: 'contrato', label: 'Contrato', icon: PenLine },
@@ -262,6 +268,34 @@ export default function Perfil() {
                   <Field label="Conta" value={employee.bank_account} />
                 </div>
               </div>
+            </div>
+          )}
+
+          {/* DOCUMENTOS — só visualização; quem anexa é o gestor, em
+              Usuários → editar → Documentos */}
+          {activeTab === 'documentos' && (
+            <div className="p-6 text-xs">
+              <h2 className="font-bold text-slate-800 text-sm mb-4">Meus documentos</h2>
+              {documents.length === 0 ? (
+                <div className="border-2 border-dashed border-slate-200 rounded-lg p-12 text-center text-slate-400">
+                  Nenhum documento disponível ainda.
+                </div>
+              ) : (
+                <div className="divide-y divide-slate-100 border rounded-lg overflow-hidden">
+                  {documents.map((doc) => (
+                    <div key={doc.id} className="flex items-center justify-between px-4 py-3">
+                      <div>
+                        <a href={doc.file_url} target="_blank" rel="noopener noreferrer" className="font-medium text-slate-700 hover:text-[#ff8b00] hover:underline">
+                          {doc.file_name}
+                        </a>
+                        <p className="text-slate-400 text-[11px] mt-0.5">
+                          {doc.category} — {new Date(doc.created_at).toLocaleDateString('pt-BR')}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
 

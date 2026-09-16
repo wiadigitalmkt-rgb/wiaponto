@@ -251,11 +251,25 @@ export default function Employees() {
 
     setValidatingImport(true);
     try {
-      const { data: existing, error } = await supabase.from('Employees').select('cpf');
-      if (error) throw error;
-      const existingCpfSet = new Set(
-        (existing || []).map((e) => (e.cpf || '').replace(/\D/g, '')).filter(Boolean)
-      );
+      // Monta a lista de CPFs da planilha e pergunta pro servidor quais já
+      // existem — em vez de baixar o CPF de TODOS os colaboradores da
+      // empresa pro navegador só pra comparar.
+      const cpfsNaPlanilha = importRows
+        .map((row) => {
+          const colIdx = columnMapping.cpf;
+          if (colIdx === undefined) return '';
+          return String(row[colIdx] ?? '').replace(/\D/g, '');
+        })
+        .filter(Boolean);
+
+      const checkRes = await fetch('/api/check-cpfs', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ cpfs: cpfsNaPlanilha }),
+      });
+      const checkData = await checkRes.json().catch(() => ({}));
+      if (!checkRes.ok) throw new Error(checkData.error || 'Erro ao checar CPFs.');
+      const existingCpfSet = new Set(checkData.existing || []);
 
       const valid = [];
       const invalid = [];
@@ -362,16 +376,23 @@ export default function Employees() {
           position: row.cargo,
           salary: row.salario || null,
           admission_date: row.dataAdmissao,
-          // Padrão inicial = CPF, igual ao "Resetar senha" na edição do
-          // usuário — o colaborador consegue entrar com CPF + CPF até
-          // trocar a senha (Login.jsx já cobre login sem e-mail cadastrado).
-          password_hash: row.cpfDigits,
           role: 'colaborador',
           access_type: 'Colaborador',
           status: 'Ativo'
         };
-        const { error } = await supabase.from('Employees').insert([payload]);
-        if (error) throw error;
+
+        // A senha inicial (padrão = CPF, igual ao "Resetar senha" na edição
+        // do usuário) agora é transformada em hash no servidor, dentro de
+        // /api/create-employee — o navegador nunca mais grava password_hash
+        // direto na tabela.
+        const createRes = await fetch('/api/create-employee', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ payload, password: row.cpfDigits }),
+        });
+        const createData = await createRes.json().catch(() => ({}));
+        if (!createRes.ok) throw new Error(createData.error || 'Erro ao cadastrar colaborador.');
+
         results.success += 1;
       } catch (err) {
         console.error(err);
@@ -399,44 +420,35 @@ export default function Employees() {
     const fullName = `${formData.primeiroNome} ${formData.sobrenome}`.trim();
 
     try {
-      // Criação do usuário na tabela Employees
-      const { data, error } = await supabase.from('Employees').insert([
-        {
-          full_name: fullName,
-          first_name: formData.primeiroNome,
-          last_name: formData.sobrenome,
-          email: formData.email.toLowerCase().trim(),
-          password_hash: formData.senha,
-          cpf: formData.cpf,
-          admission_date: formData.dataAdmissao || null,
-          role: formData.tipoAcesso === 'Gestor' ? 'gestor' : 'colaborador',
-          access_type: formData.tipoAcesso,
-          department: formData.departamento || null,
-          position: formData.cargo || null,
-          salary: formData.salario || null,
-          contract_type: formData.tipoContrato || null,
-          work_schedule: formData.jornada || '08:00 - 18:00',
-          status: 'Ativo'
-        },
-      ]).select();
-
-      if (error) throw error;
-
-      // Cria a conta de autenticação no Supabase Auth
-      const { error: authError } = await supabase.auth.signUp({
+      // Criação do colaborador (na tabela Employees e no Supabase Auth)
+      // agora acontece inteira no servidor, dentro de /api/create-employee:
+      // a senha vira hash lá, e nunca mais trafega pra gravação direto do
+      // navegador.
+      const payload = {
+        full_name: fullName,
+        first_name: formData.primeiroNome,
+        last_name: formData.sobrenome,
         email: formData.email.toLowerCase().trim(),
-        password: formData.senha,
-        options: {
-          data: {
-            full_name: fullName,
-            role: formData.tipoAcesso === 'Gestor' ? 'gestor' : 'colaborador',
-          }
-        }
-      });
+        cpf: formData.cpf,
+        admission_date: formData.dataAdmissao || null,
+        role: formData.tipoAcesso === 'Gestor' ? 'gestor' : 'colaborador',
+        access_type: formData.tipoAcesso,
+        department: formData.departamento || null,
+        position: formData.cargo || null,
+        salary: formData.salario || null,
+        contract_type: formData.tipoContrato || null,
+        work_schedule: formData.jornada || '08:00 - 18:00',
+        status: 'Ativo'
+      };
 
-      if (authError && !authError.message.includes('already registered')) {
-        console.warn('Aviso no Supabase Auth:', authError.message);
-      }
+      const createRes = await fetch('/api/create-employee', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ payload, password: formData.senha }),
+      });
+      const createData = await createRes.json().catch(() => ({}));
+      if (!createRes.ok) throw new Error(createData.error || 'Erro ao salvar colaborador.');
+      const data = [createData.employee];
 
       setShowAccessModal(false);
       setFormData({

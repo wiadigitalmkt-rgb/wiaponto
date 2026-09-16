@@ -1,39 +1,86 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
+import { supabase } from "@/lib/supabase";
 
 const AuthContext = createContext({});
+
+const PUBLIC_PATHS = ['/login', '/register', '/forgot-password', '/recuperar-senha', '/reset-password'];
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [session, setSession] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  const checkLocalSession = () => {
-    const localData = localStorage.getItem('userSession');
-    const sessionData = sessionStorage.getItem('userSession');
-    const savedSession = localData || sessionData;
-
-    if (savedSession) {
-      try {
-        const parsedUser = JSON.parse(savedSession);
-        setUser(parsedUser);
-        setSession({ user: parsedUser });
-      } catch (e) {
-        console.error("Erro ao carregar sessão local:", e);
-        setUser(null);
-        setSession(null);
-      }
-    } else {
+  // A partir de uma sessão REAL do Supabase Auth (com token/JWT válido),
+  // busca a linha correspondente na Employees (via auth_user_id, ligado na
+  // Fase A/B) e monta o objeto "user" no mesmo formato que o resto do app
+  // já espera — id, full_name, cpf, email, role — pra não precisar mudar
+  // as outras telas.
+  const loadEmployeeForSession = async (authSession) => {
+    if (!authSession?.user || !supabase) {
       setUser(null);
       setSession(null);
+      localStorage.removeItem('userSession');
+      sessionStorage.removeItem('userSession');
+      return;
     }
+
+    const { data: emp } = await supabase
+      .from('Employees')
+      .select('id, full_name, cpf, email, role')
+      .eq('auth_user_id', authSession.user.id)
+      .maybeSingle();
+
+    const sessionUser = {
+      id: emp?.id || authSession.user.id,
+      full_name: emp?.full_name || authSession.user.email,
+      cpf: emp?.cpf || '',
+      email: emp?.email || authSession.user.email || '',
+      role: emp?.role || 'colaborador',
+    };
+
+    setUser(sessionUser);
+    setSession(authSession);
+
+    // Mantém o espelho em localStorage só por compatibilidade com qualquer
+    // tela que ainda leia 'userSession' diretamente — a sessão de verdade
+    // (o que garante acesso) passa a ser sempre a do Supabase Auth, que por
+    // padrão já persiste entre sessões do navegador independente de
+    // qualquer checkbox de "continuar logado" na tela de login.
+    localStorage.setItem('userSession', JSON.stringify(sessionUser));
+    sessionStorage.removeItem('userSession');
+  };
+
+  const refreshSession = async () => {
+    if (!supabase) {
+      setLoading(false);
+      return;
+    }
+    const { data: { session: authSession } } = await supabase.auth.getSession();
+    await loadEmployeeForSession(authSession);
     setLoading(false);
   };
 
   useEffect(() => {
-    checkLocalSession();
+    refreshSession();
+
+    if (!supabase) return;
+
+    // Mantém tudo sincronizado automaticamente quando o token expira/renova,
+    // ou quando o login/logout acontece em outra aba.
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, authSession) => {
+      loadEmployeeForSession(authSession);
+    });
+
+    return () => {
+      listener?.subscription?.unsubscribe();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const signOut = async () => {
+    if (supabase) {
+      await supabase.auth.signOut();
+    }
     localStorage.clear();
     sessionStorage.clear();
     setUser(null);
@@ -42,14 +89,12 @@ export const AuthProvider = ({ children }) => {
   };
 
   const navigateToLogin = () => {
-    const publicPaths = ['/login', '/register', '/forgot-password', '/recuperar-senha', '/reset-password'];
-    if (!publicPaths.includes(window.location.pathname.toLowerCase())) {
+    if (!PUBLIC_PATHS.includes(window.location.pathname.toLowerCase())) {
       window.location.href = '/login';
     }
   };
 
-  const publicPaths = ['/login', '/register', '/forgot-password', '/recuperar-senha', '/reset-password'];
-  const isPublicRoute = publicPaths.includes(window.location.pathname.toLowerCase());
+  const isPublicRoute = PUBLIC_PATHS.includes(window.location.pathname.toLowerCase());
   const authError = (!user && !loading && !isPublicRoute) ? { type: 'auth_required' } : null;
 
   const value = {
@@ -60,7 +105,7 @@ export const AuthProvider = ({ children }) => {
     authError,
     signOut,
     navigateToLogin,
-    refreshSession: checkLocalSession,
+    refreshSession,
   };
 
   return (

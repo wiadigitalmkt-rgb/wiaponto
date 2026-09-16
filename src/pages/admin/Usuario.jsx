@@ -303,7 +303,11 @@ export default function Usuario() {
         bank_notes: usuarioData.observacoesBancarias,
         point_id: usuarioData.idPonto,
         access_type: usuarioData.tipoAcesso,
-        role: usuarioData.tipoAcesso === 'Gestor' ? 'gestor' : 'colaborador',
+        // 'Dono da Empresa' também é role 'gestor' (mesmo acesso de rota) —
+        // só o access_type muda. Antes, salvar o perfil de um "Dono da
+        // Empresa" rebaixava o role pra 'colaborador' sem querer, porque
+        // essa comparação só reconhecia o texto exato 'Gestor'.
+        role: (usuarioData.tipoAcesso === 'Gestor' || usuarioData.tipoAcesso === 'Dono da Empresa') ? 'gestor' : 'colaborador',
         status: usuarioData.statusUsuario
       };
 

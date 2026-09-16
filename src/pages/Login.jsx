@@ -14,6 +14,7 @@ export default function Login() {
   const [rememberMe, setRememberMe] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+  const [showForgotHint, setShowForgotHint] = useState(false);
 
   // Login de verdade via Supabase Auth — substitui o /api/login.mjs (que
   // comparava password_hash na mão). Continua aceitando CPF no lugar do
@@ -148,13 +149,20 @@ export default function Login() {
                 Continuar logado
               </label>
 
-              <a
-                href="/forgot-password"
-                className="font-normal text-slate-700 hover:text-slate-900"
+              <button
+                type="button"
+                onClick={() => setShowForgotHint((v) => !v)}
+                className="font-normal text-slate-700 hover:text-slate-900 cursor-pointer"
               >
                 Esqueci a minha senha
-              </a>
+              </button>
             </div>
+
+            {showForgotHint && (
+              <p className="text-xs text-slate-500 bg-slate-50 border border-slate-200 rounded-md p-2.5 -mt-1">
+                Fale com o gestor da sua empresa para redefinir sua senha.
+              </p>
+            )}
 
             <button
               type="submit"

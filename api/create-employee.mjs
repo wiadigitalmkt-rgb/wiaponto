@@ -66,23 +66,15 @@ export default async function handler(req, res) {
 
     const passwordHash = await bcrypt.hash(String(password), 10);
 
-    const { data: inserted, error: insertError } = await supabaseAdmin
-      .from('Employees')
-      .insert([{ ...payload, password_hash: passwordHash }])
-      .select()
-      .single();
-
-    if (insertError) {
-      console.error('Erro ao inserir colaborador:', insertError);
-      return res.status(500).json({ error: 'Erro ao salvar colaborador: ' + insertError.message });
-    }
-
-    // Cria a conta no Supabase Auth também, se houver e-mail (não é
-    // fatal se falhar — o colaborador ainda consegue logar pelo
-    // password_hash via /api/login).
+    // Cria a conta no Supabase Auth ANTES de gravar em Employees (se houver
+    // e-mail), pra já poder vincular auth_user_id na mesma linha — é essa
+    // coluna que as políticas de RLS da Fase D vão usar pra saber "quem é
+    // quem" de verdade.
+    let authUserId = null;
     const email = (payload.email || '').toLowerCase().trim();
+
     if (email) {
-      const { error: authError } = await supabaseAdmin.auth.admin.createUser({
+      const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
         email,
         password: String(password),
         email_confirm: true,
@@ -92,9 +84,31 @@ export default async function handler(req, res) {
         },
       });
 
-      if (authError && !String(authError.message || '').toLowerCase().includes('already been registered')) {
-        console.warn('Aviso ao criar usuário no Supabase Auth:', authError.message);
+      if (authError) {
+        const alreadyRegistered = String(authError.message || '').toLowerCase().includes('already been registered');
+        if (!alreadyRegistered) {
+          console.warn('Aviso ao criar usuário no Supabase Auth:', authError.message);
+        } else {
+          // E-mail já tem conta no Auth (ex: recriando um colaborador) —
+          // busca o ID existente pra vincular do mesmo jeito.
+          const { data: usersList } = await supabaseAdmin.auth.admin.listUsers();
+          const found = usersList?.users?.find((u) => u.email?.toLowerCase() === email);
+          if (found) authUserId = found.id;
+        }
+      } else if (authData?.user?.id) {
+        authUserId = authData.user.id;
       }
+    }
+
+    const { data: inserted, error: insertError } = await supabaseAdmin
+      .from('Employees')
+      .insert([{ ...payload, password_hash: passwordHash, auth_user_id: authUserId }])
+      .select()
+      .single();
+
+    if (insertError) {
+      console.error('Erro ao inserir colaborador:', insertError);
+      return res.status(500).json({ error: 'Erro ao salvar colaborador: ' + insertError.message });
     }
 
     return res.status(200).json({ employee: inserted });

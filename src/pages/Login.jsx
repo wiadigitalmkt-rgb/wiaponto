@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Eye, EyeOff, ArrowRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { supabase } from '@/lib/supabase';
 import bgLoginImg from './bgloginponto.png';
 import { useAuth } from '@/lib/AuthContext';
 
@@ -14,36 +15,60 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
 
-  // A verificação de senha agora acontece inteiramente no servidor
-  // (/api/login.js), usando a service_role key. O navegador nunca mais
-  // consulta a tabela Employees nem o password_hash diretamente.
+  // Login de verdade via Supabase Auth — substitui o /api/login.mjs (que
+  // comparava password_hash na mão). Continua aceitando CPF no lugar do
+  // e-mail: get_login_email() resolve isso no banco (função criada na
+  // Fase A), sem expor nada além do e-mail correspondente.
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
     setErrorMsg('');
 
     try {
-      const res = await fetch('/api/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userInput, password }),
+      const rawInput = userInput.trim();
+
+      let loginEmail = rawInput;
+      if (!rawInput.includes('@')) {
+        const { data: resolvedEmail, error: resolveError } = await supabase.rpc('get_login_email', {
+          p_input: rawInput,
+        });
+        if (resolveError) console.error('Erro ao resolver login por CPF:', resolveError);
+        if (resolvedEmail) loginEmail = resolvedEmail;
+      }
+
+      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+        email: loginEmail,
+        password,
       });
 
-      const data = await res.json().catch(() => ({}));
-
-      if (!res.ok || !data.session) {
-        setErrorMsg(data.error || 'Usuário ou senha incorretos.');
+      if (authError || !authData?.session) {
+        setErrorMsg('Usuário ou senha incorretos.');
         setLoading(false);
         return;
       }
 
-      const sessionData = data.session;
+      const { data: emp } = await supabase
+        .from('Employees')
+        .select('status, role')
+        .eq('auth_user_id', authData.user.id)
+        .maybeSingle();
 
-      if (rememberMe) localStorage.setItem('userSession', JSON.stringify(sessionData));
-      else sessionStorage.setItem('userSession', JSON.stringify(sessionData));
+      if (emp && String(emp.status || '').toLowerCase() === 'inativo') {
+        await supabase.auth.signOut();
+        setErrorMsg('Este usuário está inativo. Fale com o gestor da sua empresa.');
+        setLoading(false);
+        return;
+      }
 
-      refreshSession();
-      navigate(sessionData.role === 'gestor' || sessionData.role === 'admin' ? '/admin' : '/ponto');
+      // "Continuar logado" — aviso importante: por padrão, o Supabase Auth
+      // já mantém a sessão salva entre reaberturas do navegador,
+      // independente desse checkbox (diferente do comportamento antigo,
+      // onde "desmarcado" usava sessionStorage e expirava ao fechar a aba).
+      // Se quiser esse controle fino de volta, me avisa — dá pra fazer com
+      // um adaptador de storage customizado no cliente do Supabase.
+
+      await refreshSession();
+      navigate(emp?.role === 'gestor' || emp?.role === 'admin' ? '/admin' : '/ponto');
     } catch (err) {
       console.error('Erro na autenticação:', err);
       setErrorMsg('Falha na conexão com o servidor. Tente novamente.');

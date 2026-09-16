@@ -1,32 +1,20 @@
-// /api/login.js
+// /api/login.mjs
 //
 // Login seguro, rodando no SERVIDOR (Vercel Serverless Function) — nunca no
-// navegador do colaborador. Substitui a lógica que antes ficava dentro de
-// Login.jsx e que expunha password_hash direto pro cliente.
-//
-// O que muda em relação ao fluxo antigo:
-// 1. A tabela Employees (com password_hash, cpf, salário etc.) só é lida
-//    aqui, usando a service_role key — uma chave privada que nunca é
-//    enviada ao navegador. Isso é o que permite, na Etapa 3, travar o RLS
-//    da Employees sem quebrar o login.
-// 2. Senhas gravadas em texto puro (como estavam antes) continuam
-//    funcionando normalmente no login — mas assim que o colaborador loga
-//    com sucesso, a senha é automaticamente re-gravada como hash bcrypt.
-//    Não precisa resetar a senha de ninguém na mão.
-// 3. A resposta enviada ao navegador nunca inclui password_hash.
+// navegador do colaborador. Reescrito em ES Modules (import/export) com
+// extensão .mjs, que é a forma oficialmente suportada pela Vercel para
+// Node Functions fora do padrão CommonJS, independente do que estiver no
+// package.json do projeto.
 //
 // Variáveis de ambiente necessárias na Vercel (Project Settings → Environment Variables):
-//   SUPABASE_SERVICE_ROLE_KEY  -> Supabase → Project Settings → API → "service_role" (secret)
-//   SUPABASE_URL ou VITE_SUPABASE_URL          -> já deve existir (a mesma URL do seu projeto)
-//   SUPABASE_ANON_KEY ou VITE_SUPABASE_ANON_KEY -> já deve existir (a mesma anon key do seu projeto)
+//   SUPABASE_SERVICE_ROLE_KEY  -> Supabase → Project Settings → API → "Secret keys" (sb_secret_...)
+//   SUPABASE_URL ou VITE_SUPABASE_URL          -> já deve existir
+//   SUPABASE_ANON_KEY ou VITE_SUPABASE_ANON_KEY -> já deve existir
 //
 // IMPORTANTE: SUPABASE_SERVICE_ROLE_KEY NUNCA deve começar com "VITE_".
-// Qualquer variável com prefixo VITE_ é embutida no código público que vai
-// pro navegador — colocar a service_role key com esse prefixo anularia
-// toda a proteção deste arquivo.
 
-const { createClient } = require('@supabase/supabase-js');
-const bcrypt = require('bcryptjs');
+import { createClient } from '@supabase/supabase-js';
+import bcrypt from 'bcryptjs';
 
 const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
 const anonKey = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY;
@@ -49,7 +37,7 @@ const buildSession = (emp, fallbackEmail) => ({
   role: emp.role || 'colaborador',
 });
 
-module.exports = async function handler(req, res) {
+export default async function handler(req, res) {
   if (req.method !== 'POST') {
     res.setHeader('Allow', 'POST');
     return res.status(405).json({ error: 'Método não permitido.' });
@@ -158,4 +146,4 @@ module.exports = async function handler(req, res) {
     console.error('Erro no login:', err);
     return res.status(500).json({ error: 'Falha na conexão com o servidor. Tente novamente.' });
   }
-};
+}

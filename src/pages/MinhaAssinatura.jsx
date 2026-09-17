@@ -5,6 +5,7 @@ import { useAuth } from '@/lib/AuthContext';
 import { Loader2, PenLine, CheckCircle2, X } from 'lucide-react';
 
 const STORAGE_BUCKET = 'admissao-documentos';
+const SIGNED_URL_TTL_SECONDS = 300; // 5 minutos — resolvido de novo sempre que a página carrega
 
 // ---------------------------------------------------------------------------
 // Mesma lógica de desenho usada em PreencherAdmissao.jsx (SignaturePad) —
@@ -12,10 +13,16 @@ const STORAGE_BUCKET = 'admissao-documentos';
 // da conta que nunca passou pelo processo de admissão também poder ter uma
 // assinatura própria salva (usada em "Assinar como Gestor" / "Assinar como
 // Empregadora", nos contratos).
+//
+// Bucket privado agora: Employees.signature_path guarda um PATH de
+// storage, não mais uma URL pública — o link de exibição é sempre gerado
+// na hora (createSignedUrl), nunca fica salvo permanentemente em lugar
+// nenhum.
 // ---------------------------------------------------------------------------
 export default function MinhaAssinatura() {
   const { user: loggedInUser, isLoadingAuth } = useAuth();
   const [loading, setLoading] = useState(true);
+  const [signaturePath, setSignaturePath] = useState(null);
   const [currentUrl, setCurrentUrl] = useState(null);
   const [redoing, setRedoing] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -33,7 +40,18 @@ export default function MinhaAssinatura() {
         .select('signature_path')
         .eq('id', loggedInUser.id)
         .maybeSingle();
-      setCurrentUrl(data?.signature_path || null);
+
+      const path = data?.signature_path || null;
+      setSignaturePath(path);
+
+      if (path) {
+        const { data: signed } = await supabase.storage
+          .from(STORAGE_BUCKET)
+          .createSignedUrl(path, SIGNED_URL_TTL_SECONDS);
+        setCurrentUrl(signed?.signedUrl || null);
+      } else {
+        setCurrentUrl(null);
+      }
       setLoading(false);
     })();
   }, [isLoadingAuth, loggedInUser]);
@@ -109,18 +127,20 @@ export default function MinhaAssinatura() {
             .upload(path, file, { upsert: true });
           if (uploadError) throw uploadError;
 
-          // IMPORTANTE: grava a URL pública completa, não só o caminho —
-          // foi exatamente esse bug que deixou a assinatura do colaborador
-          // quebrada por um tempo.
-          const { data: urlData } = supabase.storage.from(STORAGE_BUCKET).getPublicUrl(path);
-
+          // Salva o PATH (não mais uma URL pública) — o bucket agora é
+          // privado, então uma URL de longa duração nem funcionaria.
           const { error: empError } = await supabase
             .from('Employees')
-            .update({ signature_path: urlData.publicUrl })
+            .update({ signature_path: path })
             .eq('id', loggedInUser.id);
           if (empError) throw empError;
 
-          setCurrentUrl(urlData.publicUrl);
+          const { data: signed } = await supabase.storage
+            .from(STORAGE_BUCKET)
+            .createSignedUrl(path, SIGNED_URL_TTL_SECONDS);
+
+          setSignaturePath(path);
+          setCurrentUrl(signed?.signedUrl || null);
           setRedoing(false);
           setHasDrawn(false);
         } catch (err) {
@@ -157,13 +177,19 @@ export default function MinhaAssinatura() {
         </div>
 
         <div className="bg-white rounded-lg border border-slate-200 shadow-sm p-6 space-y-4">
-          {currentUrl && !redoing ? (
+          {signaturePath && !redoing ? (
             <div className="flex items-center gap-4">
-              <img
-                src={currentUrl}
-                alt="Sua assinatura"
-                className="w-40 h-20 object-contain border border-slate-200 rounded-lg bg-white"
-              />
+              {currentUrl ? (
+                <img
+                  src={currentUrl}
+                  alt="Sua assinatura"
+                  className="w-40 h-20 object-contain border border-slate-200 rounded-lg bg-white"
+                />
+              ) : (
+                <div className="w-40 h-20 flex items-center justify-center border border-slate-200 rounded-lg bg-slate-50 text-xs text-slate-400">
+                  Não foi possível carregar
+                </div>
+              )}
               <div className="flex-1">
                 <p className="text-sm font-medium text-slate-700 flex items-center gap-1.5">
                   <CheckCircle2 className="w-4 h-4 text-[#ff8b00]" /> Assinatura salva
@@ -200,7 +226,7 @@ export default function MinhaAssinatura() {
                 >
                   Limpar
                 </button>
-                {currentUrl && (
+                {signaturePath && (
                   <button
                     onClick={() => setRedoing(false)}
                     disabled={uploading}

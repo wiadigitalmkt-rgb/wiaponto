@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, Link } from 'react-router-dom';
 import Navbar from '@/components/Navbar';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/AuthContext';
@@ -132,6 +132,7 @@ export default function Perfil() {
   const [schedule, setSchedule] = useState(null);
   const [vacations, setVacations] = useState([]);
   const [contracts, setContracts] = useState([]);
+  const [pendingContractsCount, setPendingContractsCount] = useState(0);
   const [documents, setDocuments] = useState([]);
   const [openContractId, setOpenContractId] = useState(null);
 
@@ -156,11 +157,12 @@ export default function Perfil() {
 
   async function fetchAll() {
     setLoading(true);
-    const [{ data: emp }, { data: sched }, { data: vacs }, { data: contractsData }, { data: reqs }, { data: docs }] = await Promise.all([
+    const [{ data: emp }, { data: sched }, { data: vacs }, { data: contractsData }, { count: pendingCount }, { data: reqs }, { data: docs }] = await Promise.all([
       supabase.from('Employees').select('*').eq('id', loggedInUser.id).maybeSingle(),
       supabase.from('employee_work_schedules').select('*').eq('employee_id', loggedInUser.id).maybeSingle(),
       supabase.from('employee_vacations').select('*').eq('employee_id', loggedInUser.id).order('start_date', { ascending: false }),
       supabase.from('employee_contracts').select('*, contract_templates(name, content)').eq('employee_id', loggedInUser.id).eq('status', 'assinado').order('signed_at', { ascending: false }),
+      supabase.from('employee_contracts').select('id', { count: 'exact', head: true }).eq('employee_id', loggedInUser.id).neq('status', 'assinado'),
       supabase.from('profile_change_requests').select('*').eq('employee_id', loggedInUser.id).order('created_at', { ascending: false }),
       supabase.from('employee_attachments').select('*').eq('employee_id', loggedInUser.id).order('created_at', { ascending: false }),
     ]);
@@ -168,6 +170,7 @@ export default function Perfil() {
     setSchedule(sched || null);
     setVacations(vacs || []);
     setContracts(contractsData || []);
+    setPendingContractsCount(pendingCount || 0);
     setMyRequests(reqs || []);
     setDocuments(docs || []);
     setLoading(false);
@@ -441,6 +444,30 @@ export default function Perfil() {
           {activeTab === 'contrato' && (
             <div className="p-6 text-xs space-y-3">
               <h2 className="font-bold text-slate-800 text-sm mb-1">Meu contrato</h2>
+
+              {/* Aviso + link direto pra assinar — sem isso, não tinha como o
+                  colaborador (ou até o gestor) descobrir que essa página
+                  separada (/meus-contratos) existe pra ver e assinar
+                  contratos pendentes. */}
+              {pendingContractsCount > 0 ? (
+                <Link
+                  to="/meus-contratos"
+                  className="flex items-center justify-between gap-3 bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 hover:bg-amber-100 transition-colors"
+                >
+                  <span className="text-amber-800 font-medium">
+                    Você tem {pendingContractsCount === 1 ? '1 contrato pendente' : `${pendingContractsCount} contratos pendentes`} de assinatura.
+                  </span>
+                  <span className="text-amber-700 font-semibold whitespace-nowrap">Ver e assinar →</span>
+                </Link>
+              ) : (
+                <Link
+                  to="/meus-contratos"
+                  className="inline-block text-[#ff8b00] hover:underline font-medium"
+                >
+                  Ver todos os meus contratos (assinados e pendentes) →
+                </Link>
+              )}
+
               {contracts.length === 0 ? (
                 <div className="border-2 border-dashed border-slate-200 rounded-lg p-12 text-center text-slate-400">
                   Nenhum contrato assinado ainda.

@@ -4,6 +4,9 @@ import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/AuthContext';
 import { FileText, Loader2, CheckCircle2, PenLine } from 'lucide-react';
 
+const STORAGE_BUCKET = 'admissao-documentos';
+const SIGNED_URL_TTL_SECONDS = 300;
+
 // ---------------------------------------------------------------------------
 // Mesma lógica de variáveis usada em contratos.jsx (Gerenciar Contratos).
 // Duplicada aqui de propósito — essa página fica isolada, fora do painel do
@@ -99,6 +102,13 @@ export default function AssinarContrato() {
   const [signing, setSigning] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
 
+  // Bucket privado: signature_path / manager_signature_url /
+  // employer_signature_url guardam PATHS de storage agora, não URLs. Os
+  // links de exibição são resolvidos na hora (signed URL), só quando um
+  // contrato é aberto pra visualização — nunca ficam salvos em lugar nenhum.
+  const [signedUrls, setSignedUrls] = useState({ employee: null, manager: null, employer: null });
+  const [resolvingSignatures, setResolvingSignatures] = useState(false);
+
   useEffect(() => {
     if (isLoadingAuth) return;
     if (!loggedInUser?.id) {
@@ -108,6 +118,35 @@ export default function AssinarContrato() {
     fetchMyContracts();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isLoadingAuth, loggedInUser]);
+
+  useEffect(() => {
+    if (!selectedContract) {
+      setSignedUrls({ employee: null, manager: null, employer: null });
+      return;
+    }
+    resolveSignatures(selectedContract);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedContract]);
+
+  async function resolveSignatures(contract) {
+    setResolvingSignatures(true);
+    const employeePath = contract.status === 'assinado' ? employee?.signature_path : null;
+    const [empSigned, mgrSigned, emplSigned] = await Promise.all([
+      employeePath ? supabase.storage.from(STORAGE_BUCKET).createSignedUrl(employeePath, SIGNED_URL_TTL_SECONDS) : null,
+      contract.manager_signature_url
+        ? supabase.storage.from(STORAGE_BUCKET).createSignedUrl(contract.manager_signature_url, SIGNED_URL_TTL_SECONDS)
+        : null,
+      contract.employer_signature_url
+        ? supabase.storage.from(STORAGE_BUCKET).createSignedUrl(contract.employer_signature_url, SIGNED_URL_TTL_SECONDS)
+        : null,
+    ]);
+    setSignedUrls({
+      employee: empSigned?.data?.signedUrl || null,
+      manager: mgrSigned?.data?.signedUrl || null,
+      employer: emplSigned?.data?.signedUrl || null,
+    });
+    setResolvingSignatures(false);
+  }
 
   async function fetchMyContracts() {
     setLoading(true);
@@ -225,12 +264,18 @@ export default function AssinarContrato() {
               <h3 className="font-bold text-slate-800 text-sm">{selectedContract.contract_templates?.name}</h3>
             </div>
             <div className="p-6 overflow-y-auto">
-              <ContractBody
-                text={renderContractText(selectedContract.contract_templates?.content, employee || {})}
-                employeeSignatureUrl={selectedContract.status === 'assinado' ? employee?.signature_path : null}
-                managerSignatureUrl={selectedContract.manager_signature_url}
-                employerSignatureUrl={selectedContract.employer_signature_url}
-              />
+              {resolvingSignatures ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="w-5 h-5 animate-spin text-[#ff8b00]" />
+                </div>
+              ) : (
+                <ContractBody
+                  text={renderContractText(selectedContract.contract_templates?.content, employee || {})}
+                  employeeSignatureUrl={signedUrls.employee}
+                  managerSignatureUrl={signedUrls.manager}
+                  employerSignatureUrl={signedUrls.employer}
+                />
+              )}
             </div>
             <div className="p-4 border-t border-slate-100 flex justify-end gap-2">
               <button

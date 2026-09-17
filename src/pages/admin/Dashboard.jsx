@@ -44,6 +44,12 @@ export default function Dashboard() {
 
   const [overtimeUsers, setOvertimeUsers] = useState([]);
 
+  // Pendências que precisam de ação do gestor — sem isso, era fácil
+  // esquecer que existia uma admissão em andamento ou um contrato esperando
+  // assinatura, já que ficavam só dentro dos respectivos módulos.
+  const [pendingAdmissions, setPendingAdmissions] = useState([]);
+  const [pendingContracts, setPendingContracts] = useState([]);
+
   useEffect(() => {
     async function loadTodayStats() {
       if (!supabase) return;
@@ -142,6 +148,50 @@ export default function Dashboard() {
     };
   }, []);
 
+  useEffect(() => {
+    async function loadPendencias() {
+      if (!supabase) return;
+
+      const { data: admissions } = await supabase
+        .from('employee_admissions')
+        .select('id, employee_id, status, Employees!employee_id(full_name)')
+        .eq('status', 'Em andamento')
+        .order('created_at', { ascending: false });
+      setPendingAdmissions(admissions || []);
+
+      const { data: contracts } = await supabase
+        .from('employee_contracts')
+        .select('id, employee_id, status, Employees!employee_id(full_name), contract_templates(name)')
+        .neq('status', 'assinado')
+        .order('created_at', { ascending: false });
+      setPendingContracts(contracts || []);
+    }
+
+    loadPendencias();
+
+    const channel = supabase
+      .channel('dashboard_pendencias')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'employee_admissions' },
+        () => {
+          loadPendencias();
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'employee_contracts' },
+        () => {
+          loadPendencias();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
+
   const modules = [
     { title: 'Espelho de ponto', icon: Clock, path: '/espelho' },
     { title: 'Usuários', icon: Users, path: '/admin/colaboradores' },
@@ -224,6 +274,82 @@ export default function Dashboard() {
             })}
           </div>
         </div>
+
+        {/* PENDÊNCIAS — admissões em andamento e contratos aguardando assinatura */}
+        {(pendingAdmissions.length > 0 || pendingContracts.length > 0) && (
+          <div className="space-y-4">
+            <div className="flex items-center gap-2">
+              <div className="w-3 h-[2px] bg-amber-500"></div>
+              <h3 className="text-xs font-bold text-amber-700 uppercase tracking-wider">Pendências</h3>
+              <div className="flex-1 h-[1px] bg-amber-200"></div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* ADMISSÕES EM ANDAMENTO */}
+              <div className="bg-white rounded-lg border border-amber-200 shadow-sm flex flex-col justify-between overflow-hidden">
+                <div className="p-6 pb-0 flex-1 flex flex-col">
+                  <h4 className="font-bold text-[#1a2c6a] text-base mb-4">Admissões em andamento</h4>
+                  <div className="space-y-2 max-h-[180px] overflow-y-auto pr-1">
+                    {pendingAdmissions.length > 0 ? (
+                      pendingAdmissions.map((adm) => (
+                        <Link
+                          key={adm.id}
+                          to="/admin/admissao"
+                          className="flex items-center justify-between p-3 rounded-md bg-amber-50 hover:bg-amber-100 transition-colors text-xs font-medium"
+                        >
+                          <span className="font-bold text-slate-700">{adm.Employees?.full_name || 'Colaborador'}</span>
+                          <span className="text-amber-700 text-[10px] font-semibold">Em andamento</span>
+                        </Link>
+                      ))
+                    ) : (
+                      <div className="text-xs text-slate-400 italic text-center py-4">
+                        Nenhuma admissão em andamento.
+                      </div>
+                    )}
+                  </div>
+                </div>
+                <div className="p-4 border-t border-slate-100 mt-6 bg-slate-50/50">
+                  <Link to="/admin/admissao" className="text-xs font-bold text-[#ff8b00] hover:underline">
+                    Ver todas as admissões
+                  </Link>
+                </div>
+              </div>
+
+              {/* CONTRATOS AGUARDANDO ASSINATURA */}
+              <div className="bg-white rounded-lg border border-amber-200 shadow-sm flex flex-col justify-between overflow-hidden">
+                <div className="p-6 pb-0 flex-1 flex flex-col">
+                  <h4 className="font-bold text-[#1a2c6a] text-base mb-4">Contratos aguardando assinatura</h4>
+                  <div className="space-y-2 max-h-[180px] overflow-y-auto pr-1">
+                    {pendingContracts.length > 0 ? (
+                      pendingContracts.map((c) => (
+                        <Link
+                          key={c.id}
+                          to="/admin/contratos"
+                          className="flex items-center justify-between p-3 rounded-md bg-amber-50 hover:bg-amber-100 transition-colors text-xs font-medium"
+                        >
+                          <div>
+                            <span className="font-bold text-slate-700 block">{c.Employees?.full_name || 'Colaborador'}</span>
+                            <span className="text-slate-400 text-[10px]">{c.contract_templates?.name}</span>
+                          </div>
+                          <span className="text-amber-700 text-[10px] font-semibold whitespace-nowrap">Aguardando</span>
+                        </Link>
+                      ))
+                    ) : (
+                      <div className="text-xs text-slate-400 italic text-center py-4">
+                        Nenhum contrato pendente.
+                      </div>
+                    )}
+                  </div>
+                </div>
+                <div className="p-4 border-t border-slate-100 mt-6 bg-slate-50/50">
+                  <Link to="/admin/contratos" className="text-xs font-bold text-[#ff8b00] hover:underline">
+                    Ver todos os contratos
+                  </Link>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* PAINEL GERAL */}
         <div className="space-y-6">

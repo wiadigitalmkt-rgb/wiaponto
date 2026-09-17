@@ -216,6 +216,10 @@ const getScheduledMinutesForDate = (dateISO, schedule, isHoliday, swapMap) => {
 // isExtraDouble = true quando o dia não tinha jornada prevista (folga,
 // domingo, feriado não trocado) — nesse caso TODO o trabalhado vira hora
 // extra 100%, em vez de 50%.
+// targetDailyMinutes = null significa "colaborador sem jornada cadastrada"
+// (diferente de "0min porque é folga") — nesse caso não dá pra saber o que
+// é extra, então nada é contado como extra e o dia fica marcado como
+// scheduleMissing pra avisar o gestor, em vez de assumir 100% errado.
 const processDayRecord = (record, targetDailyMinutes = 0, isExtraDouble = false) => {
   let totalDayMinutes = 0;
   let nightMinutes = 0;
@@ -240,8 +244,9 @@ const processDayRecord = (record, targetDailyMinutes = 0, isExtraDouble = false)
     return { ...b, saldo: '-' };
   });
 
+  const scheduleMissing = targetDailyMinutes === null;
   const trabalhadoStr = minutesToDisplayHours(totalDayMinutes);
-  const extraMinutes = Math.max(0, totalDayMinutes - targetDailyMinutes);
+  const extraMinutes = scheduleMissing ? 0 : Math.max(0, totalDayMinutes - targetDailyMinutes);
   const horaExtraStr = minutesToDisplayHours(extraMinutes);
   const extra50Minutes = isExtraDouble ? 0 : extraMinutes;
   const extra100Minutes = isExtraDouble ? extraMinutes : 0;
@@ -253,6 +258,7 @@ const processDayRecord = (record, targetDailyMinutes = 0, isExtraDouble = false)
     horaExtra: horaExtraStr,
     totalDayMinutes,
     targetDailyMinutes,
+    scheduleMissing,
     extraMinutes,
     extra50Minutes,
     extra100Minutes,
@@ -587,8 +593,21 @@ export default function AdminPonto() {
         });
       });
 
+      // Colaborador sem nenhuma jornada ativa cadastrada em
+      // employee_work_schedules — diferente de "tem jornada, mas esse dia
+      // específico é folga". Sem isso, todo dia trabalhado seria lido como
+      // folga (meta 0) e viraria 100% de hora extra por engano.
+      const hasSchedule = !!(
+        scheduleData &&
+        Array.isArray(scheduleData.week_days) &&
+        scheduleData.week_days.some((w) => w.active)
+      );
+
       const processed = Object.values(grouped)
         .map((rec) => {
+          if (!hasSchedule) {
+            return processDayRecord(rec, null, false);
+          }
           const targetMinutes = getScheduledMinutesForDate(rec.id, scheduleData, rec.isHoliday, swapMap);
           return processDayRecord(rec, targetMinutes, targetMinutes === 0);
         })
@@ -1103,6 +1122,7 @@ export default function AdminPonto() {
     }
   };
 
+  const anySemJornada = registros.some((r) => r.scheduleMissing && (r.totalDayMinutes || 0) > 0);
   const totalGeralTrabalhadoMinutos = registros.reduce((acc, curr) => acc + (curr.totalDayMinutes || 0), 0);
   const totalGeralExtraMinutos = registros.reduce((acc, curr) => acc + (curr.extraMinutes || 0), 0);
   const totalGeralExtra50Minutos = registros.reduce((acc, curr) => acc + (curr.extra50Minutes || 0), 0);
@@ -1720,6 +1740,18 @@ export default function AdminPonto() {
                   <span>Baixar em PDF</span>
                 </button>
               </div>
+
+              {anySemJornada && (
+                <div className="flex items-start gap-2 bg-amber-50 border border-amber-200 text-amber-800 text-xs rounded-md p-3">
+                  <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                  <span>
+                    <strong>{selectedUser?.full_name || 'Este colaborador'}</strong> não tem jornada de trabalho
+                    cadastrada. Sem isso, o sistema não consegue calcular hora extra corretamente — as horas
+                    trabalhadas aparecem como normais (0 extra) até a jornada ser configurada em{' '}
+                    <strong>Usuários → Jornada de trabalho</strong>.
+                  </span>
+                </div>
+              )}
 
               {/* Tabela Clean Compacta */}
               <div className="text-[12px] divide-y divide-slate-100">

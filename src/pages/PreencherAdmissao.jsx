@@ -28,7 +28,6 @@ import {
 // ---------------------------------------------------------------------------
 // CONFIGURAÇÃO — ajuste estes valores conforme o seu schema no Supabase
 // ---------------------------------------------------------------------------
-const TABLE_ADMISSIONS = 'employee_admissions';
 const STORAGE_BUCKET = 'admissao-documentos';
 
 // IMPORTANTE: estas strings precisam ser IDÊNTICAS às usadas em
@@ -115,6 +114,10 @@ export default function PreencherAdmissao({ admissionId: admissionIdProp }) {
   const [accessGranted, setAccessGranted] = useState(false);
   const [accessCodeInput, setAccessCodeInput] = useState('');
   const [accessError, setAccessError] = useState('');
+  // Código já confirmado como correto — reenviado em toda leitura/escrita
+  // seguinte (as funções do banco revalidam ele a cada chamada, não é só
+  // uma checagem inicial).
+  const [verifiedCode, setVerifiedCode] = useState(null);
 
   useEffect(() => {
     if (!admissionId) {
@@ -122,22 +125,41 @@ export default function PreencherAdmissao({ admissionId: admissionIdProp }) {
       setLoading(false);
       return;
     }
-    fetchAdmission(admissionId);
+    // Sem código de acesso salvo nesta aba antes: manda null mesmo — a RPC
+    // devolve só o gate (nome + "precisa de código") nesse caso.
+    let remembered = null;
+    try {
+      remembered = sessionStorage.getItem(`admissao_access_${admissionId}`);
+    } catch (e) {
+      remembered = null;
+    }
+    fetchAdmission(admissionId, remembered);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [admissionId]);
 
-  async function fetchAdmission(id) {
+  // Toda a leitura do processo de admissão passa por essa única função no
+  // banco (SECURITY DEFINER), que já valida o código de acesso e nunca
+  // revela o código certo pro navegador — diferente de antes, quando o
+  // registro inteiro (access_code incluso) era lido primeiro e comparado
+  // no próprio navegador.
+  async function fetchAdmission(id, code) {
     setLoading(true);
     setErrorMsg('');
     try {
-      const { data, error } = await supabase
-        .from(TABLE_ADMISSIONS)
-        .select('*')
-        .eq('id', id)
-        .single();
+      const { data, error } = await supabase.rpc('get_admission_by_access', {
+        p_id: id,
+        p_access_code: code || null,
+      });
 
       if (error) throw error;
       if (!data) throw new Error('Processo de admissão não encontrado.');
+
+      if (data.access_denied) {
+        // Só mostra o gate de código — nenhum dado do processo chega aqui.
+        setAdmission({ employee_name: data.employee_name, requires_code: true });
+        setAccessGranted(false);
+        return false;
+      }
 
       // `template_steps` já vem gravado no formato "wizard" (uma pergunta
       // por etapa) pelo admin_Admissao.jsx no momento em que a admissão é
@@ -148,27 +170,23 @@ export default function PreencherAdmissao({ admissionId: admissionIdProp }) {
           : null;
 
       // Fallback para admissões criadas antes desse ajuste (registros sem
-      // template_steps salvo): busca o template original pelo template_id
-      // e monta o snapshot em tempo real a partir dele.
-      if (!loadedSteps && data.template_id) {
-        const { data: tmpl, error: tmplError } = await supabase
-          .from('admission_templates')
-          .select('steps')
-          .eq('id', data.template_id)
-          .single();
-
-        if (!tmplError && tmpl?.steps) {
-          const rebuilt = mapAdminStepsToWizardSteps(tmpl.steps);
-          if (rebuilt.length > 0) {
-            loadedSteps = rebuilt;
-            // Best-effort: grava o snapshot agora para não precisar
-            // recalcular nas próximas vezes que este link for aberto.
-            supabase
-              .from(TABLE_ADMISSIONS)
-              .update({ template_steps: rebuilt })
-              .eq('id', id)
-              .then(() => {});
-          }
+      // template_steps salvo): a RPC já trouxe o template original em
+      // `raw_template_steps_fallback` — só falta remontar pro formato wizard.
+      if (!loadedSteps && data.raw_template_steps_fallback) {
+        const rebuilt = mapAdminStepsToWizardSteps(data.raw_template_steps_fallback);
+        if (rebuilt.length > 0) {
+          loadedSteps = rebuilt;
+          // Best-effort: grava o snapshot agora para não precisar
+          // recalcular nas próximas vezes que este link for aberto.
+          supabase
+            .rpc('save_admission_progress', {
+              p_id: id,
+              p_access_code: code || null,
+              p_progress_data: data.progress_data || {},
+              p_status: data.status,
+              p_template_steps: rebuilt,
+            })
+            .then(() => {});
         }
       }
 
@@ -180,24 +198,13 @@ export default function PreencherAdmissao({ admissionId: admissionIdProp }) {
       setSteps(loadedSteps);
       setFormData(data.progress_data || {});
       setCompleted(data.status === STATUS.CONCLUIDO);
-
-      // Sem código de acesso salvo (admissão criada antes desse recurso
-      // existir): não bloqueia, mantém compatível com links já enviados.
-      // Com código: só libera se já foi validado nesta mesma aba antes
-      // (sessionStorage), pra não pedir de novo a cada "Salvar rascunho".
-      if (!data.access_code) {
-        setAccessGranted(true);
-      } else {
-        try {
-          const remembered = sessionStorage.getItem(`admissao_access_${id}`);
-          setAccessGranted(remembered === data.access_code);
-        } catch (e) {
-          setAccessGranted(false);
-        }
-      }
+      setAccessGranted(true);
+      setVerifiedCode(code || null);
+      return true;
     } catch (err) {
       console.error(err);
       setErrorMsg(err.message || 'Erro ao carregar o seu processo de admissão.');
+      return false;
     } finally {
       setLoading(false);
     }
@@ -243,15 +250,22 @@ export default function PreencherAdmissao({ admissionId: admissionIdProp }) {
       // partes do sistema (assinatura do contrato, espelho de ponto mensal)
       // vão usar futuramente — não faz sentido elas terem que ir buscar
       // dentro do JSON de uma admissão específica.
+      //
+      // Isso agora acontece dentro de save_admission_progress (RPC que
+      // revalida o código de acesso), nunca mais como um update direto do
+      // navegador na tabela Employees.
       if (field.key === 'assinatura' && admission?.employee_id) {
-        const { error: empError } = await supabase
-          .from('Employees')
-          .update({ signature_path: urlData.publicUrl })
-          .eq('id', admission.employee_id);
-        if (empError) {
+        const { error: rpcError } = await supabase.rpc('save_admission_progress', {
+          p_id: admissionId,
+          p_access_code: verifiedCode,
+          p_progress_data: { ...formData, [field.key]: { path, url: urlData.publicUrl, name: file.name, type: file.type } },
+          p_status: admission?.status || STATUS.EM_PREENCHIMENTO,
+          p_signature_url: urlData.publicUrl,
+        });
+        if (rpcError) {
           // Best-effort: não bloqueia o formulário do colaborador por causa
           // disso, só loga pra investigar depois.
-          console.error('Erro ao gravar assinatura no cadastro do colaborador:', empError);
+          console.error('Erro ao gravar assinatura no cadastro do colaborador:', rpcError);
         }
       }
     } catch (err) {
@@ -282,20 +296,19 @@ export default function PreencherAdmissao({ admissionId: admissionIdProp }) {
     setSaving(true);
     setErrorMsg('');
     try {
-      const { error } = await supabase
-        .from(TABLE_ADMISSIONS)
-        .update({
-          progress_data: dataOverride || formData,
-          status: nextStatus || admission?.status || STATUS.EM_PREENCHIMENTO,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', admissionId);
+      const { data: ok, error } = await supabase.rpc('save_admission_progress', {
+        p_id: admissionId,
+        p_access_code: verifiedCode,
+        p_progress_data: dataOverride || formData,
+        p_status: nextStatus || admission?.status || STATUS.EM_PREENCHIMENTO,
+      });
       if (error) throw error;
+      if (!ok) throw new Error('Código de acesso não confere mais. Recarregue a página e confirme o código novamente.');
       setLastSavedAt(new Date());
       return true;
     } catch (err) {
       console.error(err);
-      setErrorMsg('Não foi possível salvar suas respostas agora. Tente novamente em instantes.');
+      setErrorMsg(err.message || 'Não foi possível salvar suas respostas agora. Tente novamente em instantes.');
       return false;
     } finally {
       setSaving(false);
@@ -336,7 +349,7 @@ export default function PreencherAdmissao({ admissionId: admissionIdProp }) {
     await persistProgress(STATUS.EM_PREENCHIMENTO);
   }
 
-  function handleVerifyAccessCode(e) {
+  async function handleVerifyAccessCode(e) {
     e.preventDefault();
     setAccessError('');
     const normalizedInput = accessCodeInput.replace(/\D/g, '');
@@ -344,10 +357,10 @@ export default function PreencherAdmissao({ admissionId: admissionIdProp }) {
       setAccessError('Digite o código de acesso.');
       return;
     }
-    if (normalizedInput === admission?.access_code) {
-      setAccessGranted(true);
+    const ok = await fetchAdmission(admissionId, normalizedInput);
+    if (ok) {
       try {
-        sessionStorage.setItem(`admissao_access_${admissionId}`, admission.access_code);
+        sessionStorage.setItem(`admissao_access_${admissionId}`, normalizedInput);
       } catch (e) {
         // sessionStorage indisponível (ex.: modo anônimo restrito) — sem
         // problema, só vai pedir o código de novo se a aba for recarregada.
@@ -386,7 +399,7 @@ export default function PreencherAdmissao({ admissionId: admissionIdProp }) {
     );
   }
 
-  if (admission?.access_code && !accessGranted) {
+  if (admission?.requires_code && !accessGranted) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50 px-4">
         <div className="max-w-sm w-full bg-white rounded-2xl shadow-sm border border-slate-200 p-8 text-center">

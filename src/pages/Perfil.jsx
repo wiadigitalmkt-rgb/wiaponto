@@ -141,6 +141,13 @@ export default function Perfil() {
   const [myRequests, setMyRequests] = useState([]);
   const [previewFile, setPreviewFile] = useState(null);
 
+  // Bucket privado: signature_path / manager_signature_url /
+  // employer_signature_url guardam PATHS de storage, não URLs — o link de
+  // exibição é resolvido na hora (signed URL) só quando o colaborador abre
+  // um contrato específico pra ver.
+  const [contractSignedUrls, setContractSignedUrls] = useState({ employee: null, manager: null, employer: null });
+  const [resolvingSignatures, setResolvingSignatures] = useState(false);
+
   useEffect(() => {
     if (isLoadingAuth || !loggedInUser?.id) return;
     fetchAll();
@@ -165,6 +172,35 @@ export default function Perfil() {
     setDocuments(docs || []);
     setLoading(false);
   }
+
+  useEffect(() => {
+    const openContract = contracts.find((c) => c.id === openContractId);
+    if (!openContract) {
+      setContractSignedUrls({ employee: null, manager: null, employer: null });
+      return;
+    }
+    (async () => {
+      setResolvingSignatures(true);
+      const [empSigned, mgrSigned, emplSigned] = await Promise.all([
+        employee?.signature_path
+          ? supabase.storage.from('admissao-documentos').createSignedUrl(employee.signature_path, 300)
+          : null,
+        openContract.manager_signature_url
+          ? supabase.storage.from('admissao-documentos').createSignedUrl(openContract.manager_signature_url, 300)
+          : null,
+        openContract.employer_signature_url
+          ? supabase.storage.from('admissao-documentos').createSignedUrl(openContract.employer_signature_url, 300)
+          : null,
+      ]);
+      setContractSignedUrls({
+        employee: empSigned?.data?.signedUrl || null,
+        manager: mgrSigned?.data?.signedUrl || null,
+        employer: emplSigned?.data?.signedUrl || null,
+      });
+      setResolvingSignatures(false);
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [openContractId]);
 
   async function handleSubmitRequest() {
     if (!requestText.trim() || !loggedInUser?.id) return;
@@ -423,12 +459,18 @@ export default function Perfil() {
                     </button>
                     {openContractId === c.id && (
                       <div className="p-4 border-t border-slate-100">
-                        <ContractBody
-                          text={renderContractText(c.contract_templates?.content, employee)}
-                          employeeSignatureUrl={employee.signature_path}
-                          managerSignatureUrl={c.manager_signature_url}
-                          employerSignatureUrl={c.employer_signature_url}
-                        />
+                        {resolvingSignatures ? (
+                          <div className="flex items-center justify-center py-6">
+                            <Loader2 className="w-4 h-4 animate-spin text-[#ff8b00]" />
+                          </div>
+                        ) : (
+                          <ContractBody
+                            text={renderContractText(c.contract_templates?.content, employee)}
+                            employeeSignatureUrl={contractSignedUrls.employee}
+                            managerSignatureUrl={contractSignedUrls.manager}
+                            employerSignatureUrl={contractSignedUrls.employer}
+                          />
+                        )}
                       </div>
                     )}
                   </div>

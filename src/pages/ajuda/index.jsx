@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import Navbar from '@/components/Navbar';
-import { supabase } from '@/lib/supabase';
 import { articlesData } from './articlesData';
 import { 
   Search, 
@@ -55,30 +54,8 @@ export default function Ajuda() {
   };
 
   useEffect(() => {
-    fetchHelpArticles();
+    setRecentArticles(articlesData);
   }, []);
-
-  const fetchHelpArticles = async () => {
-    if (!supabase) {
-      setRecentArticles(articlesData);
-      return;
-    }
-    try {
-      const { data, error } = await supabase
-        .from('help_articles')
-        .select('*')
-        .limit(50);
-
-      if (!error && data && data.length > 0) {
-        setRecentArticles(data);
-      } else {
-        setRecentArticles(articlesData);
-      }
-    } catch (err) {
-      console.error('Erro ao buscar artigos de ajuda:', err);
-      setRecentArticles(articlesData);
-    }
-  };
 
   const handleArticleClick = (articleId) => {
     window.location.href = `/ajuda/artigo/${articleId}`;

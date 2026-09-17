@@ -102,6 +102,12 @@ export default function PreencherAdmissao({ admissionId: admissionIdProp }) {
   const [steps, setSteps] = useState([]);
   const [currentStep, setCurrentStep] = useState(0);
   const [formData, setFormData] = useState({});
+  // Cache de links temporários já resolvidos (path -> url), pra não pedir
+  // um novo a cada re-render. Como o bucket agora é privado, o valor salvo
+  // em cada campo de arquivo guarda só o "path" — o link de fato é sempre
+  // buscado na hora, via a function admission-file-url (que confere o
+  // código de acesso antes de gerar o link).
+  const [resolvedUrls, setResolvedUrls] = useState({});
   const [fieldErrors, setFieldErrors] = useState({});
   const [uploadingKey, setUploadingKey] = useState(null);
   const [completed, setCompleted] = useState(false);
@@ -216,6 +222,40 @@ export default function PreencherAdmissao({ admissionId: admissionIdProp }) {
     ? Math.round(((completed ? totalSteps : currentStep) / totalSteps) * 100)
     : 0;
 
+  // Busca um link temporário pra um arquivo já enviado (bucket privado —
+  // nunca temos mais um link público de longa duração salvo). Guarda no
+  // cache local pra não ficar repetindo a chamada.
+  async function resolveFileUrl(path) {
+    if (!path || resolvedUrls[path]) return resolvedUrls[path];
+    try {
+      const res = await fetch('/api/admission-file-url', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ admissionId, accessCode: verifiedCode, path }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && data.url) {
+        setResolvedUrls((prev) => ({ ...prev, [path]: data.url }));
+        return data.url;
+      }
+    } catch (err) {
+      console.error('Erro ao resolver link do arquivo:', err);
+    }
+    return null;
+  }
+
+  // Sempre que os dados do formulário mudam (ex: ao carregar um rascunho
+  // salvo), resolve o link de qualquer arquivo que ainda não tenha um link
+  // em cache — assim as pré-visualizações aparecem certinho ao retomar.
+  useEffect(() => {
+    Object.values(formData).forEach((val) => {
+      if (val && typeof val === 'object' && val.path && !resolvedUrls[val.path]) {
+        resolveFileUrl(val.path);
+      }
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [formData]);
+
   function updateField(key, value) {
     setFormData((prev) => ({ ...prev, [key]: value }));
     setFieldErrors((prev) => ({ ...prev, [key]: undefined }));
@@ -227,40 +267,54 @@ export default function PreencherAdmissao({ admissionId: admissionIdProp }) {
     setErrorMsg('');
     try {
       const safeName = file.name.replace(/[^a-zA-Z0-9.\-_]/g, '_');
-      const path = `${admissionId}/${field.key}-${Date.now()}-${safeName}`;
+      const isSignature = field.key === 'assinatura';
+
+      // A assinatura fica na pasta do PRÓPRIO COLABORADOR (não da admissão)
+      // — é o mesmo padrão que MinhaAssinatura.jsx usa, e é o que permite
+      // ela continuar sendo lida depois em Contratos.jsx / AssinarContrato.jsx
+      // (cuja política de leitura confere "pasta = seu employee_id").
+      const path =
+        isSignature && admission?.employee_id
+          ? `${admission.employee_id}/assinatura-${Date.now()}.png`
+          : `${admissionId}/${field.key}-${Date.now()}-${safeName}`;
 
       const { error: uploadError } = await supabase.storage
         .from(STORAGE_BUCKET)
         .upload(path, file, { upsert: true });
       if (uploadError) throw uploadError;
 
-      const { data: urlData } = supabase.storage.from(STORAGE_BUCKET).getPublicUrl(path);
+      // Bucket privado agora — não existe mais link público de longa
+      // duração. Busca um link temporário só pra já mostrar a
+      // pré-visualização aqui na hora; o valor salvo no formulário guarda
+      // só o "path" (o link certo é sempre buscado de novo quando precisa
+      // exibir, via resolveFileUrl).
+      await resolveFileUrl(path);
 
-      updateField(field.key, {
+      const fieldValue = {
         path,
-        url: urlData.publicUrl,
         name: file.name,
         type: file.type,
         uploadedAt: new Date().toISOString(),
-      });
+      };
+      updateField(field.key, fieldValue);
 
       // Assinatura: além de ficar em progress_data (como qualquer outro
       // campo, pro gestor ver na visualização), grava o path também direto
-      // no cadastro do colaborador. É esse registro em Employees que outras
-      // partes do sistema (assinatura do contrato, espelho de ponto mensal)
-      // vão usar futuramente — não faz sentido elas terem que ir buscar
-      // dentro do JSON de uma admissão específica.
+      // no cadastro do colaborador (Employees.signature_path) — é esse
+      // registro que Contratos.jsx, AssinarContrato.jsx e MinhaAssinatura.jsx
+      // usam depois. Sempre um PATH agora, nunca mais uma URL — cada tela
+      // que exibe a assinatura resolve o link temporário na hora.
       //
-      // Isso agora acontece dentro de save_admission_progress (RPC que
-      // revalida o código de acesso), nunca mais como um update direto do
-      // navegador na tabela Employees.
-      if (field.key === 'assinatura' && admission?.employee_id) {
+      // Isso acontece dentro de save_admission_progress (RPC que revalida
+      // o código de acesso), nunca mais como um update direto do navegador
+      // na tabela Employees.
+      if (isSignature && admission?.employee_id) {
         const { error: rpcError } = await supabase.rpc('save_admission_progress', {
           p_id: admissionId,
           p_access_code: verifiedCode,
-          p_progress_data: { ...formData, [field.key]: { path, url: urlData.publicUrl, name: file.name, type: file.type } },
+          p_progress_data: { ...formData, [field.key]: fieldValue },
           p_status: admission?.status || STATUS.EM_PREENCHIMENTO,
-          p_signature_url: urlData.publicUrl,
+          p_signature_url: path,
         });
         if (rpcError) {
           // Best-effort: não bloqueia o formulário do colaborador por causa
@@ -552,19 +606,33 @@ export default function PreencherAdmissao({ admissionId: admissionIdProp }) {
             )}
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-              {fields.map((field) => (
-                <FieldRenderer
-                  key={field.key}
-                  field={field}
-                  value={formData[field.key]}
-                  error={fieldErrors[field.key]}
-                  uploading={uploadingKey === field.key}
-                  required={field.required || isFieldDynamicallyRequired(field, formData)}
-                  onChange={(val) => updateField(field.key, val)}
-                  onFile={(file) => handleFileSelect(field, file)}
-                  onRemoveFile={() => removeFile(field)}
-                />
-              ))}
+              {fields.map((field) => {
+                const rawValue = formData[field.key];
+                // Campos de arquivo/foto/assinatura guardam só o "path" —
+                // aqui a gente monta o valor "pra exibir", juntando o path
+                // com o link temporário já resolvido (se já tiver um).
+                // SelfieCapture/FileUploadBox/SignaturePad continuam
+                // esperando um `value.url`, sem precisar saber que por trás
+                // disso agora é um link que expira e é buscado sob demanda.
+                const displayValue =
+                  rawValue && typeof rawValue === 'object' && rawValue.path
+                    ? { ...rawValue, url: resolvedUrls[rawValue.path] || null }
+                    : rawValue;
+
+                return (
+                  <FieldRenderer
+                    key={field.key}
+                    field={field}
+                    value={displayValue}
+                    error={fieldErrors[field.key]}
+                    uploading={uploadingKey === field.key}
+                    required={field.required || isFieldDynamicallyRequired(field, formData)}
+                    onChange={(val) => updateField(field.key, val)}
+                    onFile={(file) => handleFileSelect(field, file)}
+                    onRemoveFile={() => removeFile(field)}
+                  />
+                );
+              })}
             </div>
           </div>
 

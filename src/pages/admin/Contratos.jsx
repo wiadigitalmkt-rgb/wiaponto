@@ -184,6 +184,39 @@ export default function Contratos() {
   const [currentUserSignature, setCurrentUserSignature] = useState(null);
   const [signingId, setSigningId] = useState(null); // qual contrato está sendo assinado agora (mostra loading só nele)
 
+  // Bucket privado: signature_path / manager_signature_url /
+  // employer_signature_url guardam PATHS de storage, não URLs — os links
+  // de exibição são resolvidos na hora (signed URL) só quando um contrato
+  // é aberto pra visualização.
+  const [viewingSignedUrls, setViewingSignedUrls] = useState({ employee: null, manager: null, employer: null });
+  const [resolvingSignatures, setResolvingSignatures] = useState(false);
+
+  useEffect(() => {
+    if (!viewingContract) {
+      setViewingSignedUrls({ employee: null, manager: null, employer: null });
+      return;
+    }
+    (async () => {
+      setResolvingSignatures(true);
+      const employeePath = viewingContract.status === 'assinado' ? viewingContract.Employees?.signature_path : null;
+      const [empSigned, mgrSigned, emplSigned] = await Promise.all([
+        employeePath ? supabase.storage.from('admissao-documentos').createSignedUrl(employeePath, 300) : null,
+        viewingContract.manager_signature_url
+          ? supabase.storage.from('admissao-documentos').createSignedUrl(viewingContract.manager_signature_url, 300)
+          : null,
+        viewingContract.employer_signature_url
+          ? supabase.storage.from('admissao-documentos').createSignedUrl(viewingContract.employer_signature_url, 300)
+          : null,
+      ]);
+      setViewingSignedUrls({
+        employee: empSigned?.data?.signedUrl || null,
+        manager: mgrSigned?.data?.signedUrl || null,
+        employer: emplSigned?.data?.signedUrl || null,
+      });
+      setResolvingSignatures(false);
+    })();
+  }, [viewingContract]);
+
   useEffect(() => {
     if (!loggedInUser?.id) return;
     supabase
@@ -995,12 +1028,18 @@ export default function Contratos() {
               </button>
             </div>
             <div className="p-6 overflow-y-auto text-xs">
-              <ContractBody
-                text={renderContractText(viewingContract.contract_templates?.content, viewingContract.Employees || {})}
-                employeeSignatureUrl={viewingContract.status === 'assinado' ? viewingContract.Employees?.signature_path : null}
-                managerSignatureUrl={viewingContract.manager_signature_url}
-                employerSignatureUrl={viewingContract.employer_signature_url}
-              />
+              {resolvingSignatures ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="w-5 h-5 animate-spin text-[#ff8b00]" />
+                </div>
+              ) : (
+                <ContractBody
+                  text={renderContractText(viewingContract.contract_templates?.content, viewingContract.Employees || {})}
+                  employeeSignatureUrl={viewingSignedUrls.employee}
+                  managerSignatureUrl={viewingSignedUrls.manager}
+                  employerSignatureUrl={viewingSignedUrls.employer}
+                />
+              )}
             </div>
           </div>
         </div>

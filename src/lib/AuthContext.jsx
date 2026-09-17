@@ -4,6 +4,17 @@ import { supabase } from "@/lib/supabase";
 const AuthContext = createContext({});
 
 const PUBLIC_PATHS = ['/login', '/register', '/forgot-password', '/recuperar-senha', '/reset-password'];
+// Rotas com ID dinâmico na URL (ex: /preencher-admissao/<uuid>) — checadas
+// por prefixo, não por igualdade exata. O formulário de admissão roda sem
+// login (protegido só pelo código de acesso de 6 dígitos), então precisa
+// ficar de fora da exigência de sessão.
+const PUBLIC_PATH_PREFIXES = ['/preencher-admissao/'];
+
+function checkIsPublicRoute(pathname) {
+  const lower = pathname.toLowerCase();
+  if (PUBLIC_PATHS.includes(lower)) return true;
+  return PUBLIC_PATH_PREFIXES.some((prefix) => lower.startsWith(prefix));
+}
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
@@ -89,12 +100,12 @@ export const AuthProvider = ({ children }) => {
   };
 
   const navigateToLogin = () => {
-    if (!PUBLIC_PATHS.includes(window.location.pathname.toLowerCase())) {
+    if (!checkIsPublicRoute(window.location.pathname)) {
       window.location.href = '/login';
     }
   };
 
-  const isPublicRoute = PUBLIC_PATHS.includes(window.location.pathname.toLowerCase());
+  const isPublicRoute = checkIsPublicRoute(window.location.pathname);
   const authError = (!user && !loading && !isPublicRoute) ? { type: 'auth_required' } : null;
 
   const value = {

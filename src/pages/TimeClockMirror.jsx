@@ -51,6 +51,26 @@ const minutesToHHMM = (mins) => {
   return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
 };
 
+// Converte "R$ 1.500,00", "1500,00", "1500.00" ou "1500" para 1500 (Number).
+// Employees.salary é TEXT no banco, então isso é necessário antes de calcular
+// o valor da hora extra.
+const parseSalaryToNumber = (raw) => {
+  if (raw === null || raw === undefined || raw === '') return 0;
+  if (typeof raw === 'number') return raw;
+  let clean = String(raw).replace(/R\$\s?/gi, '').trim();
+  if (clean.includes(',')) {
+    clean = clean.replace(/\./g, '').replace(',', '.');
+  }
+  const value = parseFloat(clean);
+  return isNaN(value) ? 0 : value;
+};
+
+// Divisor padrão CLT para jornada de 44h semanais (salário mensal / 220h =
+// valor da hora normal).
+const MONTHLY_HOURS_DIVISOR = 220;
+const formatCurrencyBRL = (value) =>
+  (value || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+
 const minutesToDisplayHours = (mins) => {
   if (!mins || mins <= 0) return '0h';
   const h = Math.floor(mins / 60);
@@ -165,7 +185,38 @@ const AUDIT_ACTION_LABELS = {
   banco_horas: 'Lançamento no banco de horas'
 };
 
-const processDayRecord = (record, targetDailyMinutes = 480) => {
+// Quantos minutos o colaborador deveria trabalhar nesse dia, segundo a
+// jornada cadastrada em employee_work_schedules.week_days — considera
+// feriado (jornada prevista vira 0) e troca de jornada (journey_swaps: usa
+// o dia-da-semana do dia trocado, não o do dia real).
+const getScheduledMinutesForDate = (dateISO, schedule, isHoliday, swapMap) => {
+  if (isHoliday && !swapMap[dateISO]) return 0;
+
+  const effectiveDateISO = swapMap[dateISO] || dateISO;
+  const [y, m, d] = effectiveDateISO.split('-').map(Number);
+  const weekday = new Date(y, m - 1, d).getDay(); // 0=domingo...6=sábado
+
+  if (!schedule || !Array.isArray(schedule.week_days)) return 0;
+  const dayConfig = schedule.week_days.find((w) => w.weekday === weekday);
+  if (!dayConfig || !dayConfig.active) return 0;
+
+  const entry = timeToMinutes(dayConfig.entry);
+  const exit = timeToMinutes(dayConfig.exit);
+  if (entry === null || exit === null) return 0;
+
+  let total = Math.max(0, exit - entry);
+  if (dayConfig.has_break) {
+    const ls = timeToMinutes(dayConfig.lunch_start);
+    const le = timeToMinutes(dayConfig.lunch_end);
+    if (ls !== null && le !== null) total -= Math.max(0, le - ls);
+  }
+  return Math.max(0, total);
+};
+
+// isExtraDouble = true quando o dia não tinha jornada prevista (folga,
+// domingo, feriado não trocado) — nesse caso TODO o trabalhado vira hora
+// extra 100%, em vez de 50%.
+const processDayRecord = (record, targetDailyMinutes = 0, isExtraDouble = false) => {
   let totalDayMinutes = 0;
   let nightMinutes = 0;
 
@@ -192,6 +243,8 @@ const processDayRecord = (record, targetDailyMinutes = 480) => {
   const trabalhadoStr = minutesToDisplayHours(totalDayMinutes);
   const extraMinutes = Math.max(0, totalDayMinutes - targetDailyMinutes);
   const horaExtraStr = minutesToDisplayHours(extraMinutes);
+  const extra50Minutes = isExtraDouble ? 0 : extraMinutes;
+  const extra100Minutes = isExtraDouble ? extraMinutes : 0;
 
   return {
     ...record,
@@ -199,7 +252,10 @@ const processDayRecord = (record, targetDailyMinutes = 480) => {
     trabalhado: trabalhadoStr,
     horaExtra: horaExtraStr,
     totalDayMinutes,
+    targetDailyMinutes,
     extraMinutes,
+    extra50Minutes,
+    extra100Minutes,
     nightMinutes
   };
 };
@@ -456,6 +512,17 @@ export default function AdminPonto() {
       swapMap[s.date_b] = s.date_a;
     });
 
+    // Jornada de trabalho cadastrada do colaborador (aba "Jornada de
+    // trabalho" em /admin/usuario) — usada pra saber o horário esperado de
+    // cada dia da semana e calcular a hora extra corretamente.
+    const { data: scheduleData, error: scheduleError } = await supabase
+      .from('employee_work_schedules')
+      .select('*')
+      .eq('employee_id', selectedUser.id)
+      .eq('is_active', true)
+      .maybeSingle();
+    if (scheduleError) console.error('Erro ao buscar jornada de trabalho:', scheduleError);
+
     // Anotações do gestor por dia.
     const { data: annotationsData, error: annotationsError } = await supabase
       .from('day_annotations')
@@ -521,7 +588,10 @@ export default function AdminPonto() {
       });
 
       const processed = Object.values(grouped)
-        .map((rec) => processDayRecord(rec))
+        .map((rec) => {
+          const targetMinutes = getScheduledMinutesForDate(rec.id, scheduleData, rec.isHoliday, swapMap);
+          return processDayRecord(rec, targetMinutes, targetMinutes === 0);
+        })
         .sort((a, b) => (a.id < b.id ? 1 : -1)); // mais recente primeiro, igual antes
       setRegistros(processed);
     }
@@ -1035,8 +1105,20 @@ export default function AdminPonto() {
 
   const totalGeralTrabalhadoMinutos = registros.reduce((acc, curr) => acc + (curr.totalDayMinutes || 0), 0);
   const totalGeralExtraMinutos = registros.reduce((acc, curr) => acc + (curr.extraMinutes || 0), 0);
+  const totalGeralExtra50Minutos = registros.reduce((acc, curr) => acc + (curr.extra50Minutes || 0), 0);
+  const totalGeralExtra100Minutos = registros.reduce((acc, curr) => acc + (curr.extra100Minutes || 0), 0);
   const totalGeralNoturnoMinutos = registros.reduce((acc, curr) => acc + (curr.nightMinutes || 0), 0);
   const totalGeralDiurnoMinutos = Math.max(0, totalGeralTrabalhadoMinutos - totalGeralNoturnoMinutos - totalGeralExtraMinutos);
+
+  // Valor a pagar de hora extra — padrão CLT: 50% em dia útil, 100% em dia
+  // sem jornada prevista (folga/feriado/DSR), + 20% de adicional noturno
+  // sobre as horas trabalhadas entre 22h e 5h. Divisor mensal de 220h
+  // (jornada de 44h semanais).
+  const hourlyRate = parseSalaryToNumber(selectedUser?.salary) / MONTHLY_HOURS_DIVISOR;
+  const valorExtra50 = (totalGeralExtra50Minutos / 60) * hourlyRate * 1.5;
+  const valorExtra100 = (totalGeralExtra100Minutos / 60) * hourlyRate * 2.0;
+  const valorAdicionalNoturno = (totalGeralNoturnoMinutos / 60) * hourlyRate * 0.2;
+  const valorTotalAPagar = valorExtra50 + valorExtra100 + valorAdicionalNoturno;
 
   const handleDownloadPDF = () => {
     window.print();
@@ -1679,58 +1761,54 @@ export default function AdminPonto() {
 
                 <div className="py-2 space-y-1">
                   <div className="grid grid-cols-12 items-center">
-                    <span className="col-span-3 text-slate-800 font-bold uppercase text-[11px]">3. HORA EXTRA (GERAL)</span>
-                    <span className="col-span-5 text-slate-600">Adicionada ao banco de horas</span>
-                    <span className="col-span-4 text-right font-medium text-slate-700">00h 00min</span>
-                  </div>
-                  <div className="grid grid-cols-12 items-center">
-                    <span className="col-span-3"></span>
-                    <span className="col-span-5 text-slate-600">Hora extra a pagar</span>
-                    <span className="col-span-4 text-right font-medium text-slate-700">{minutesToFullDisplay(totalGeralExtraMinutos)}</span>
+                    <span className="col-span-3 text-slate-800 font-bold uppercase text-[11px]">3. HORA EXTRA 50%</span>
+                    <span className="col-span-5 text-slate-600">Dia útil, passou da jornada</span>
+                    <span className="col-span-4 text-right font-medium text-slate-700">{minutesToFullDisplay(totalGeralExtra50Minutos)}</span>
                   </div>
                   <div className="grid grid-cols-12 items-center pt-1 font-bold text-slate-900">
                     <span className="col-span-3"></span>
-                    <span className="col-span-5">Total Horas Extras</span>
-                    <span className="col-span-4 text-right">{minutesToFullDisplay(totalGeralExtraMinutos)}</span>
+                    <span className="col-span-5">Valor a pagar (50%)</span>
+                    <span className="col-span-4 text-right">{formatCurrencyBRL(valorExtra50)}</span>
                   </div>
                 </div>
 
                 <div className="py-2 space-y-1">
                   <div className="grid grid-cols-12 items-center">
-                    <span className="col-span-3 text-slate-800 font-bold uppercase text-[11px]">4. HORA EXTRA (A PAGAR)</span>
-                    <span className="col-span-5 text-slate-600">Dia útil (diurno)</span>
-                    <span className="col-span-4 text-right font-medium text-slate-700">{minutesToFullDisplay(totalGeralExtraMinutos)}</span>
-                  </div>
-                  <div className="grid grid-cols-12 items-center">
-                    <span className="col-span-3"></span>
-                    <span className="col-span-5 text-slate-600">Dia útil (noturno)</span>
-                    <span className="col-span-4 text-right font-medium text-slate-700">00h 00min</span>
-                  </div>
-                  <div className="grid grid-cols-12 items-center">
-                    <span className="col-span-3"></span>
-                    <span className="col-span-5 text-slate-600">DSR ou Folga (diurno)</span>
-                    <span className="col-span-4 text-right font-medium text-slate-700">00h 00min</span>
-                  </div>
-                  <div className="grid grid-cols-12 items-center">
-                    <span className="col-span-3"></span>
-                    <span className="col-span-5 text-slate-600">DSR ou Folga (noturno)</span>
-                    <span className="col-span-4 text-right font-medium text-slate-700">00h 00min</span>
-                  </div>
-                  <div className="grid grid-cols-12 items-center">
-                    <span className="col-span-3"></span>
-                    <span className="col-span-5 text-slate-600">Feriado (diurno)</span>
-                    <span className="col-span-4 text-right font-medium text-slate-700">00h 00min</span>
-                  </div>
-                  <div className="grid grid-cols-12 items-center">
-                    <span className="col-span-3"></span>
-                    <span className="col-span-5 text-slate-600">Feriado (noturno)</span>
-                    <span className="col-span-4 text-right font-medium text-slate-700">00h 00min</span>
+                    <span className="col-span-3 text-slate-800 font-bold uppercase text-[11px]">4. HORA EXTRA 100%</span>
+                    <span className="col-span-5 text-slate-600">Folga, DSR ou feriado trabalhado</span>
+                    <span className="col-span-4 text-right font-medium text-slate-700">{minutesToFullDisplay(totalGeralExtra100Minutos)}</span>
                   </div>
                   <div className="grid grid-cols-12 items-center pt-1 font-bold text-slate-900">
                     <span className="col-span-3"></span>
-                    <span className="col-span-5">Total Horas Extras</span>
-                    <span className="col-span-4 text-right">{minutesToFullDisplay(totalGeralExtraMinutos)}</span>
+                    <span className="col-span-5">Valor a pagar (100%)</span>
+                    <span className="col-span-4 text-right">{formatCurrencyBRL(valorExtra100)}</span>
                   </div>
+                </div>
+
+                <div className="py-2 space-y-1">
+                  <div className="grid grid-cols-12 items-center">
+                    <span className="col-span-3 text-slate-800 font-bold uppercase text-[11px]">5. ADICIONAL NOTURNO</span>
+                    <span className="col-span-5 text-slate-600">20% sobre horas 22h-5h</span>
+                    <span className="col-span-4 text-right font-medium text-slate-700">{minutesToFullDisplay(totalGeralNoturnoMinutos)}</span>
+                  </div>
+                  <div className="grid grid-cols-12 items-center pt-1 font-bold text-slate-900">
+                    <span className="col-span-3"></span>
+                    <span className="col-span-5">Valor a pagar (adicional)</span>
+                    <span className="col-span-4 text-right">{formatCurrencyBRL(valorAdicionalNoturno)}</span>
+                  </div>
+                </div>
+
+                <div className="py-2 space-y-1 bg-slate-50 -mx-5 px-5 rounded-b-lg">
+                  <div className="grid grid-cols-12 items-center pt-1 font-bold text-slate-900 text-[13px]">
+                    <span className="col-span-3"></span>
+                    <span className="col-span-5">TOTAL A PAGAR DE EXTRAS</span>
+                    <span className="col-span-4 text-right text-[#ff8b00]">{formatCurrencyBRL(valorTotalAPagar)}</span>
+                  </div>
+                  {hourlyRate === 0 && (
+                    <p className="text-[10px] text-slate-400 col-span-12">
+                      Cadastre o salário do colaborador em /admin/usuario para calcular o valor em R$.
+                    </p>
+                  )}
                 </div>
               </div>
             </div>

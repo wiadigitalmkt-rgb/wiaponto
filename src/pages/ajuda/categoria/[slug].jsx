@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import Navbar from '@/components/Navbar';
-import { supabase } from '@/lib/supabase';
 import { ArrowLeft, BookOpen, ChevronRight, HelpCircle } from 'lucide-react';
 import { articlesData } from '../articlesData';
 
@@ -14,28 +13,12 @@ export default function CategoriaDetalhes() {
   useEffect(() => {
     if (!slug) return;
     fetchCategoryArticles();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [slug]);
 
-  const fetchCategoryArticles = async () => {
+  const fetchCategoryArticles = () => {
     setLoading(true);
-    if (supabase) {
-      try {
-        const { data, error } = await supabase
-          .from('help_articles')
-          .select('*')
-          .ilike('categoryId', `%${slug}%`);
 
-        if (!error && data && data.length > 0) {
-          setArticles(data);
-          setLoading(false);
-          return;
-        }
-      } catch (err) {
-        console.error('Erro ao buscar artigos da categoria:', err);
-      }
-    }
-
-    // Filtra no fallback local (articlesData) pelo categoryId correspondente ao slug
     const filteredLocalArticles = articlesData.filter(
       (item) => item.categoryId.toLowerCase() === slug.toLowerCase()
     );

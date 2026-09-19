@@ -85,7 +85,7 @@ export default function Login() {
         {/* Ícone: preso ao topo, só no celular/tablet (no PC a marca já aparece na imagem ao lado) */}
         <div className="lg:hidden absolute top-0 inset-x-0 px-6 pt-6 sm:px-12 md:px-16">
           <div className="max-w-md w-full mx-auto">
-            <img src={iconWiaPonto} alt="WiaPonto" className="h-14 w-auto" />
+            <img src={iconWiaPonto} alt="WiaPonto" className="h-16 w-auto" />
           </div>
         </div>
 

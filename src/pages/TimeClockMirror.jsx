@@ -336,6 +336,14 @@ export default function AdminPonto() {
     searchParams.get('section') === 'banco' ? 'banco' :
     searchParams.get('section') === 'holerite' ? 'holerite' : 'pontos'
   ); // 'pontos' | 'resumo' | 'ajustes' | 'banco' | 'holerite'
+
+  // Celular: as abas ficam numa fileira com rolagem lateral; garante que a aba
+  // ativa (ex.: Banco de Horas aberto pelo dashboard) apareça na tela.
+  useEffect(() => {
+    document
+      .querySelector('[data-tab-active="true"]')
+      ?.scrollIntoView({ inline: 'center', block: 'nearest', behavior: 'smooth' });
+  }, [activeTab]);
   const [selectedMonth, setSelectedMonth] = useState(() => getMonthLabel(new Date()));
   const [selectedDepartment, setSelectedDepartment] = useState('Todos');
   
@@ -1253,17 +1261,17 @@ export default function AdminPonto() {
     <div className="min-h-screen bg-[#edf2f7] flex flex-col font-sans text-slate-700 relative">
       <Navbar selectedCompany="Sua Empresa" />
 
-      <div className="flex flex-1">
+      <div className="flex flex-1 flex-col md:flex-row min-w-0">
         {/* Sidebar */}
-        <aside className="w-64 min-w-[240px] max-w-[280px] p-5 flex flex-col space-y-6 bg-transparent shrink-0">
+        <aside className="w-full md:w-64 md:min-w-[240px] md:max-w-[280px] p-4 md:p-5 flex flex-col space-y-4 md:space-y-6 bg-transparent md:shrink-0">
           <div>
-            <h1 className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-4">
+            <h1 className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-2 md:mb-4">
               PONTO ELETRÔNICO
             </h1>
             
             <div 
               onClick={handleUserClick}
-              className={`flex items-center justify-between p-2 rounded-lg text-slate-600 mb-4 transition-colors ${
+              className={`flex items-center justify-between p-2 rounded-lg text-slate-600 mb-2 md:mb-4 transition-colors ${
                 isManager 
                   ? 'hover:bg-slate-200/50 cursor-pointer' 
                   : 'cursor-default'
@@ -1280,13 +1288,14 @@ export default function AdminPonto() {
               <ExternalLink className="w-3.5 h-3.5 text-slate-400 shrink-0 ml-1" />
             </div>
 
-            <nav className="space-y-1">
+            <nav className="flex md:block gap-2 md:gap-0 md:space-y-1 overflow-x-auto md:overflow-visible -mx-4 px-4 md:mx-0 md:px-0 py-1 md:py-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
               <button 
                 onClick={() => setActiveTab('pontos')}
-                className={`w-full flex items-center space-x-3 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                data-tab-active={activeTab === 'pontos'}
+                className={`w-auto md:w-full shrink-0 flex items-center space-x-2 md:space-x-3 px-3 py-2.5 md:py-2 rounded-md text-sm font-medium transition-colors ${
                   activeTab === 'pontos'
-                    ? 'bg-white text-slate-700 hover:bg-[#fc9314] hover:text-white border-l-4 border-[#ff8b00] shadow-sm font-semibold'
-                    : 'bg-white text-slate-500 hover:bg-[#fc9314] hover:text-white'
+                    ? 'bg-white text-slate-700 [@media(hover:hover)]:hover:bg-[#fc9314] [@media(hover:hover)]:hover:text-white border-l-4 border-[#ff8b00] shadow-sm font-semibold'
+                    : 'bg-white text-slate-500 [@media(hover:hover)]:hover:bg-[#fc9314] [@media(hover:hover)]:hover:text-white'
                 }`}
               >
                 <Clock className="w-4 h-4 shrink-0" />
@@ -1295,10 +1304,11 @@ export default function AdminPonto() {
               
               <button 
                 onClick={() => setActiveTab('resumo')}
-                className={`w-full flex items-center space-x-3 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                data-tab-active={activeTab === 'resumo'}
+                className={`w-auto md:w-full shrink-0 flex items-center space-x-2 md:space-x-3 px-3 py-2.5 md:py-2 rounded-md text-sm font-medium transition-colors ${
                   activeTab === 'resumo'
-                    ? 'bg-white text-slate-700 hover:bg-[#fc9314] hover:text-white border-l-4 border-[#ff8b00] shadow-sm font-semibold'
-                    : 'bg-white text-slate-500 hover:bg-[#fc9314] hover:text-white'
+                    ? 'bg-white text-slate-700 [@media(hover:hover)]:hover:bg-[#fc9314] [@media(hover:hover)]:hover:text-white border-l-4 border-[#ff8b00] shadow-sm font-semibold'
+                    : 'bg-white text-slate-500 [@media(hover:hover)]:hover:bg-[#fc9314] [@media(hover:hover)]:hover:text-white'
                 }`}
               >
                 <FileText className="w-4 h-4 shrink-0" />
@@ -1307,10 +1317,11 @@ export default function AdminPonto() {
 
               <button 
                 onClick={() => setActiveTab('ajustes')}
-                className={`w-full flex items-center space-x-3 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                data-tab-active={activeTab === 'ajustes'}
+                className={`w-auto md:w-full shrink-0 flex items-center space-x-2 md:space-x-3 px-3 py-2.5 md:py-2 rounded-md text-sm font-medium transition-colors ${
                   activeTab === 'ajustes'
-                    ? 'bg-white text-slate-700 hover:bg-[#fc9314] hover:text-white border-l-4 border-[#ff8b00] shadow-sm font-semibold'
-                    : 'bg-white text-slate-500 hover:bg-[#fc9314] hover:text-white'
+                    ? 'bg-white text-slate-700 [@media(hover:hover)]:hover:bg-[#fc9314] [@media(hover:hover)]:hover:text-white border-l-4 border-[#ff8b00] shadow-sm font-semibold'
+                    : 'bg-white text-slate-500 [@media(hover:hover)]:hover:bg-[#fc9314] [@media(hover:hover)]:hover:text-white'
                 }`}
               >
                 <MessageSquare className="w-4 h-4 shrink-0" />
@@ -1319,10 +1330,11 @@ export default function AdminPonto() {
 
               <button 
                 onClick={() => setActiveTab('banco')}
-                className={`w-full flex items-center space-x-3 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                data-tab-active={activeTab === 'banco'}
+                className={`w-auto md:w-full shrink-0 flex items-center space-x-2 md:space-x-3 px-3 py-2.5 md:py-2 rounded-md text-sm font-medium transition-colors ${
                   activeTab === 'banco'
-                    ? 'bg-white text-slate-700 hover:bg-[#fc9314] hover:text-white border-l-4 border-[#ff8b00] shadow-sm font-semibold'
-                    : 'bg-white text-slate-500 hover:bg-[#fc9314] hover:text-white'
+                    ? 'bg-white text-slate-700 [@media(hover:hover)]:hover:bg-[#fc9314] [@media(hover:hover)]:hover:text-white border-l-4 border-[#ff8b00] shadow-sm font-semibold'
+                    : 'bg-white text-slate-500 [@media(hover:hover)]:hover:bg-[#fc9314] [@media(hover:hover)]:hover:text-white'
                 }`}
               >
                 <Clock className="w-4 h-4 shrink-0" />
@@ -1331,10 +1343,11 @@ export default function AdminPonto() {
 
               <button 
                 onClick={() => setActiveTab('holerite')}
-                className={`w-full flex items-center space-x-3 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                data-tab-active={activeTab === 'holerite'}
+                className={`w-auto md:w-full shrink-0 flex items-center space-x-2 md:space-x-3 px-3 py-2.5 md:py-2 rounded-md text-sm font-medium transition-colors ${
                   activeTab === 'holerite'
-                    ? 'bg-white text-slate-700 hover:bg-[#fc9314] hover:text-white border-l-4 border-[#ff8b00] shadow-sm font-semibold'
-                    : 'bg-white text-slate-500 hover:bg-[#fc9314] hover:text-white'
+                    ? 'bg-white text-slate-700 [@media(hover:hover)]:hover:bg-[#fc9314] [@media(hover:hover)]:hover:text-white border-l-4 border-[#ff8b00] shadow-sm font-semibold'
+                    : 'bg-white text-slate-500 [@media(hover:hover)]:hover:bg-[#fc9314] [@media(hover:hover)]:hover:text-white'
                 }`}
               >
                 <FileText className="w-4 h-4 shrink-0" />
@@ -1345,8 +1358,8 @@ export default function AdminPonto() {
         </aside>
 
         {/* Conteúdo Central */}
-        <main className="flex-1 p-6 pl-0">
-          <div className="flex justify-between items-center mb-3 text-xs text-slate-500">
+        <main className="flex-1 min-w-0 p-3 pt-0 sm:p-4 sm:pt-0 md:p-6 md:pl-0">
+          <div className="flex flex-wrap justify-between items-center gap-2 mb-3 text-xs text-slate-500">
             <div>
               <a 
                 href="/admin" 
@@ -1367,7 +1380,7 @@ export default function AdminPonto() {
           {activeTab === 'pontos' && (
             <div className="bg-white rounded-lg shadow-sm border border-slate-200/80">
               <div className="p-3.5 border-b border-slate-200 flex flex-wrap items-center justify-between gap-4">
-                <div className="flex items-center space-x-4 text-xs font-semibold text-slate-600">
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs font-semibold text-slate-600">
                   <MonthDropdownSelector />
                   <UserDropdownSelector />
                 </div>
@@ -1380,10 +1393,10 @@ export default function AdminPonto() {
                 </button>
               </div>
 
-              <div className="grid grid-cols-12 px-6 py-2.5 bg-slate-50/50 text-slate-500 font-bold text-[11px] uppercase tracking-wider border-b border-slate-200">
-                <div className="col-span-8"></div>
-                <div className="col-span-2 text-right">HORA EXTRA</div>
-                <div className="col-span-2 text-right">TRABALHADO</div>
+              <div className="grid grid-cols-12 px-3 sm:px-6 py-2.5 bg-slate-50/50 text-slate-500 font-bold text-[10px] md:text-[11px] uppercase tracking-wider border-b border-slate-200">
+                <div className="col-span-6 md:col-span-8"></div>
+                <div className="col-span-3 md:col-span-2 text-right">HORA EXTRA</div>
+                <div className="col-span-3 md:col-span-2 text-right">TRABALHADO</div>
               </div>
 
               <div className="divide-y divide-slate-200">
@@ -1399,13 +1412,13 @@ export default function AdminPonto() {
                       <div key={item.id} className="transition-colors border-b border-slate-200">
                         <div 
                           onClick={() => toggleRow(item.id)}
-                          className="grid grid-cols-12 px-6 py-3.5 items-center text-xs hover:bg-slate-50 cursor-pointer"
+                          className="grid grid-cols-12 px-3 sm:px-6 py-3.5 items-center text-xs hover:bg-slate-50 cursor-pointer"
                         >
-                          <div className="col-span-8 flex items-center space-x-3">
+                          <div className="col-span-6 md:col-span-8 flex flex-wrap items-center gap-x-2 md:gap-x-3 gap-y-1">
                             {isExpanded ? (
-                              <ChevronDown className="w-4 h-4 text-slate-500" />
+                              <ChevronDown className="w-4 h-4 text-slate-500 shrink-0" />
                             ) : (
-                              <ChevronRight className="w-4 h-4 text-slate-400" />
+                              <ChevronRight className="w-4 h-4 text-slate-400 shrink-0" />
                             )}
                             <span className="font-semibold text-slate-700 text-xs">
                               {formatDDMMYYYY(item.id)} - {getWeekdayName(item.id)}
@@ -1426,12 +1439,12 @@ export default function AdminPonto() {
                               </span>
                             )}
                           </div>
-                          <div className="col-span-2 text-right font-medium text-slate-600">{item.horaExtra}</div>
-                          <div className="col-span-2 text-right font-semibold text-slate-800">{item.trabalhado}</div>
+                          <div className="col-span-3 md:col-span-2 text-right font-medium text-slate-600">{item.horaExtra}</div>
+                          <div className="col-span-3 md:col-span-2 text-right font-semibold text-slate-800">{item.trabalhado}</div>
                         </div>
 
                         {isExpanded && (
-                          <div className="px-8 py-4 bg-slate-50/40 border-t border-b border-slate-200 text-xs">
+                          <div className="px-3 sm:px-6 md:px-8 py-4 bg-slate-50/40 border-t border-b border-slate-200 text-xs">
                             <div className="flex items-center justify-between mb-4">
                               
                               {/* EXIBE ADICIONAR APENAS PARA GESTOR */}
@@ -1500,11 +1513,11 @@ export default function AdminPonto() {
                               </div>
                             )}
 
-                            <div className="grid grid-cols-12 text-slate-500 font-bold uppercase text-[10px] mb-2 px-2">
-                              <div className="col-span-6">DETALHES / LOCALIZAÇÃO E SELFIE</div>
-                              <div className="col-span-2 text-center">ENTRADA</div>
-                              <div className="col-span-2 text-center">SAÍDA</div>
-                              <div className="col-span-2 text-center">SALDO</div>
+                            <div className="grid grid-cols-3 md:grid-cols-12 text-slate-500 font-bold uppercase text-[10px] mb-2 px-2 md:px-2">
+                              <div className="hidden md:block md:col-span-6">DETALHES / LOCALIZAÇÃO E SELFIE</div>
+                              <div className="col-span-1 md:col-span-2 text-center">ENTRADA</div>
+                              <div className="col-span-1 md:col-span-2 text-center">SAÍDA</div>
+                              <div className="col-span-1 md:col-span-2 text-center">SALDO</div>
                             </div>
 
                             <div className="space-y-2">
@@ -1513,7 +1526,7 @@ export default function AdminPonto() {
 
                                 if (isEditing && isManager) {
                                   return (
-                                    <div key={idx} className="flex items-center justify-between bg-white border border-slate-200 rounded-md p-2 shadow-sm gap-2">
+                                    <div key={idx} className="flex flex-wrap items-center justify-between bg-white border border-slate-200 rounded-md p-2 shadow-sm gap-2">
                                       <button 
                                         onClick={() => setEditingRowKey(null)}
                                         className="text-red-500 font-semibold hover:underline text-xs px-2"
@@ -1587,14 +1600,14 @@ export default function AdminPonto() {
 
                                 return (
                                   <div key={idx} className="space-y-1">
-                                  <div className="group grid grid-cols-12 items-center bg-white border border-slate-200/80 rounded-md py-1.5 px-3 shadow-sm hover:border-slate-300 transition-all">
+                                  <div className="group grid grid-cols-3 md:grid-cols-12 items-center gap-y-2 bg-white border border-slate-200/80 rounded-md py-2 md:py-1.5 px-3 shadow-sm hover:border-slate-300 transition-all">
                                     {/* COLUNA ESQUERDA: BOTOES, LOCALIZAÇÃO E SELFIE */}
-                                    <div className="col-span-6 flex items-center space-x-3 overflow-hidden">
+                                    <div className="col-span-3 md:col-span-6 order-2 md:order-none flex flex-wrap md:flex-nowrap items-center gap-2 md:gap-3 overflow-hidden pt-2 md:pt-0 border-t border-slate-100 md:border-t-0">
                                       {/* EXIBE REMOVER APENAS PARA GESTOR */}
                                       {isManager && (
                                         <button 
                                           onClick={() => handleRemoveBatida(item.id, idx, b.db_id, b)}
-                                          className="opacity-0 group-hover:opacity-100 bg-red-500 hover:bg-red-600 text-white font-semibold px-2 py-0.5 rounded text-[10px] transition-opacity shadow-sm shrink-0"
+                                          className="[@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100 bg-red-500 hover:bg-red-600 text-white font-semibold px-2 py-0.5 rounded text-[10px] transition-opacity shadow-sm shrink-0"
                                         >
                                           Remover
                                         </button>
@@ -1639,17 +1652,17 @@ export default function AdminPonto() {
                                       )}
                                     </div>
 
-                                    <div className="col-span-2 flex items-center justify-center space-x-1 text-slate-700 font-mono text-xs">
+                                    <div className="col-span-1 md:col-span-2 flex items-center justify-center space-x-1 text-slate-700 font-mono text-xs">
                                       <span>{b.entrada}</span>
                                       {b.entrada !== '-' && <DeviceIcon deviceType={b.deviceType} className="w-3.5 h-3.5 text-slate-400" />}
                                     </div>
 
-                                    <div className="col-span-2 flex items-center justify-center space-x-1 text-slate-700 font-mono text-xs">
+                                    <div className="col-span-1 md:col-span-2 flex items-center justify-center space-x-1 text-slate-700 font-mono text-xs">
                                       <span>{b.saida}</span>
                                       {b.saida !== '-' && <DeviceIcon deviceType={b.deviceType} className="w-3.5 h-3.5 text-slate-400" />}
                                     </div>
 
-                                    <div className="col-span-2 flex items-center justify-between pl-4">
+                                    <div className="col-span-1 md:col-span-2 flex flex-wrap items-center justify-center md:justify-between gap-x-2 md:pl-4">
                                       <span className="font-mono text-slate-600 text-xs">{b.saldo}</span>
                                       
                                       {/* EXIBE EDITAR APENAS PARA GESTOR */}
@@ -1665,7 +1678,7 @@ export default function AdminPonto() {
                                   </div>
 
                                   {b.approvalStatus === 'pendente' && (
-                                    <div className="flex items-center justify-between gap-2 bg-amber-50 border border-amber-200 rounded-md px-3 py-1.5">
+                                    <div className="flex flex-wrap items-center justify-between gap-2 bg-amber-50 border border-amber-200 rounded-md px-3 py-1.5">
                                       <span className="flex items-center gap-1.5 text-amber-700 font-medium text-[11px]">
                                         <AlertCircle className="w-3.5 h-3.5" />
                                         Fora da cerca — pendente de aprovação
@@ -1711,12 +1724,12 @@ export default function AdminPonto() {
                   })
                 )}
 
-                <div className="grid grid-cols-12 px-6 py-3 items-center text-xs font-bold bg-slate-50/30">
-                  <div className="col-span-8"></div>
-                  <div className="col-span-2 text-right text-slate-800">
+                <div className="grid grid-cols-12 px-3 sm:px-6 py-3 items-center text-xs font-bold bg-slate-50/30">
+                  <div className="col-span-6 md:col-span-8"></div>
+                  <div className="col-span-3 md:col-span-2 text-right text-slate-800">
                     {minutesToDisplayHours(totalGeralExtraMinutos)}
                   </div>
-                  <div className="col-span-2 text-right text-slate-800">
+                  <div className="col-span-3 md:col-span-2 text-right text-slate-800">
                     {minutesToDisplayHours(totalGeralTrabalhadoMinutos)}
                   </div>
                 </div>
@@ -1726,9 +1739,9 @@ export default function AdminPonto() {
 
           {/* RESUMO DAS HORAS */}
           {activeTab === 'resumo' && (
-            <div className="bg-white rounded-lg shadow-sm border border-slate-200/80 p-5 space-y-3">
+            <div className="bg-white rounded-lg shadow-sm border border-slate-200/80 p-4 sm:p-5 space-y-3">
               <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-200 pb-3">
-                <div className="flex items-center space-x-4 text-xs font-semibold text-slate-600">
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs font-semibold text-slate-600">
                   <MonthDropdownSelector />
                   <UserDropdownSelector />
                 </div>
@@ -1757,83 +1770,83 @@ export default function AdminPonto() {
               <div className="text-[12px] divide-y divide-slate-100">
                 <div className="py-2 space-y-1">
                   <div className="grid grid-cols-12 items-center">
-                    <span className="col-span-3 text-slate-800 font-bold uppercase text-[11px]">1. TRABALHADO</span>
-                    <span className="col-span-5 text-slate-600">Horas diurnas</span>
+                    <span className="col-span-12 md:col-span-3 mb-0.5 md:mb-0 text-slate-800 font-bold uppercase text-[11px]">1. TRABALHADO</span>
+                    <span className="col-span-8 md:col-span-5 text-slate-600">Horas diurnas</span>
                     <span className="col-span-4 text-right font-medium text-slate-700">{minutesToFullDisplay(totalGeralDiurnoMinutos)}</span>
                   </div>
                   <div className="grid grid-cols-12 items-center">
-                    <span className="col-span-3"></span>
-                    <span className="col-span-5 text-slate-600">Adicional noturno</span>
+                    <span className="hidden md:block md:col-span-3"></span>
+                    <span className="col-span-8 md:col-span-5 text-slate-600">Adicional noturno</span>
                     <span className="col-span-4 text-right font-medium text-slate-700">{minutesToFullDisplay(totalGeralNoturnoMinutos)}</span>
                   </div>
                   <div className="grid grid-cols-12 items-center">
-                    <span className="col-span-3"></span>
-                    <span className="col-span-5 text-slate-600">Hora extra</span>
+                    <span className="hidden md:block md:col-span-3"></span>
+                    <span className="col-span-8 md:col-span-5 text-slate-600">Hora extra</span>
                     <span className="col-span-4 text-right font-medium text-slate-700">{minutesToFullDisplay(totalGeralExtraMinutos)}</span>
                   </div>
                   <div className="grid grid-cols-12 items-center pt-1 font-bold text-slate-900">
-                    <span className="col-span-3"></span>
-                    <span className="col-span-5">Total Trabalhado</span>
+                    <span className="hidden md:block md:col-span-3"></span>
+                    <span className="col-span-8 md:col-span-5">Total Trabalhado</span>
                     <span className="col-span-4 text-right">{minutesToFullDisplay(totalGeralTrabalhadoMinutos)}</span>
                   </div>
                 </div>
 
                 <div className="py-2 space-y-1">
                   <div className="grid grid-cols-12 items-center">
-                    <span className="col-span-3 text-slate-800 font-bold uppercase text-[11px]">2. FALTAS</span>
-                    <span className="col-span-5 text-slate-600">Dias de falta</span>
+                    <span className="col-span-12 md:col-span-3 mb-0.5 md:mb-0 text-slate-800 font-bold uppercase text-[11px]">2. FALTAS</span>
+                    <span className="col-span-8 md:col-span-5 text-slate-600">Dias de falta</span>
                     <span className="col-span-4 text-right font-medium text-slate-700">0 dias</span>
                   </div>
                   <div className="grid grid-cols-12 items-center pt-1 font-bold text-slate-900">
-                    <span className="col-span-3"></span>
-                    <span className="col-span-5">Horas de atraso + falta s/ justificativa</span>
+                    <span className="hidden md:block md:col-span-3"></span>
+                    <span className="col-span-8 md:col-span-5">Horas de atraso + falta s/ justificativa</span>
                     <span className="col-span-4 text-right">00h 00min</span>
                   </div>
                 </div>
 
                 <div className="py-2 space-y-1">
                   <div className="grid grid-cols-12 items-center">
-                    <span className="col-span-3 text-slate-800 font-bold uppercase text-[11px]">3. HORA EXTRA 50%</span>
-                    <span className="col-span-5 text-slate-600">Dia útil, passou da jornada</span>
+                    <span className="col-span-12 md:col-span-3 mb-0.5 md:mb-0 text-slate-800 font-bold uppercase text-[11px]">3. HORA EXTRA 50%</span>
+                    <span className="col-span-8 md:col-span-5 text-slate-600">Dia útil, passou da jornada</span>
                     <span className="col-span-4 text-right font-medium text-slate-700">{minutesToFullDisplay(totalGeralExtra50Minutos)}</span>
                   </div>
                   <div className="grid grid-cols-12 items-center pt-1 font-bold text-slate-900">
-                    <span className="col-span-3"></span>
-                    <span className="col-span-5">Valor a pagar (50%)</span>
+                    <span className="hidden md:block md:col-span-3"></span>
+                    <span className="col-span-8 md:col-span-5">Valor a pagar (50%)</span>
                     <span className="col-span-4 text-right">{formatCurrencyBRL(valorExtra50)}</span>
                   </div>
                 </div>
 
                 <div className="py-2 space-y-1">
                   <div className="grid grid-cols-12 items-center">
-                    <span className="col-span-3 text-slate-800 font-bold uppercase text-[11px]">4. HORA EXTRA 100%</span>
-                    <span className="col-span-5 text-slate-600">Folga, DSR ou feriado trabalhado</span>
+                    <span className="col-span-12 md:col-span-3 mb-0.5 md:mb-0 text-slate-800 font-bold uppercase text-[11px]">4. HORA EXTRA 100%</span>
+                    <span className="col-span-8 md:col-span-5 text-slate-600">Folga, DSR ou feriado trabalhado</span>
                     <span className="col-span-4 text-right font-medium text-slate-700">{minutesToFullDisplay(totalGeralExtra100Minutos)}</span>
                   </div>
                   <div className="grid grid-cols-12 items-center pt-1 font-bold text-slate-900">
-                    <span className="col-span-3"></span>
-                    <span className="col-span-5">Valor a pagar (100%)</span>
+                    <span className="hidden md:block md:col-span-3"></span>
+                    <span className="col-span-8 md:col-span-5">Valor a pagar (100%)</span>
                     <span className="col-span-4 text-right">{formatCurrencyBRL(valorExtra100)}</span>
                   </div>
                 </div>
 
                 <div className="py-2 space-y-1">
                   <div className="grid grid-cols-12 items-center">
-                    <span className="col-span-3 text-slate-800 font-bold uppercase text-[11px]">5. ADICIONAL NOTURNO</span>
-                    <span className="col-span-5 text-slate-600">20% sobre horas 22h-5h</span>
+                    <span className="col-span-12 md:col-span-3 mb-0.5 md:mb-0 text-slate-800 font-bold uppercase text-[11px]">5. ADICIONAL NOTURNO</span>
+                    <span className="col-span-8 md:col-span-5 text-slate-600">20% sobre horas 22h-5h</span>
                     <span className="col-span-4 text-right font-medium text-slate-700">{minutesToFullDisplay(totalGeralNoturnoMinutos)}</span>
                   </div>
                   <div className="grid grid-cols-12 items-center pt-1 font-bold text-slate-900">
-                    <span className="col-span-3"></span>
-                    <span className="col-span-5">Valor a pagar (adicional)</span>
+                    <span className="hidden md:block md:col-span-3"></span>
+                    <span className="col-span-8 md:col-span-5">Valor a pagar (adicional)</span>
                     <span className="col-span-4 text-right">{formatCurrencyBRL(valorAdicionalNoturno)}</span>
                   </div>
                 </div>
 
-                <div className="py-2 space-y-1 bg-slate-50 -mx-5 px-5 rounded-b-lg">
+                <div className="py-2 space-y-1 bg-slate-50 -mx-4 px-4 sm:-mx-5 sm:px-5 rounded-b-lg">
                   <div className="grid grid-cols-12 items-center pt-1 font-bold text-slate-900 text-[13px]">
-                    <span className="col-span-3"></span>
-                    <span className="col-span-5">TOTAL A PAGAR DE EXTRAS</span>
+                    <span className="hidden md:block md:col-span-3"></span>
+                    <span className="col-span-8 md:col-span-5">TOTAL A PAGAR DE EXTRAS</span>
                     <span className="col-span-4 text-right text-[#ff8b00]">{formatCurrencyBRL(valorTotalAPagar)}</span>
                   </div>
                   {hourlyRate === 0 && (
@@ -1925,7 +1938,7 @@ export default function AdminPonto() {
                 ) : (
                   adjustmentRequests.map((req) => (
                     <div key={req.id} className="p-4 flex items-start justify-between gap-4 text-xs">
-                      <div>
+                      <div className="min-w-0 break-words">
                         <p className="font-semibold text-slate-700">{formatDDMMYYYY(req.record_date)}</p>
                         <p className="text-slate-600 mt-0.5">{req.description}</p>
                         {(req.proposed_entrada || req.proposed_saida) && (
@@ -2060,7 +2073,7 @@ export default function AdminPonto() {
                     const mins = Math.round(Number(entry.hours) * 60);
                     return (
                       <div key={entry.id} className="p-4 flex items-center justify-between gap-4 text-xs">
-                        <div>
+                        <div className="min-w-0 break-words">
                           <p className="font-semibold text-slate-700">{formatDDMMYYYY(entry.entry_date)}</p>
                           {entry.description && <p className="text-slate-500 mt-0.5">{entry.description}</p>}
                         </div>
@@ -2149,11 +2162,11 @@ export default function AdminPonto() {
                 ) : (
                   payslips.map((p) => (
                     <div key={p.id} className="p-4 flex items-center justify-between gap-4 text-xs">
-                      <div>
+                      <div className="min-w-0">
                         <p className="font-semibold text-slate-700 capitalize">{formatReferenceMonth(p.reference_month)}</p>
                         <button
                           onClick={() => setPreviewFile({ url: p.file_url, name: p.file_name })}
-                          className="text-[#ff8b00] hover:underline text-left"
+                          className="text-[#ff8b00] hover:underline text-left break-all"
                         >
                           {p.file_name}
                         </button>
@@ -2197,7 +2210,7 @@ export default function AdminPonto() {
 
       {/* Popup / Toast de feedback */}
       {toastMessage && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-[#1e293b] text-white px-5 py-3 rounded-lg shadow-xl flex items-center space-x-3 z-50">
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 max-w-[calc(100vw-2rem)] bg-[#1e293b] text-white px-5 py-3 rounded-lg shadow-xl flex items-center space-x-3 z-50">
           <CheckCircle2 className="w-4 h-4 text-[#ff8b00]" />
           <span className="text-xs font-medium">{toastMessage}</span>
           <button onClick={() => setToastMessage(null)} className="text-slate-400 hover:text-white ml-2">
@@ -2217,7 +2230,7 @@ export default function AdminPonto() {
               </button>
             </div>
 
-            <div className="p-6 space-y-6 text-xs max-h-[70vh] overflow-y-auto">
+            <div className="p-4 sm:p-6 space-y-6 text-xs max-h-[70vh] overflow-y-auto">
               <p className="text-slate-500 font-medium">Dia {formatDDMMYYYY(historyItemId)}</p>
 
               {historyLoading ? (
@@ -2275,7 +2288,7 @@ export default function AdminPonto() {
       {/* MODAL: TROCAR JORNADA */}
       {showSwapModal && (
         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg shadow-2xl max-w-sm w-full p-6 space-y-4">
+          <div className="bg-white rounded-lg shadow-2xl max-w-sm w-full p-4 sm:p-6 space-y-4">
             <h3 className="font-bold text-slate-800 text-sm">Trocar jornada</h3>
             <p className="text-xs text-slate-500">
               A jornada prevista do dia <strong>{formatDDMMYYYY(swapTargetItemId)}</strong> passa a ser a mesma
@@ -2316,7 +2329,7 @@ export default function AdminPonto() {
       {/* MODAL: ANOTAÇÃO */}
       {showAnnotationModal && (
         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg shadow-2xl max-w-sm w-full p-6 space-y-4">
+          <div className="bg-white rounded-lg shadow-2xl max-w-sm w-full p-4 sm:p-6 space-y-4">
             <h3 className="font-bold text-slate-800 text-sm">Anotação — {formatDDMMYYYY(annotationTargetItemId)}</h3>
             <textarea
               value={annotationText}
@@ -2349,7 +2362,7 @@ export default function AdminPonto() {
       {/* Modal Jornada Atual */}
       {showJornadaModal && (
         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg shadow-2xl max-w-xl w-full overflow-hidden border border-slate-200">
+          <div className="bg-white rounded-lg shadow-2xl max-w-xl w-full max-h-[90dvh] overflow-y-auto border border-slate-200">
             <div className="flex items-center justify-between p-4 border-b border-slate-100">
               <h2 className="text-base font-bold text-slate-800">Jornada atual</h2>
               <button onClick={() => setShowJornadaModal(false)} className="text-slate-400 hover:text-slate-600">
@@ -2357,14 +2370,14 @@ export default function AdminPonto() {
               </button>
             </div>
 
-            <div className="p-6 space-y-4 text-xs">
+            <div className="p-4 sm:p-6 space-y-4 text-xs">
               <div>
                 <p className="font-semibold text-slate-700">Nome: SEG A SEX 8H AS 12H DAS 14H AS 18H SAB 08H AS 12H</p>
                 <p className="text-slate-600 mt-1">Tipo: Padrão</p>
                 <p className="text-slate-600 mt-1">Usada desde: 06/08/2026</p>
               </div>
 
-              <div className="border border-slate-200 rounded-md overflow-hidden">
+              <div className="border border-slate-200 rounded-md overflow-x-auto">
                 <table className="w-full text-left border-collapse">
                   <thead>
                     <tr className="bg-slate-50 text-slate-500 text-[11px] border-b border-slate-200">
@@ -2422,7 +2435,7 @@ export default function AdminPonto() {
       )}
 
       {/* Widget Flutuante de Suporte */}
-      <div className="fixed bottom-6 right-6">
+      <div className="fixed bottom-4 right-4 md:bottom-6 md:right-6">
         <button className="w-10 h-10 bg-white border border-[#1a2c6a] text-[#1a2c6a] hover:bg-[#1a2c6a] hover:text-white rounded-md flex items-center justify-center shadow-lg transition-colors">
           <MessageSquare className="w-5 h-5" />
         </button>

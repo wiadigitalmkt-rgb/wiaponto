@@ -12,8 +12,13 @@ import {
   Briefcase, 
   ShieldCheck, 
   Calendar,
-  Wallet
+  Wallet,
+  Copy,
+  Check
 } from 'lucide-react';
+
+const LOGIN_URL = 'https://wiaponto.vercel.app/login';
+const INVITE_MESSAGE = `Olá! Você foi convidado(a) para usar o sistema de ponto eletrônico da nossa empresa. Acesse pelo link abaixo para entrar:\n${LOGIN_URL}`;
 
 const timeToMinutes = (timeStr) => {
   if (!timeStr || timeStr === '-' || timeStr.trim() === '') return null;
@@ -35,6 +40,25 @@ const minutesToDisplayHours = (mins) => {
 export default function Dashboard() {
   const [selectedCompany] = useState('Sua Empresa');
   const [, setActiveModal] = useState(null);
+  const [inviteCopied, setInviteCopied] = useState(false);
+
+  const handleCopyInvite = async () => {
+    try {
+      await navigator.clipboard.writeText(INVITE_MESSAGE);
+    } catch {
+      // Fallback para navegadores/contextos sem Clipboard API
+      const textarea = document.createElement('textarea');
+      textarea.value = INVITE_MESSAGE;
+      textarea.style.position = 'fixed';
+      textarea.style.opacity = '0';
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textarea);
+    }
+    setInviteCopied(true);
+    setTimeout(() => setInviteCopied(false), 2500);
+  };
 
   const [pontoHoje, setPontoHoje] = useState({
     presentes: 0,
@@ -228,6 +252,27 @@ export default function Dashboard() {
       <Navbar selectedCompany={selectedCompany} />
 
       <main className="max-w-7xl mx-auto px-6 py-8 space-y-8">
+        {/* CONVITE PARA NOVOS COLABORADORES */}
+        <div className="bg-white rounded-lg border border-slate-200/80 shadow-sm p-5 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div className="min-w-0">
+            <h4 className="font-bold text-[#1a2c6a] text-base">Convidar colaboradores</h4>
+            <p className="text-xs text-slate-500 mt-1">
+              Copie o convite e envie para os novos colaboradores acessarem o sistema de ponto.
+            </p>
+            <p className="text-xs font-mono text-slate-400 mt-2 truncate">{LOGIN_URL}</p>
+          </div>
+          <button
+            type="button"
+            onClick={handleCopyInvite}
+            className={`shrink-0 inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-md text-xs font-bold text-white transition ${
+              inviteCopied ? 'bg-emerald-500' : 'bg-[#ff8b00] hover:bg-[#e67d00]'
+            }`}
+          >
+            {inviteCopied ? <Check size={16} /> : <Copy size={16} />}
+            {inviteCopied ? 'Convite copiado!' : 'Copiar convite'}
+          </button>
+        </div>
+
         <div>
           <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-4">Módulos de Gestão</h3>
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">

@@ -81,13 +81,13 @@ export default function Login() {
 
   return (
     <div className="min-h-[100dvh] w-full flex bg-white lg:h-screen lg:overflow-hidden font-['Inter',-apple-system,BlinkMacSystemFont,'Segoe_UI',Roboto,sans-serif]">
-      <div className="w-full lg:w-1/2 min-h-[100dvh] lg:min-h-0 lg:h-full flex flex-col justify-start lg:justify-center items-center px-6 pt-24 pb-10 sm:px-12 md:px-16 lg:px-24 lg:py-0">
+      <div className="w-full lg:w-1/2 min-h-[100dvh] lg:min-h-0 lg:h-full flex flex-col justify-center items-center px-6 py-10 sm:px-12 md:px-16 lg:px-24 lg:py-0">
         <div className="max-w-md w-full space-y-6">
           {/* Logo: aparece só no celular/tablet (no PC a marca já aparece na imagem ao lado) */}
           <img
             src={logoWiaPonto}
             alt="WiaPonto - gestão de ponto"
-            className="lg:hidden h-14 w-auto mb-6 -ml-1"
+            className="lg:hidden relative -top-20 h-14 w-auto mb-6 -ml-1"
           />
 
           <div className="space-y-1.5">

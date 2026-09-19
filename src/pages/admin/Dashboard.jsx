@@ -251,9 +251,9 @@ export default function Dashboard() {
     <div className="min-h-screen bg-slate-100/70 text-slate-800 pb-12 relative">
       <Navbar selectedCompany={selectedCompany} />
 
-      <main className="max-w-7xl mx-auto px-6 py-8 space-y-8">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-6 sm:space-y-8">
         {/* CONVITE PARA NOVOS COLABORADORES */}
-        <div className="bg-white rounded-lg border border-slate-200/80 shadow-sm p-5 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div className="bg-white rounded-lg border border-slate-200/80 shadow-sm p-4 sm:p-5 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div className="min-w-0">
             <h4 className="font-bold text-[#1a2c6a] text-base">Convidar colaboradores</h4>
             <p className="text-xs text-slate-500 mt-1">
@@ -264,7 +264,7 @@ export default function Dashboard() {
           <button
             type="button"
             onClick={handleCopyInvite}
-            className={`shrink-0 inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-md text-xs font-bold text-white transition ${
+            className={`w-full md:w-auto shrink-0 inline-flex items-center justify-center gap-2 px-4 py-3 md:py-2.5 rounded-md text-sm md:text-xs font-bold text-white transition ${
               inviteCopied ? 'bg-emerald-500' : 'bg-[#ff8b00] hover:bg-[#e67d00]'
             }`}
           >
@@ -275,7 +275,7 @@ export default function Dashboard() {
 
         <div>
           <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-4">Módulos de Gestão</h3>
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-4">
             {modules.map((m, idx) => {
               const Icon = m.icon;
               
@@ -284,7 +284,7 @@ export default function Dashboard() {
                   <div
                     key={idx}
                     onClick={() => setActiveModal(m.modalType)}
-                    className="relative group bg-white p-5 rounded-lg border border-slate-200/80 shadow-sm hover:shadow-md hover:border-[#ff8b00] transition cursor-pointer flex flex-col items-center text-center select-none"
+                    className="relative group bg-white p-4 sm:p-5 rounded-lg border border-slate-200/80 shadow-sm hover:shadow-md hover:border-[#ff8b00] transition cursor-pointer flex flex-col items-center text-center select-none"
                   >
                     {m.isNew && (
                       <span className="absolute top-2.5 right-2.5 text-[9px] font-extrabold bg-[#ff8b00] text-white px-2 py-0.5 rounded-md uppercase tracking-wider">
@@ -303,7 +303,7 @@ export default function Dashboard() {
                 <Link 
                   key={idx}
                   to={m.path}
-                  className="relative group bg-white p-5 rounded-lg border border-slate-200/80 shadow-sm hover:shadow-md hover:border-[#ff8b00] transition cursor-pointer flex flex-col items-center text-center"
+                  className="relative group bg-white p-4 sm:p-5 rounded-lg border border-slate-200/80 shadow-sm hover:shadow-md hover:border-[#ff8b00] transition cursor-pointer flex flex-col items-center text-center"
                 >
                   {m.isNew && (
                     <span className="absolute top-2.5 right-2.5 text-[9px] font-extrabold bg-[#ff8b00] text-white px-2 py-0.5 rounded-md uppercase tracking-wider">
@@ -329,10 +329,10 @@ export default function Dashboard() {
               <div className="flex-1 h-[1px] bg-amber-200"></div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
               {/* ADMISSÕES EM ANDAMENTO */}
               <div className="bg-white rounded-lg border border-amber-200 shadow-sm flex flex-col justify-between overflow-hidden">
-                <div className="p-6 pb-0 flex-1 flex flex-col">
+                <div className="p-4 sm:p-6 pb-0 flex-1 flex flex-col">
                   <h4 className="font-bold text-[#1a2c6a] text-base mb-4">Admissões em andamento</h4>
                   <div className="space-y-2 max-h-[180px] overflow-y-auto pr-1">
                     {pendingAdmissions.length > 0 ? (
@@ -340,10 +340,10 @@ export default function Dashboard() {
                         <Link
                           key={adm.id}
                           to="/admin/admissao"
-                          className="flex items-center justify-between p-3 rounded-md bg-amber-50 hover:bg-amber-100 transition-colors text-xs font-medium"
+                          className="flex items-center justify-between gap-3 p-3 rounded-md bg-amber-50 hover:bg-amber-100 transition-colors text-xs font-medium"
                         >
-                          <span className="font-bold text-slate-700">{adm.Employees?.full_name || 'Colaborador'}</span>
-                          <span className="text-amber-700 text-[10px] font-semibold">Em andamento</span>
+                          <span className="font-bold text-slate-700 truncate min-w-0">{adm.Employees?.full_name || 'Colaborador'}</span>
+                          <span className="text-amber-700 text-[10px] font-semibold whitespace-nowrap">Em andamento</span>
                         </Link>
                       ))
                     ) : (
@@ -362,7 +362,7 @@ export default function Dashboard() {
 
               {/* CONTRATOS AGUARDANDO ASSINATURA */}
               <div className="bg-white rounded-lg border border-amber-200 shadow-sm flex flex-col justify-between overflow-hidden">
-                <div className="p-6 pb-0 flex-1 flex flex-col">
+                <div className="p-4 sm:p-6 pb-0 flex-1 flex flex-col">
                   <h4 className="font-bold text-[#1a2c6a] text-base mb-4">Contratos aguardando assinatura</h4>
                   <div className="space-y-2 max-h-[180px] overflow-y-auto pr-1">
                     {pendingContracts.length > 0 ? (
@@ -370,11 +370,11 @@ export default function Dashboard() {
                         <Link
                           key={c.id}
                           to="/admin/contratos"
-                          className="flex items-center justify-between p-3 rounded-md bg-amber-50 hover:bg-amber-100 transition-colors text-xs font-medium"
+                          className="flex items-center justify-between gap-3 p-3 rounded-md bg-amber-50 hover:bg-amber-100 transition-colors text-xs font-medium"
                         >
-                          <div>
-                            <span className="font-bold text-slate-700 block">{c.Employees?.full_name || 'Colaborador'}</span>
-                            <span className="text-slate-400 text-[10px]">{c.contract_templates?.name}</span>
+                          <div className="min-w-0">
+                            <span className="font-bold text-slate-700 block truncate">{c.Employees?.full_name || 'Colaborador'}</span>
+                            <span className="text-slate-400 text-[10px] block truncate">{c.contract_templates?.name}</span>
                           </div>
                           <span className="text-amber-700 text-[10px] font-semibold whitespace-nowrap">Aguardando</span>
                         </Link>
@@ -404,31 +404,31 @@ export default function Dashboard() {
             <div className="flex-1 h-[1px] bg-slate-300/80"></div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
             
             {/* CARD PONTO ELETRÔNICO HOJE */}
             <div className="bg-white rounded-lg border border-slate-200/80 shadow-sm flex flex-col justify-between overflow-hidden">
-              <div className="p-6 pb-0">
+              <div className="p-4 sm:p-6 pb-0">
                 <div className="flex items-center justify-between mb-4">
                   <h4 className="font-bold text-[#1a2c6a] text-base">Ponto Eletrônico Hoje</h4>
                 </div>
                 <div className="space-y-3">
-                  <div className="flex items-center justify-between p-3 rounded-md bg-slate-50 text-xs">
+                  <div className="flex items-center justify-between gap-2 p-3 rounded-md bg-slate-50 text-xs">
                     <span className="font-semibold text-slate-600">Presença Registrada</span>
-                    <span className="font-bold text-amber-600 bg-amber-50 px-2 py-1 rounded-md">
+                    <span className="font-bold text-amber-600 bg-amber-50 px-2 py-1 rounded-md whitespace-nowrap shrink-0">
                       {pontoHoje.presentes} / {pontoHoje.totalColaboradores} Funcionários
                     </span>
                   </div>
-                  <div className="flex items-center justify-between p-3 rounded-md bg-slate-50 text-xs">
+                  <div className="flex items-center justify-between gap-2 p-3 rounded-md bg-slate-50 text-xs">
                     <span className="font-semibold text-slate-600">Atrasos / Justificativas</span>
-                    <span className="font-bold text-amber-600 bg-amber-50 px-2 py-1 rounded-md">
+                    <span className="font-bold text-amber-600 bg-amber-50 px-2 py-1 rounded-md whitespace-nowrap shrink-0">
                       {pontoHoje.pendentesJustificativa} Pendentes
                     </span>
                   </div>
                 </div>
               </div>
               <div className="p-4 border-t border-slate-100 mt-6 bg-slate-50/50">
-                <Link to="/espelho" className="text-xs font-bold text-[#ff8b00] hover:underline">
+                <Link to="/ponto" className="text-xs font-bold text-[#ff8b00] hover:underline">
                   Ver todos os pontos
                 </Link>
               </div>
@@ -436,7 +436,7 @@ export default function Dashboard() {
 
             {/* CARD HORA EXTRA */}
             <div className="bg-white rounded-lg border border-slate-200/80 shadow-sm flex flex-col justify-between overflow-hidden">
-              <div className="p-6 pb-0 flex-1 flex flex-col">
+              <div className="p-4 sm:p-6 pb-0 flex-1 flex flex-col">
                 <h4 className="font-bold text-[#1a2c6a] text-base mb-4">Hora Extra</h4>
                 <p className="text-xs font-bold text-slate-600 mb-4">
                   {overtimeUsers.length === 1 
@@ -447,14 +447,14 @@ export default function Dashboard() {
                 <div className="space-y-2 max-h-[150px] overflow-y-auto pr-1">
                   {overtimeUsers.length > 0 ? (
                     overtimeUsers.map(user => (
-                      <div key={user.id} className="flex items-center justify-between p-3 rounded-md bg-slate-50 text-xs font-medium">
-                        <div className="flex items-center gap-2">
-                          <div className="w-7 h-7 rounded-full bg-slate-200 text-slate-700 flex items-center justify-center font-bold text-[10px]">
+                      <div key={user.id} className="flex items-center justify-between gap-2 p-3 rounded-md bg-slate-50 text-xs font-medium">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <div className="w-7 h-7 shrink-0 rounded-full bg-slate-200 text-slate-700 flex items-center justify-center font-bold text-[10px]">
                             {user.initials}
                           </div>
-                          <span className="font-bold text-slate-700">{user.name}</span>
+                          <span className="font-bold text-slate-700 truncate">{user.name}</span>
                         </div>
-                        <span className="font-mono font-bold text-slate-800">{user.extraDisplay}</span>
+                        <span className="font-mono font-bold text-slate-800 whitespace-nowrap">{user.extraDisplay}</span>
                       </div>
                     ))
                   ) : (

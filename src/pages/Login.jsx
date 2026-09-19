@@ -79,54 +79,58 @@ export default function Login() {
   };
 
   return (
-    <div className="h-screen w-screen flex bg-white overflow-hidden font-['Inter',-apple-system,BlinkMacSystemFont,'Segoe_UI',Roboto,sans-serif]">
-      <div className="w-1/2 h-full flex flex-col justify-center items-center px-8 sm:px-12 md:px-16 lg:px-24">
+    <div className="min-h-[100dvh] w-full flex bg-white lg:h-screen lg:overflow-hidden font-['Inter',-apple-system,BlinkMacSystemFont,'Segoe_UI',Roboto,sans-serif]">
+      <div className="w-full lg:w-1/2 min-h-[100dvh] lg:min-h-0 lg:h-full flex flex-col justify-center items-center px-6 py-10 sm:px-12 md:px-16 lg:px-24 lg:py-0">
         <div className="max-w-md w-full space-y-6">
           <div className="space-y-1.5">
             <h1 className="text-3xl font-bold text-[#1e293b] tracking-tight">
               Bem-vindo!
             </h1>
-            <p className="text-sm font-normal text-slate-500">
+            <p className="text-base lg:text-sm font-normal text-slate-500">
               Informe seus dados abaixo para entrar
             </p>
           </div>
 
           {errorMsg && (
-            <div className="p-3 rounded-md bg-red-50 border border-red-200 text-red-600 text-xs font-medium">
+            <div className="p-3 rounded-md bg-red-50 border border-red-200 text-red-600 text-sm lg:text-xs font-medium">
               {errorMsg}
             </div>
           )}
 
           <form onSubmit={handleSubmit} className="space-y-4" noValidate>
             <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-slate-800">
+              <label className="text-sm lg:text-xs font-semibold text-slate-800">
                 Usuário*
               </label>
               <input
                 type="text"
                 name="username"
                 id="username"
-                autoComplete="off"
+                autoComplete="username"
+                autoCapitalize="none"
+                autoCorrect="off"
+                spellCheck={false}
                 required
                 value={userInput}
                 onChange={(e) => setUserInput(e.target.value)}
                 placeholder="E-mail ou CPF"
-                className="w-full px-3.5 py-2.5 rounded-md border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#fc9314] focus:border-transparent transition-all text-xs text-slate-700 bg-white placeholder:text-slate-400 font-normal"
+                className="w-full px-3.5 py-3 lg:py-2.5 rounded-md border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#fc9314] focus:border-transparent transition-all text-base lg:text-xs text-slate-700 bg-white placeholder:text-slate-400 font-normal"
               />
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-slate-800">
+              <label className="text-sm lg:text-xs font-semibold text-slate-800">
                 Senha*
               </label>
               <div className="relative">
                 <input
                   type={showPassword ? 'text' : 'password'}
+                  autoComplete="current-password"
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="Senha"
-                  className="w-full px-3.5 py-2.5 rounded-md border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#fc9314] focus:border-transparent transition-all text-xs text-slate-700 pr-10 bg-white placeholder:text-slate-400 font-normal"
+                  className="w-full px-3.5 py-3 lg:py-2.5 rounded-md border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#fc9314] focus:border-transparent transition-all text-base lg:text-xs text-slate-700 pr-10 bg-white placeholder:text-slate-400 font-normal"
                 />
                 <button
                   type="button"
@@ -138,8 +142,8 @@ export default function Login() {
               </div>
             </div>
 
-            <div className="flex items-center justify-between text-xs pt-1">
-              <label className="flex items-center gap-2 cursor-pointer text-slate-700 font-normal">
+            <div className="flex items-center justify-between gap-3 text-sm lg:text-xs pt-1">
+              <label className="flex items-center gap-2 cursor-pointer text-slate-700 font-normal whitespace-nowrap">
                 <input
                   type="checkbox"
                   checked={rememberMe}
@@ -152,14 +156,14 @@ export default function Login() {
               <button
                 type="button"
                 onClick={() => setShowForgotHint((v) => !v)}
-                className="font-normal text-slate-700 hover:text-slate-900 cursor-pointer"
+                className="font-normal text-slate-700 hover:text-slate-900 cursor-pointer whitespace-nowrap"
               >
                 Esqueci a minha senha
               </button>
             </div>
 
             {showForgotHint && (
-              <p className="text-xs text-slate-500 bg-slate-50 border border-slate-200 rounded-md p-2.5 -mt-1">
+              <p className="text-sm lg:text-xs text-slate-500 bg-slate-50 border border-slate-200 rounded-md p-2.5 -mt-1">
                 Fale com o gestor da sua empresa para redefinir sua senha.
               </p>
             )}
@@ -167,7 +171,7 @@ export default function Login() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-2.5 px-6 rounded-md bg-[#ff8c00] hover:bg-[#ffa12e] text-white font-semibold text-sm flex items-center justify-center gap-2 transition-all shadow-sm active:scale-[0.99] mt-2 cursor-pointer disabled:opacity-50"
+              className="w-full py-3 lg:py-2.5 px-6 rounded-md bg-[#ff8c00] hover:bg-[#ffa12e] text-white font-semibold text-base lg:text-sm flex items-center justify-center gap-2 transition-all shadow-sm active:scale-[0.99] mt-2 cursor-pointer disabled:opacity-50"
             >
               {loading ? 'Entrando...' : 'Entrar'}
               {!loading && <ArrowRight size={16} />}
@@ -176,7 +180,7 @@ export default function Login() {
         </div>
       </div>
 
-      <div className="w-1/2 h-full relative overflow-hidden bg-black flex flex-col justify-between p-12 lg:p-16">
+      <div className="hidden lg:flex w-1/2 h-full relative overflow-hidden bg-black flex-col justify-between p-12 lg:p-16">
         <div
           className="absolute inset-0 bg-cover bg-center bg-no-repeat"
           style={{ backgroundImage: `url(${bgLoginImg})` }}

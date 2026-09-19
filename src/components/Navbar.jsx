@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { ChevronDown, LogOut, Search } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { ChevronDown, LogOut, Search, Menu, X } from 'lucide-react';
 import { useAuth } from '@/lib/AuthContext';
 import {
   DropdownMenu,
@@ -15,6 +15,33 @@ export default function Navbar({ selectedCompany = 'PontoMax' }) {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
+  const location = useLocation();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  // Menu lateral (celular): fecha ao trocar de página, ao apertar Esc ou ao
+  // voltar para tela grande, e trava a rolagem da página enquanto está aberto.
+  useEffect(() => {
+    setMobileMenuOpen(false);
+  }, [location.pathname, location.search]);
+
+  useEffect(() => {
+    if (!mobileMenuOpen) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    const onKeyDown = (e) => {
+      if (e.key === 'Escape') setMobileMenuOpen(false);
+    };
+    const onResize = () => {
+      if (window.innerWidth >= 768) setMobileMenuOpen(false);
+    };
+    window.addEventListener('keydown', onKeyDown);
+    window.addEventListener('resize', onResize);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener('keydown', onKeyDown);
+      window.removeEventListener('resize', onResize);
+    };
+  }, [mobileMenuOpen]);
 
   // Recupera a sessão armazenada no navegador
   const storedSession = JSON.parse(
@@ -51,6 +78,58 @@ export default function Navbar({ selectedCompany = 'PontoMax' }) {
 
   const userCompanies = user?.companies || [user?.companyName || selectedCompany];
 
+  // Itens do menu lateral no celular. Itens com path: null ainda não têm
+  // destino (no PC também não fazem nada) e ficam ocultos até você definir o path.
+  const mobileMenu = isAdmin
+    ? [
+        {
+          title: null,
+          items: [{ label: 'Início', path: '/admin' }],
+        },
+        {
+          title: 'Atalhos',
+          items: [
+            { label: 'Ponto Eletrônico', path: '/admin/ponto' },
+            { label: 'Usuários', path: '/admin/colaboradores' },
+            { label: 'Admissão', path: '/admin/admissao' },
+            { label: 'Contratos', path: '/admin/contratos' },
+            { label: 'Avisos', path: '/avisos' },
+            { label: 'Banco de Horas', path: '/espelho?section=banco' },
+            { label: 'Central de ajuda', path: '/ajuda' },
+          ],
+        },
+        {
+          title: 'Relatórios',
+          items: [
+            { label: 'Espelho de Ponto', path: null },
+            { label: 'Horas Extras', path: null },
+          ],
+        },
+        {
+          title: 'Configurações',
+          items: [
+            { label: 'Empresa', path: null },
+            { label: 'Colaboradores', path: null },
+            { label: 'Minha Assinatura', path: '/minha-assinatura' },
+          ],
+        },
+      ]
+    : [
+        {
+          title: null,
+          items: [
+            { label: 'Bater Ponto', path: '/ponto' },
+            { label: 'Espelho de Ponto', path: '/espelho' },
+            { label: 'Avisos', path: '/avisos' },
+            { label: 'Ajuda', path: '/ajuda' },
+          ],
+        },
+      ];
+
+  const currentPath = location.pathname + location.search;
+  const isActivePath = (path) =>
+    currentPath === path || (!path.includes('?') && location.pathname === path);
+
   const filteredCompanies = userCompanies.filter((company) =>
     company.toLowerCase().includes(searchTerm.toLowerCase())
   );
@@ -81,8 +160,18 @@ export default function Navbar({ selectedCompany = 'PontoMax' }) {
   };
 
   return (
-    <header className="sticky top-0 z-50 bg-[#1a2c6a] text-white h-12 shadow-md w-full shrink-0 flex items-center justify-between px-6 border-b border-[#2a3c7e] select-none">
-      <div className="flex items-center gap-8">
+    <header className="sticky top-0 z-50 bg-[#1a2c6a] text-white h-12 shadow-md w-full shrink-0 flex items-center justify-between px-3 sm:px-4 md:px-6 border-b border-[#2a3c7e] select-none">
+      <div className="flex items-center gap-1 md:gap-8">
+        <button
+          type="button"
+          onClick={() => setMobileMenuOpen(true)}
+          className="md:hidden p-2 rounded-md text-white hover:bg-white/10 transition focus:outline-none"
+          aria-label="Abrir menu"
+          aria-expanded={mobileMenuOpen}
+        >
+          <Menu size={22} />
+        </button>
+
         <Link to={isAdmin ? "/admin" : "/ponto"} className="flex items-center gap-2">
           <img 
             src={logoImg} 
@@ -251,6 +340,87 @@ export default function Navbar({ selectedCompany = 'PontoMax' }) {
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
+
+      {/* MENU LATERAL — só no celular/tablet (abaixo de 768px) */}
+      <div
+        className={`md:hidden fixed inset-0 z-10 bg-black/50 transition-[opacity,visibility] duration-200 ${
+          mobileMenuOpen ? 'opacity-100 visible' : 'opacity-0 invisible'
+        }`}
+        onClick={() => setMobileMenuOpen(false)}
+        aria-hidden="true"
+      />
+      <aside
+        role="dialog"
+        aria-modal="true"
+        aria-label="Menu de navegação"
+        className={`md:hidden fixed top-0 left-0 z-20 h-[100dvh] w-72 max-w-[85vw] bg-[#1a2c6a] text-white shadow-2xl flex flex-col transition-[transform,visibility] duration-200 ${
+          mobileMenuOpen ? 'translate-x-0 visible' : '-translate-x-full invisible'
+        }`}
+      >
+        <div className="h-12 shrink-0 flex items-center justify-between px-4 border-b border-white/10">
+          <img src={logoImg} alt="WiaPonto Logo" className="h-8 w-auto object-contain" />
+          <button
+            type="button"
+            onClick={() => setMobileMenuOpen(false)}
+            className="p-2 -mr-2 rounded-md hover:bg-white/10 transition focus:outline-none"
+            aria-label="Fechar menu"
+          >
+            <X size={20} />
+          </button>
+        </div>
+
+        <div className="px-4 py-3 border-b border-white/10">
+          <p className="text-[10px] font-bold uppercase tracking-wider text-white/50">Empresa</p>
+          <p className="text-sm font-semibold truncate">{selectedCompany}</p>
+        </div>
+
+        <nav className="flex-1 overflow-y-auto py-2">
+          {mobileMenu.map((section, sIdx) => {
+            const visibleItems = section.items.filter((item) => item.path);
+            if (visibleItems.length === 0) return null;
+            return (
+              <div key={sIdx} className="py-1">
+                {section.title && (
+                  <p className="px-4 pt-3 pb-1 text-[10px] font-bold uppercase tracking-wider text-white/50">
+                    {section.title}
+                  </p>
+                )}
+                {visibleItems.map((item) => {
+                  const active = isActivePath(item.path);
+                  return (
+                    <Link
+                      key={item.label}
+                      to={item.path}
+                      onClick={() => setMobileMenuOpen(false)}
+                      className={`block px-4 py-3 text-sm font-medium border-l-4 transition ${
+                        active
+                          ? 'border-[#ff8b00] bg-white/10 text-white'
+                          : 'border-transparent text-slate-200 hover:bg-white/5 hover:text-white'
+                      }`}
+                    >
+                      {item.label}
+                    </Link>
+                  );
+                })}
+              </div>
+            );
+          })}
+        </nav>
+
+        <div className="shrink-0 p-3 border-t border-white/10">
+          <button
+            type="button"
+            onClick={() => {
+              setMobileMenuOpen(false);
+              handleSignOut();
+            }}
+            className="w-full flex items-center gap-2 px-3 py-3 rounded-md text-sm font-medium text-red-300 hover:bg-white/10 transition focus:outline-none"
+          >
+            <LogOut size={16} />
+            Sair da conta
+          </button>
+        </div>
+      </aside>
     </header>
   );
 }

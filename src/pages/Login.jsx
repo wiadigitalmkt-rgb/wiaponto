@@ -81,14 +81,17 @@ export default function Login() {
 
   return (
     <div className="min-h-[100dvh] w-full flex bg-white lg:h-screen lg:overflow-hidden font-['Inter',-apple-system,BlinkMacSystemFont,'Segoe_UI',Roboto,sans-serif]">
-      <div className="w-full lg:w-1/2 min-h-[100dvh] lg:min-h-0 lg:h-full flex flex-col justify-center items-center px-6 py-10 sm:px-12 md:px-16 lg:px-24 lg:py-0">
+      <div className="relative w-full lg:w-1/2 min-h-[100dvh] lg:min-h-0 lg:h-full flex flex-col justify-center items-center px-6 py-10 sm:px-12 md:px-16 lg:px-24 lg:py-0">
+        {/* Ícone: preso ao topo, só no celular/tablet (no PC a marca já aparece na imagem ao lado) */}
+        <div className="lg:hidden absolute top-0 inset-x-0 px-6 pt-6 sm:px-12 md:px-16">
+          <div className="max-w-md w-full mx-auto">
+            <img src={iconWiaPonto} alt="WiaPonto" className="h-14 w-auto" />
+          </div>
+        </div>
+
         <div className="max-w-md w-full space-y-6">
-          {/* Ícone: aparece só no celular/tablet (no PC a marca já aparece na imagem ao lado) */}
-          <img
-            src={iconWiaPonto}
-            alt="WiaPonto"
-            className="lg:hidden relative -top-20 h-14 w-auto mb-6"
-          />
+          {/* Espaço que o ícone ocupava: mantém o formulário na mesma posição de antes */}
+          <div className="lg:hidden h-14 mb-6" aria-hidden="true" />
 
           <div className="space-y-1.5">
             <h1 className="text-3xl font-bold text-[#1e293b] tracking-tight">

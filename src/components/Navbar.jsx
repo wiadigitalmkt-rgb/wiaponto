@@ -165,11 +165,11 @@ export default function Navbar({ selectedCompany = 'PontoMax' }) {
         <button
           type="button"
           onClick={() => setMobileMenuOpen(true)}
-          className="md:hidden p-2 rounded-md text-white hover:bg-white/10 transition focus:outline-none"
+          className="md:hidden -ml-2 h-12 w-12 shrink-0 flex items-center justify-center rounded-md text-white hover:bg-white/10 active:bg-white/10 transition focus:outline-none touch-manipulation"
           aria-label="Abrir menu"
           aria-expanded={mobileMenuOpen}
         >
-          <Menu size={22} />
+          <Menu size={24} />
         </button>
 
         <Link to={isAdmin ? "/admin" : "/ponto"} className="flex items-center gap-2">
@@ -362,7 +362,7 @@ export default function Navbar({ selectedCompany = 'PontoMax' }) {
           <button
             type="button"
             onClick={() => setMobileMenuOpen(false)}
-            className="p-2 -mr-2 rounded-md hover:bg-white/10 transition focus:outline-none"
+            className="-mr-3 h-12 w-12 flex items-center justify-center rounded-md hover:bg-white/10 active:bg-white/10 transition focus:outline-none touch-manipulation"
             aria-label="Fechar menu"
           >
             <X size={20} />

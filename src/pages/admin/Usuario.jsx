@@ -89,6 +89,14 @@ export default function Usuario() {
   const userId = searchParams.get('id');
 
   const [activeTab, setActiveTab] = useState('informacoes');
+
+  // Celular: o menu vira uma fileira de abas com rolagem lateral; mantém a
+  // aba ativa visível na tela.
+  useEffect(() => {
+    document
+      .querySelector('[data-tab-active="true"]')
+      ?.scrollIntoView({ inline: 'center', block: 'nearest', behavior: 'smooth' });
+  }, [activeTab]);
   const [profileSubTab, setProfileSubTab] = useState('dados');
   const [, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -717,10 +725,10 @@ export default function Usuario() {
     <div className="min-h-screen bg-slate-100 flex flex-col font-sans text-slate-700">
       <Navbar selectedCompany="Sua Empresa" />
 
-      <main className="flex-1 p-6">
+      <main className="flex-1 min-w-0 p-3 sm:p-4 md:p-6">
         <div className="max-w-6xl mx-auto mb-4">
           <h1 className="text-xl font-bold uppercase text-slate-800 tracking-wide mb-2">Usuários</h1>
-          <div className="text-sm text-slate-500 flex items-center gap-2">
+          <div className="text-sm text-slate-500 flex flex-wrap items-center gap-x-2 gap-y-1">
             <Link to="/admin" className="hover:text-[#ff8b00] transition-colors">Painel</Link>
             <span>&gt;</span>
             <Link to="/admin/colaboradores" className="hover:text-[#ff8b00] transition-colors">Usuários</Link>
@@ -729,19 +737,19 @@ export default function Usuario() {
           </div>
         </div>
 
-        <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-4 gap-6">
+        <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-4 gap-4 md:gap-6">
           {/* SIDEBAR DA PÁGINA */}
           <div className="md:col-span-1 space-y-4">
-            <div className="p-5 bg-white rounded-lg border border-slate-200 text-center space-y-2">
-              <div className="relative w-20 h-20 mx-auto">
+            <div className="p-4 md:p-5 bg-white rounded-lg border border-slate-200 flex md:block items-center gap-4 md:gap-0 text-left md:text-center md:space-y-2">
+              <div className="relative w-14 h-14 md:w-20 md:h-20 md:mx-auto shrink-0">
                 {usuarioData.fotoUrl ? (
                   <img
                     src={usuarioData.fotoUrl}
                     alt={`${usuarioData.primeiroNome} ${usuarioData.sobrenome}`}
-                    className="w-20 h-20 rounded-full object-cover object-top border-2 border-slate-100"
+                    className="w-14 h-14 md:w-20 md:h-20 rounded-full object-cover object-top border-2 border-slate-100"
                   />
                 ) : (
-                  <div className="w-20 h-20 rounded-full bg-slate-300 flex items-center justify-center font-bold text-2xl text-slate-600 uppercase">
+                  <div className="w-14 h-14 md:w-20 md:h-20 rounded-full bg-slate-300 flex items-center justify-center font-bold text-xl md:text-2xl text-slate-600 uppercase">
                     {usuarioData.primeiroNome?.[0]}{usuarioData.sobrenome?.[0]}
                   </div>
                 )}
@@ -762,7 +770,7 @@ export default function Usuario() {
                   className="hidden"
                 />
               </div>
-              <div>
+              <div className="min-w-0">
                 <p className="font-semibold text-slate-800 text-sm">
                   {usuarioData.primeiroNome} {usuarioData.sobrenome}
                 </p>
@@ -771,7 +779,7 @@ export default function Usuario() {
               </div>
             </div>
 
-            <nav className="space-y-1">
+            <nav className="flex md:block gap-2 md:gap-0 md:space-y-1 overflow-x-auto md:overflow-visible -mx-3 sm:-mx-4 px-3 sm:px-4 md:mx-0 md:px-0 py-1 md:py-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
               {menuItems.map((item) => {
                 const Icon = item.icon;
                 const isActive = activeTab === item.id;
@@ -779,13 +787,14 @@ export default function Usuario() {
                   <button
                     key={item.id}
                     onClick={() => setActiveTab(item.id)}
-                    className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm transition-all ${
+                    data-tab-active={isActive}
+                    className={`w-auto md:w-full shrink-0 whitespace-nowrap flex items-center gap-2 md:gap-3 px-3 md:px-4 py-2.5 rounded-lg text-sm transition-all ${
                       isActive
                         ? 'bg-white text-[#ff8b00] font-semibold shadow-sm border-l-4 border-[#ff8b00]'
-                        : 'text-slate-600 hover:bg-slate-200/60'
+                        : 'bg-white/70 md:bg-transparent text-slate-600 md:hover:bg-slate-200/60'
                     }`}
                   >
-                    <Icon className="w-4 h-4" />
+                    <Icon className="w-4 h-4 shrink-0" />
                     {item.label}
                   </button>
                 );
@@ -794,7 +803,7 @@ export default function Usuario() {
           </div>
 
           {/* PAINEL CONTEÚDO PRINCIPAL */}
-          <div className="md:col-span-3">
+          <div className="md:col-span-3 min-w-0">
             <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden">
               <div className="p-4 border-b border-slate-100">
                 <Link to="/admin/colaboradores" className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-700 hover:text-slate-900">
@@ -825,9 +834,9 @@ export default function Usuario() {
                   </div>
 
                   {profileRequests.some((r) => r.status === 'pendente') && (
-                    <div className="mx-6 mt-4 space-y-2">
+                    <div className="mx-4 sm:mx-6 mt-4 space-y-2">
                       {profileRequests.filter((r) => r.status === 'pendente').map((req) => (
-                        <div key={req.id} className="bg-amber-50 border border-amber-200 rounded-lg p-3 flex items-start justify-between gap-3 text-xs">
+                        <div key={req.id} className="bg-amber-50 border border-amber-200 rounded-lg p-3 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 text-xs">
                           <div>
                             <p className="font-semibold text-amber-700">Solicitação de alteração de dados</p>
                             <p className="text-slate-600 mt-1">{req.description}</p>
@@ -835,7 +844,7 @@ export default function Usuario() {
                           </div>
                           <button
                             onClick={() => handleResolveProfileRequest(req.id)}
-                            className="border border-amber-400 text-amber-700 hover:bg-amber-100 px-3 py-1.5 rounded font-medium transition-colors whitespace-nowrap"
+                            className="border border-amber-400 text-amber-700 hover:bg-amber-100 px-3 py-1.5 rounded font-medium transition-colors whitespace-nowrap self-start sm:self-auto"
                           >
                             Marcar como analisado
                           </button>
@@ -846,7 +855,7 @@ export default function Usuario() {
 
                   {/* SUB-ABA: DADOS DO PERFIL */}
                   {profileSubTab === 'dados' && (
-                    <div className="p-6 space-y-8 text-xs">
+                    <div className="p-4 sm:p-6 space-y-8 text-xs">
                       <section className="space-y-4">
                         <h3 className="font-semibold text-slate-800 text-sm">Informações básicas</h3>
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -1003,7 +1012,7 @@ export default function Usuario() {
                       </section>
 
                       <div className="flex justify-end pt-4">
-                        <button onClick={handleSaveProfile} disabled={saving} className="bg-[#ff8b00] hover:bg-[#fc9314] text-white font-medium px-6 py-2 rounded text-xs transition-colors">
+                        <button onClick={handleSaveProfile} disabled={saving} className="w-full sm:w-auto bg-[#ff8b00] hover:bg-[#fc9314] text-white font-medium px-6 py-2.5 sm:py-2 rounded text-xs transition-colors">
                           {saving ? 'Salvando...' : 'Salvar alterações'}
                         </button>
                       </div>
@@ -1012,7 +1021,7 @@ export default function Usuario() {
 
                   {/* SUB-ABA: CAMPOS ADICIONAIS (Notas internas) */}
                   {profileSubTab === 'campos_adicionais' && (
-                    <div className="p-6 space-y-4 text-xs">
+                    <div className="p-4 sm:p-6 space-y-4 text-xs">
                       <div>
                         <h3 className="font-semibold text-slate-800 text-sm">Notas internas</h3>
                         <p className="text-slate-500 mt-1">
@@ -1030,7 +1039,7 @@ export default function Usuario() {
                         className="w-full border rounded p-2.5 text-slate-800 focus:outline-none focus:border-[#ff8b00] resize-y"
                       />
 
-                      <div className="flex items-center justify-between pt-1">
+                      <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
                         <button
                           onClick={() => setShowNotesModal(true)}
                           className="flex items-center gap-1.5 border border-[#ff8b00] text-[#ff8b00] px-3 py-1.5 rounded font-medium hover:bg-[#ff8b00]/10 transition-colors"
@@ -1058,7 +1067,7 @@ export default function Usuario() {
 
               {/* 4. FÉRIAS */}
               {activeTab === 'ferias' && (
-                <div className="p-6 text-xs space-y-6">
+                <div className="p-4 sm:p-6 text-xs space-y-6">
                   <div className="flex justify-between items-center">
                     <span className="text-slate-500">Admitido em {usuarioData.dataAdmissao}</span>
                     <button onClick={() => setShowVacationModal(true)} className="bg-[#ff8b00] hover:bg-[#fc9314] text-white font-medium px-4 py-2 rounded transition-colors">
@@ -1066,6 +1075,7 @@ export default function Usuario() {
                     </button>
                   </div>
 
+                  <div className="overflow-x-auto">
                   <table className="w-full text-left border-collapse">
                     <thead>
                       <tr className="border-b text-slate-500 font-semibold">
@@ -1084,7 +1094,7 @@ export default function Usuario() {
                           <td className="py-3 text-right">
                             <button
                               onClick={() => handleDeleteVacation(v)}
-                              className="text-red-500 hover:text-red-600"
+                              className="text-red-500 hover:text-red-600 p-2 -m-2"
                               title="Remover"
                             >
                               <Trash2 className="w-3.5 h-3.5" />
@@ -1094,6 +1104,7 @@ export default function Usuario() {
                       ))}
                     </tbody>
                   </table>
+                  </div>
 
                   {vacations.length === 0 && (
                     <div className="py-8 text-center text-slate-400">Nenhum período de férias cadastrado</div>
@@ -1103,13 +1114,14 @@ export default function Usuario() {
 
               {/* 5. DEPENDENTES */}
               {activeTab === 'dependentes' && (
-                <div className="p-6 text-xs space-y-6">
+                <div className="p-4 sm:p-6 text-xs space-y-6">
                   <div className="flex justify-end">
                     <button onClick={() => setShowDependentModal(true)} className="bg-[#ff8b00] hover:bg-[#fc9314] text-white font-medium px-4 py-2 rounded transition-colors">
                       Adicionar novo
                     </button>
                   </div>
 
+                  <div className="overflow-x-auto">
                   <table className="w-full text-left border-collapse">
                     <thead>
                       <tr className="border-b text-slate-500 font-semibold">
@@ -1128,7 +1140,7 @@ export default function Usuario() {
                           <td className="py-2 text-right">
                             <button
                               onClick={() => handleDeleteDependent(d)}
-                              className="text-red-500 hover:text-red-600"
+                              className="text-red-500 hover:text-red-600 p-2 -m-2"
                               title="Remover"
                             >
                               <Trash2 className="w-3.5 h-3.5" />
@@ -1138,6 +1150,7 @@ export default function Usuario() {
                       ))}
                     </tbody>
                   </table>
+                  </div>
 
                   {dependents.length === 0 && (
                     <div className="py-8 text-center text-slate-400">Nenhum dependente cadastrado</div>
@@ -1149,7 +1162,7 @@ export default function Usuario() {
               {activeTab === 'acesso' && (
                 <div className="text-xs">
                   {/* ACESSO (dados de login, somente leitura) */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 p-6 border-b border-slate-100">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 p-4 sm:p-6 border-b border-slate-100">
                     <div>
                       <h3 className="font-semibold text-slate-800 text-sm">Acesso</h3>
                       <p className="text-slate-500 mt-1">
@@ -1177,7 +1190,7 @@ export default function Usuario() {
                   </div>
 
                   {/* TIPO DE ACESSO */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 p-6 border-b border-slate-100 items-center">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 p-4 sm:p-6 border-b border-slate-100 items-center">
                     <div>
                       <h3 className="font-semibold text-slate-800 text-sm">Tipo de acesso</h3>
                       <p className="text-slate-500 mt-1">
@@ -1199,7 +1212,7 @@ export default function Usuario() {
                   </div>
 
                   {/* SENHA */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 p-6 border-b border-slate-100 items-center">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 p-4 sm:p-6 border-b border-slate-100 items-center">
                     <div>
                       <h3 className="font-semibold text-slate-800 text-sm">Senha</h3>
                       <p className="text-slate-500 mt-1">
@@ -1219,7 +1232,7 @@ export default function Usuario() {
                   </div>
 
                   {/* STATUS DO USUÁRIO */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 p-6 border-b border-slate-100 items-center">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 p-4 sm:p-6 border-b border-slate-100 items-center">
                     <div>
                       <h3 className="font-semibold text-slate-800 text-sm">Status do usuário</h3>
                       <p className="text-slate-500 mt-1">
@@ -1255,7 +1268,7 @@ export default function Usuario() {
                   </div>
 
                   {/* DELETAR USUÁRIO */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 p-6 items-center">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 p-4 sm:p-6 items-center">
                     <div>
                       <h3 className="font-semibold text-slate-800 text-sm">Deletar usuário</h3>
                       <p className="text-slate-500 mt-1">
@@ -1388,8 +1401,8 @@ export default function Usuario() {
 
       {/* MODAL FÉRIAS */}
       {showVacationModal && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded-lg w-full max-w-md space-y-4">
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+          <div className="bg-white p-5 sm:p-6 rounded-lg w-full max-w-md max-h-[90dvh] overflow-y-auto space-y-4">
             <h3 className="font-bold text-slate-800 text-sm">Adicionar Período de Férias</h3>
             <div>
               <label className="block text-xs text-slate-600">Data de Início*</label>
@@ -1409,8 +1422,8 @@ export default function Usuario() {
 
       {/* MODAL DEPENDENTES */}
       {showDependentModal && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded-lg w-full max-w-md space-y-4">
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+          <div className="bg-white p-5 sm:p-6 rounded-lg w-full max-w-md max-h-[90dvh] overflow-y-auto space-y-4">
             <h3 className="font-bold text-slate-800 text-sm">Novo dependente</h3>
             <div className="grid grid-cols-2 gap-2">
               <div>
@@ -1623,7 +1636,7 @@ function WorkScheduleTab({ employeeId }) {
   }
 
   return (
-    <div className="p-6 space-y-5 text-xs">
+    <div className="p-4 sm:p-6 space-y-5 text-xs">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-4 border-b border-slate-100">
         <div>
           <h3 className="font-semibold text-slate-800 text-sm">Jornada de trabalho</h3>
@@ -2070,7 +2083,7 @@ function GeofenceMapTab({ employeeId }) {
   }
 
   return (
-    <div className="p-6 text-xs space-y-4">
+    <div className="p-4 sm:p-6 text-xs space-y-4">
       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
         <div>
           <h3 className="font-semibold text-slate-800 text-sm">Cercas do usuário</h3>
@@ -2278,7 +2291,7 @@ function AdmissionInfoTab({ employeeId }) {
 
   if (!admission) {
     return (
-      <div className="p-6 text-xs">
+      <div className="p-4 sm:p-6 text-xs">
         <div className="border-2 border-dashed border-slate-200 rounded-lg p-12 text-center text-slate-400 space-y-2">
           <FileText className="w-8 h-8 mx-auto text-slate-300" />
           <p className="font-medium text-slate-600">Nenhum processo de admissão vinculado a este colaborador</p>
@@ -2295,7 +2308,7 @@ function AdmissionInfoTab({ employeeId }) {
   const progressPercent = totalCount ? Math.round((sentCount / totalCount) * 100) : 0;
 
   return (
-    <div className="p-6 text-xs space-y-4">
+    <div className="p-4 sm:p-6 text-xs space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h3 className="font-semibold text-slate-800 text-sm">Formulário de Admissão</h3>
@@ -2324,8 +2337,8 @@ function AdmissionInfoTab({ employeeId }) {
             const displayValue = isEmpty ? null : isFileUpload ? rawValue.url : String(rawValue);
 
             return (
-              <div key={field.key} className="flex items-center justify-between gap-4 px-4 py-2.5">
-                <span className="font-medium text-slate-700 shrink-0">{field.label}</span>
+              <div key={field.key} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 sm:gap-4 px-4 py-2.5">
+                <span className="font-medium text-slate-700 sm:shrink-0">{field.label}</span>
                 {isEmpty ? (
                   <span className="text-slate-400 flex items-center gap-1">
                     <AlertCircle className="w-3.5 h-3.5" /> Não enviado
@@ -2338,7 +2351,7 @@ function AdmissionInfoTab({ employeeId }) {
                     <CheckCircle2 className="w-3.5 h-3.5" /> Ver arquivo enviado
                   </button>
                 ) : (
-                  <span className="text-slate-700 text-right break-words max-w-xs">{displayValue}</span>
+                  <span className="text-slate-700 sm:text-right break-words sm:max-w-xs">{displayValue}</span>
                 )}
               </div>
             );
@@ -2470,7 +2483,7 @@ function SignedContractsTab({ employeeId }) {
 
   if (contracts.length === 0) {
     return (
-      <div className="p-6 text-xs">
+      <div className="p-4 sm:p-6 text-xs">
         <div className="border-2 border-dashed border-slate-200 rounded-lg p-12 text-center text-slate-400 space-y-2">
           <PenLine className="w-8 h-8 mx-auto text-slate-300" />
           <p className="font-medium text-slate-600">Nenhum contrato assinado ainda.</p>
@@ -2480,12 +2493,12 @@ function SignedContractsTab({ employeeId }) {
   }
 
   return (
-    <div className="p-6 text-xs space-y-3">
+    <div className="p-4 sm:p-6 text-xs space-y-3">
       {contracts.map((c) => (
         <div key={c.id} className="border rounded-lg overflow-hidden">
           <button
             onClick={() => setOpenContractId(openContractId === c.id ? null : c.id)}
-            className="w-full flex items-center justify-between px-4 py-3 bg-slate-50 hover:bg-slate-100 transition-colors text-left"
+            className="w-full flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 px-4 py-3 bg-slate-50 hover:bg-slate-100 transition-colors text-left"
           >
             <div>
               <p className="font-semibold text-slate-800">{c.contract_templates?.name}</p>
@@ -2493,7 +2506,7 @@ function SignedContractsTab({ employeeId }) {
                 Assinado em {new Date(c.signed_at).toLocaleString('pt-BR')}
               </p>
             </div>
-            <div className="flex items-center gap-1.5 shrink-0">
+            <div className="flex flex-wrap items-center gap-1.5 sm:shrink-0">
               <span className="bg-[#ff8b00]/10 text-[#ff8b00] px-2 py-0.5 rounded-full text-[10px] font-semibold">
                 Colaborador assinou
               </span>
@@ -2608,7 +2621,7 @@ function DocumentsTab({ employeeId, canManage, uploaderId }) {
   }
 
   return (
-    <div className="p-6 text-xs space-y-4">
+    <div className="p-4 sm:p-6 text-xs space-y-4">
       <div className="flex items-center justify-between">
         <h3 className="font-semibold text-slate-800 text-sm">Documentos</h3>
         {canManage && (
@@ -2668,11 +2681,11 @@ function DocumentsTab({ employeeId, canManage, uploaderId }) {
       ) : (
         <div className="divide-y divide-slate-100 border rounded-lg overflow-hidden">
           {documents.map((doc) => (
-            <div key={doc.id} className="flex items-center justify-between px-4 py-3">
-              <div>
+            <div key={doc.id} className="flex items-center justify-between gap-3 px-4 py-3">
+              <div className="min-w-0">
                 <button
                   onClick={() => setPreviewFile({ url: doc.file_url, name: doc.file_name })}
-                  className="font-medium text-slate-700 hover:text-[#ff8b00] hover:underline text-left"
+                  className="font-medium text-slate-700 hover:text-[#ff8b00] hover:underline text-left break-all"
                 >
                   {doc.file_name}
                 </button>
@@ -2681,7 +2694,7 @@ function DocumentsTab({ employeeId, canManage, uploaderId }) {
                 </p>
               </div>
               {canManage && (
-                <button onClick={() => handleDelete(doc)} className="text-slate-400 hover:text-red-500">
+                <button onClick={() => handleDelete(doc)} className="text-slate-400 hover:text-red-500 shrink-0 p-2 -m-2">
                   <Trash2 className="w-3.5 h-3.5" />
                 </button>
               )}

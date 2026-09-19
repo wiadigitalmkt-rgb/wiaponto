@@ -891,9 +891,9 @@ export default function Admissao() {
     <div className="min-h-screen bg-[#f0f4f7] flex flex-col font-sans text-slate-700">
       <Navbar selectedCompany="Empresa Teste 11738" />
 
-      <main className="flex-1 p-6 max-w-7xl w-full mx-auto space-y-4">
+      <main className="flex-1 min-w-0 p-3 sm:p-4 md:p-6 max-w-7xl w-full mx-auto space-y-4">
         {/* BREADCRUMB */}
-        <div className="text-xs text-slate-500 flex items-center gap-1">
+        <div className="text-xs text-slate-500 flex flex-wrap items-center gap-1">
           <Link to="/admin" className="hover:text-[#ff8b00] transition-colors">Painel</Link>
           <span>&gt;</span>
           <span className="text-slate-600 font-medium">
@@ -962,7 +962,7 @@ export default function Admissao() {
             </div>
 
             {/* NAVEGAÇÃO POR ABAS */}
-            <div className="flex border-b border-slate-200 px-4 pt-2 gap-8 text-xs font-medium bg-white">
+            <div className="flex border-b border-slate-200 px-4 pt-2 gap-5 sm:gap-8 text-xs font-medium bg-white overflow-x-auto whitespace-nowrap">
               <button
                 onClick={() => setActiveTab('andamento')}
                 className={`pb-3 transition-colors ${
@@ -1019,12 +1019,12 @@ export default function Admissao() {
                 <table className="w-full text-left text-xs border-collapse">
                   <thead>
                     <tr className="border-b border-slate-200 text-[11px] font-bold text-slate-700 uppercase tracking-wider bg-slate-50/50">
-                      <th className="py-3 px-6">NOME</th>
-                      <th className="py-3 px-4">STATUS ADMISSÃO</th>
-                      <th className="py-3 px-4">TEMPLATE</th>
-                      <th className="py-3 px-4">CARGO</th>
-                      <th className="py-3 px-4">DEPARTAMENTO</th>
-                      <th className="py-3 px-4 text-center">AÇÃO</th>
+                      <th className="py-3 px-4 md:px-6">NOME</th>
+                      <th className="hidden md:table-cell py-3 px-4">STATUS ADMISSÃO</th>
+                      <th className="hidden md:table-cell py-3 px-4">TEMPLATE</th>
+                      <th className="hidden md:table-cell py-3 px-4">CARGO</th>
+                      <th className="hidden md:table-cell py-3 px-4">DEPARTAMENTO</th>
+                      <th className="py-3 px-2 md:px-4 text-center">AÇÃO</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
@@ -1063,15 +1063,34 @@ export default function Admissao() {
 
                         return (
                           <tr key={adm.id} className="hover:bg-slate-50 transition-colors">
-                            <td className="py-3 px-6">
-                              <div className="flex items-center gap-3">
-                                <div className="w-8 h-8 rounded-full bg-slate-200 text-slate-600 font-bold flex items-center justify-center text-xs">
+                            <td className="py-3 px-4 md:px-6">
+                              <div className="flex items-center gap-3 min-w-0">
+                                <div className="w-8 h-8 shrink-0 rounded-full bg-slate-200 text-slate-600 font-bold flex items-center justify-center text-xs">
                                   {initials}
                                 </div>
-                                <span className="font-bold text-slate-800">{name}</span>
+                                <div className="min-w-0">
+                                  <span className="block font-bold text-slate-800 break-words">{name}</span>
+                                  {/* Celular: as outras colunas ficam escondidas, então progresso e cargo aparecem aqui embaixo do nome */}
+                                  <div className="md:hidden mt-1 space-y-1">
+                                    <div className="flex items-center gap-2">
+                                      <div className="w-16 bg-slate-200 h-1.5 rounded-full overflow-hidden">
+                                        <div
+                                          className="bg-[#ff8b00] h-full"
+                                          style={{ width: `${admProgressPercent}%` }}
+                                        ></div>
+                                      </div>
+                                      <span className="text-[11px] font-medium text-slate-500">
+                                        {admSentCount}/{admTotalCount}
+                                      </span>
+                                    </div>
+                                    <p className="text-[11px] text-slate-500">
+                                      {[emp.position || 'Atendente', emp.department].filter(Boolean).join(' · ')}
+                                    </p>
+                                  </div>
+                                </div>
                               </div>
                             </td>
-                            <td className="py-3 px-4">
+                            <td className="hidden md:table-cell py-3 px-4">
                               <div className="flex items-center gap-2">
                                 <div className="w-24 bg-slate-200 h-2 rounded-full overflow-hidden">
                                   <div
@@ -1084,10 +1103,10 @@ export default function Admissao() {
                                 </span>
                               </div>
                             </td>
-                            <td className="py-3 px-4 text-slate-600">{adm.template_name || 'Admissão Matheus'}</td>
-                            <td className="py-3 px-4 text-slate-600">{emp.position || 'Atendente'}</td>
-                            <td className="py-3 px-4 text-slate-600">{emp.department || '-'}</td>
-                            <td className="py-3 px-4 relative">
+                            <td className="hidden md:table-cell py-3 px-4 text-slate-600">{adm.template_name || 'Admissão Matheus'}</td>
+                            <td className="hidden md:table-cell py-3 px-4 text-slate-600">{emp.position || 'Atendente'}</td>
+                            <td className="hidden md:table-cell py-3 px-4 text-slate-600">{emp.department || '-'}</td>
+                            <td className="py-3 px-2 md:px-4 relative">
                               <div className="flex items-center justify-center gap-1">
                                 {adm.status === 'Em andamento' && (
                                   <>
@@ -1166,8 +1185,8 @@ export default function Admissao() {
                 <table className="w-full text-left text-xs border-collapse">
                   <thead>
                     <tr className="border-b border-slate-200 text-[11px] font-bold text-slate-700 uppercase tracking-wider bg-slate-50/50">
-                      <th className="py-3 px-6">NOME TEMPLATE</th>
-                      <th className="py-3 px-6">DATA CRIAÇÃO</th>
+                      <th className="py-3 px-4 md:px-6">NOME TEMPLATE</th>
+                      <th className="py-3 px-4 md:px-6">DATA CRIAÇÃO</th>
                       <th className="py-3 px-4 text-center"></th>
                     </tr>
                   </thead>
@@ -1188,8 +1207,8 @@ export default function Admissao() {
                     ) : (
                       filteredTemplates.map((tmpl) => (
                         <tr key={tmpl.id} className="hover:bg-slate-50 transition-colors">
-                          <td className="py-3.5 px-6 font-bold text-slate-800">{tmpl.title}</td>
-                          <td className="py-3.5 px-6 text-slate-600">{formatDate(tmpl.created_at)}</td>
+                          <td className="py-3.5 px-4 md:px-6 font-bold text-slate-800">{tmpl.title}</td>
+                          <td className="py-3.5 px-4 md:px-6 text-slate-600">{formatDate(tmpl.created_at)}</td>
                           <td className="py-3.5 px-4 text-center relative">
                             <button
                               onClick={() =>
@@ -1301,10 +1320,10 @@ export default function Admissao() {
               <table className="w-full text-left text-xs border-collapse">
                 <thead>
                   <tr className="border-b border-slate-200 text-[11px] font-bold text-slate-700 uppercase tracking-wider bg-slate-50/50">
-                    <th className="py-3 px-6"></th>
-                    <th className="py-3 px-6">NOME</th>
-                    <th className="py-3 px-4">CARGO</th>
-                    <th className="py-3 px-4">DEPARTAMENTO</th>
+                    <th className="py-3 px-4 md:px-6"></th>
+                    <th className="py-3 px-2 md:px-6">NOME</th>
+                    <th className="hidden md:table-cell py-3 px-4">CARGO</th>
+                    <th className="hidden md:table-cell py-3 px-4">DEPARTAMENTO</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
@@ -1334,7 +1353,7 @@ export default function Admissao() {
                             isSelected ? 'bg-[#ff8b00]/5' : ''
                           }`}
                         >
-                          <td className="py-3 px-6">
+                          <td className="py-3 px-4 md:px-6">
                             <input
                               type="checkbox"
                               checked={isSelected}
@@ -1343,16 +1362,22 @@ export default function Admissao() {
                               className="text-[#ff8b00] focus:ring-[#ff8b00] cursor-pointer"
                             />
                           </td>
-                          <td className="py-3 px-6">
-                            <div className="flex items-center gap-3">
-                              <div className="w-8 h-8 rounded-full bg-slate-200 text-slate-600 font-bold flex items-center justify-center text-xs">
+                          <td className="py-3 px-2 md:px-6">
+                            <div className="flex items-center gap-3 min-w-0">
+                              <div className="w-8 h-8 shrink-0 rounded-full bg-slate-200 text-slate-600 font-bold flex items-center justify-center text-xs">
                                 {getInitials(name, emp.first_name, emp.last_name)}
                               </div>
-                              <span className="font-bold text-slate-800">{name}</span>
+                              <div className="min-w-0">
+                                <span className="block font-bold text-slate-800 break-words">{name}</span>
+                                {/* Celular: cargo e departamento aparecem embaixo do nome */}
+                                <p className="md:hidden mt-0.5 text-[11px] text-slate-500">
+                                  {[emp.position, emp.department].filter(Boolean).join(' · ') || '-'}
+                                </p>
+                              </div>
                             </div>
                           </td>
-                          <td className="py-3 px-4 text-slate-600">{emp.position || '-'}</td>
-                          <td className="py-3 px-4 text-slate-600">{emp.department || '-'}</td>
+                          <td className="hidden md:table-cell py-3 px-4 text-slate-600">{emp.position || '-'}</td>
+                          <td className="hidden md:table-cell py-3 px-4 text-slate-600">{emp.department || '-'}</td>
                         </tr>
                       );
                     })
@@ -1402,7 +1427,7 @@ export default function Admissao() {
             </div>
 
             {/* CARD DAS ETAPAS PADRÃO */}
-            <div className="bg-white rounded-md border border-slate-200 p-6 space-y-4">
+            <div className="bg-white rounded-md border border-slate-200 p-4 sm:p-6 space-y-4">
               <div>
                 <h3 className="font-bold text-sm text-slate-800">Informações de cadastro (Padrão)</h3>
                 <p className="text-xs text-slate-500 mt-0.5">
@@ -1412,7 +1437,7 @@ export default function Admissao() {
 
               <div className="divide-y divide-slate-100">
                 {templateSteps.map((step, index) => (
-                  <div key={step.id} className="py-3 flex justify-between items-center text-xs">
+                  <div key={step.id} className="py-3 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 text-xs">
                     <div>
                       <span className="font-bold text-slate-800">{index + 1}. {step.name}</span>
                       <span className="text-slate-500 ml-2">- {step.type}</span>
@@ -1438,7 +1463,7 @@ export default function Admissao() {
             </div>
 
             {/* CARD CAMPOS ADICIONAIS */}
-            <div className="bg-white rounded-md border border-slate-200 p-6 space-y-4">
+            <div className="bg-white rounded-md border border-slate-200 p-4 sm:p-6 space-y-4">
               <div>
                 <h3 className="font-bold text-sm text-slate-800">Campo de Notas</h3>
                 <p className="text-xs text-slate-500 mt-0.5">
@@ -1467,7 +1492,7 @@ export default function Admissao() {
             </div>
 
             {/* BOTÕES DE AÇÃO */}
-            <div className="flex justify-between items-center pt-2">
+            <div className="flex flex-wrap justify-between items-center gap-2 pt-2">
               <button
                 onClick={handleAddCustomStep}
                 className="border border-[#ff8b00] text-[#ff8b00] hover:bg-[#ff8b00]/10 text-xs font-semibold px-4 py-2 rounded transition-colors"
@@ -1533,8 +1558,8 @@ export default function Admissao() {
               <table className="w-full text-left text-xs border-collapse">
                 <thead>
                   <tr className="border-b border-slate-200 text-[11px] font-bold text-slate-700 uppercase tracking-wider bg-slate-50/50">
-                    <th className="py-3 px-6">NOME DO TEMPLATE</th>
-                    <th className="py-3 px-6">DATA DE CRIAÇÃO</th>
+                    <th className="py-3 px-4 md:px-6">NOME DO TEMPLATE</th>
+                    <th className="py-3 px-4 md:px-6">DATA DE CRIAÇÃO</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
@@ -1546,7 +1571,7 @@ export default function Admissao() {
                         selectedTemplateId === tmpl.id ? 'bg-teal-50/40' : ''
                       }`}
                     >
-                      <td className="py-3.5 px-6">
+                      <td className="py-3.5 px-4 md:px-6">
                         <div className="flex items-center gap-3">
                           <input
                             type="radio"
@@ -1563,7 +1588,7 @@ export default function Admissao() {
                           </div>
                         </div>
                       </td>
-                      <td className="py-3.5 px-6 text-slate-600">{formatDate(tmpl.created_at)}</td>
+                      <td className="py-3.5 px-4 md:px-6 text-slate-600">{formatDate(tmpl.created_at)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -1585,16 +1610,18 @@ export default function Admissao() {
         {/* MODO 4: VISUALIZAÇÃO DO STATUS DA ADMISSÃO */}
         {viewState === 'view_admission' && activeAdmission && (
           <div className="space-y-4">
-            <div className="bg-white rounded-md border border-slate-200 p-4 flex justify-between items-center">
+            <div className="bg-white rounded-md border border-slate-200 p-4 flex flex-col lg:flex-row lg:justify-between lg:items-center gap-3">
               <button
                 onClick={() => setViewState('list')}
                 className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-700 hover:text-slate-900 transition-colors"
               >
-                <ArrowLeft className="w-4 h-4" />
-                {activeAdmission.Employees?.full_name || 'Joquebede de Oliveira'} - Template "{activeAdmission.template_name || 'Admissão Matheus'}"
+                <ArrowLeft className="w-4 h-4 shrink-0" />
+                <span className="text-left">
+                  {activeAdmission.Employees?.full_name || 'Joquebede de Oliveira'} - Template "{activeAdmission.template_name || 'Admissão Matheus'}"
+                </span>
               </button>
 
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 {activeAdmission.access_code && (
                   <button
                     onClick={() => handleCopyAccessCode(activeAdmission)}
@@ -1647,7 +1674,7 @@ export default function Admissao() {
                   </div>
 
                   {/* LISTA DE CAMPOS PREENCHIDOS E PENDENTES */}
-                  <div className="bg-white rounded-md border border-slate-200 p-6 space-y-4">
+                  <div className="bg-white rounded-md border border-slate-200 p-4 sm:p-6 space-y-4">
                     <div>
                       <h3 className="font-bold text-sm text-slate-800">Informações de Cadastro</h3>
                       <p className="text-xs text-slate-500 mt-0.5">
@@ -1680,7 +1707,7 @@ export default function Admissao() {
                             <div key={item.key || idx} className="py-3">
                               <div
                                 onClick={() => setExpandedField(expandedField === idx ? null : idx)}
-                                className="flex justify-between items-center text-xs cursor-pointer hover:bg-slate-50/50 p-1 rounded"
+                                className="flex justify-between items-center gap-3 text-xs cursor-pointer hover:bg-slate-50/50 p-1 rounded"
                               >
                                 <div className="flex items-center gap-2">
                                   {expandedField === idx ? (
@@ -1707,7 +1734,7 @@ export default function Admissao() {
                               </div>
 
                               {expandedField === idx && (
-                                <div className="mt-3 ml-6 p-4 bg-slate-50 border border-slate-100 rounded space-y-2">
+                                <div className="mt-3 ml-0 sm:ml-6 p-3 sm:p-4 bg-slate-50 border border-slate-100 rounded space-y-2">
                                   <label className="block text-[11px] font-semibold text-slate-600">
                                     {item.label}
                                   </label>
@@ -2031,7 +2058,7 @@ export default function Admissao() {
 
       {/* TOAST DE FEEDBACK */}
       {toastMessage && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-slate-800 text-white text-xs font-medium px-4 py-2.5 rounded-md shadow-lg z-50 flex items-center gap-2 animate-in fade-in">
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 max-w-[calc(100vw-2rem)] bg-slate-800 text-white text-xs font-medium px-4 py-2.5 rounded-md shadow-lg z-50 flex items-center gap-2 animate-in fade-in">
           <CheckCircle2 className="w-4 h-4 text-[#ff8b00]" />
           {toastMessage}
         </div>

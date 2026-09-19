@@ -18,8 +18,6 @@ import {
   Trash2,
   CheckCircle2,
   AlertCircle,
-  Eye,
-  EyeOff,
   Camera,
   X,
   PenLine,
@@ -104,7 +102,6 @@ export default function Usuario() {
   const [deletingUser, setDeletingUser] = useState(false);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const photoInputRef = useRef(null);
-  const [showSenha, setShowSenha] = useState(false);
   const [confirmModal, setConfirmModal] = useState(null); // { title, message, confirmLabel, danger, requireText, onConfirm }
   const [confirmInput, setConfirmInput] = useState('');
 
@@ -227,7 +224,6 @@ export default function Usuario() {
             // como se fosse o login dele). O CPF só entra como último
             // recurso, se por algum motivo não houver e-mail cadastrado.
             login: emp.email || (emp.cpf ? emp.cpf.replace(/\D/g, '') : ''),
-            senhaAtual: emp.password_hash || '',
             fotoUrl: emp.photo_url || '',
             tipoAcesso: emp.access_type === 'Dono da Empresa'
               ? 'Dono da Empresa'
@@ -414,7 +410,6 @@ export default function Usuario() {
       if (data?.error) throw new Error(data.error);
 
       alert('Senha resetada para o CPF do usuário com sucesso (login e Supabase Auth já atualizados)!');
-      setUsuarioData(prev => ({ ...prev, senhaAtual: cpfDigits }));
     } catch (err) {
       console.error(err);
       try {
@@ -423,7 +418,6 @@ export default function Usuario() {
           .update({ password_hash: cpfDigits })
           .eq('id', userId);
         if (fallbackError) throw fallbackError;
-        setUsuarioData(prev => ({ ...prev, senhaAtual: cpfDigits }));
 
         alert(
           'A função de reset recusou o pedido (' + (err.message || 'erro desconhecido') + '). ' +
@@ -1172,20 +1166,6 @@ export default function Usuario() {
                     <div className="space-y-1.5 md:text-right">
                       <div><span className="text-slate-500">ID PONTO: </span><strong className="text-slate-800">{usuarioData.idPonto || '-'}</strong></div>
                       <div><span className="text-slate-500">LOGIN: </span><strong className="text-slate-800">{usuarioData.login || '-'}</strong></div>
-                      <div className="flex items-center gap-1.5 md:justify-end">
-                        <span className="text-slate-500">SENHA: </span>
-                        <strong className="text-slate-800 font-mono">
-                          {showSenha ? (usuarioData.senhaAtual || '(não definida)') : '******'}
-                        </strong>
-                        <button
-                          type="button"
-                          onClick={() => setShowSenha(v => !v)}
-                          className="text-slate-400 hover:text-slate-600"
-                          title={showSenha ? 'Ocultar senha' : 'Mostrar senha'}
-                        >
-                          {showSenha ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-                        </button>
-                      </div>
                     </div>
                   </div>
 

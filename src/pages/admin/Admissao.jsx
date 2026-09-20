@@ -889,7 +889,7 @@ export default function Admissao() {
 
   return (
     <div className="min-h-screen bg-[#f0f4f7] flex flex-col font-sans text-slate-700">
-      <Navbar selectedCompany="Empresa Teste 11738" />
+      <Navbar />
 
       <main className="flex-1 min-w-0 p-3 sm:p-4 md:p-6 max-w-7xl w-full mx-auto space-y-4">
         {/* BREADCRUMB */}
@@ -1044,7 +1044,7 @@ export default function Admissao() {
                     ) : (
                       filteredAdmissions.map((adm) => {
                         const emp = adm.Employees || {};
-                        const name = emp.full_name || `${emp.first_name || ''} ${emp.last_name || ''}`.trim() || 'Usuário Sem Nome';
+                        const name = emp.full_name || `${emp.first_name || ''} ${emp.last_name || ''}`.trim() || 'Sem nome';
                         const initials = getInitials(name, emp.first_name, emp.last_name);
 
                         // Progresso real: campos do snapshot template_steps
@@ -1084,7 +1084,7 @@ export default function Admissao() {
                                       </span>
                                     </div>
                                     <p className="text-[11px] text-slate-500">
-                                      {[emp.position || 'Atendente', emp.department].filter(Boolean).join(' · ')}
+                                      {[emp.position, emp.department].filter(Boolean).join(' · ') || '-'}
                                     </p>
                                   </div>
                                 </div>
@@ -1103,8 +1103,8 @@ export default function Admissao() {
                                 </span>
                               </div>
                             </td>
-                            <td className="hidden md:table-cell py-3 px-4 text-slate-600">{adm.template_name || 'Admissão Matheus'}</td>
-                            <td className="hidden md:table-cell py-3 px-4 text-slate-600">{emp.position || 'Atendente'}</td>
+                            <td className="hidden md:table-cell py-3 px-4 text-slate-600">{adm.template_name || '-'}</td>
+                            <td className="hidden md:table-cell py-3 px-4 text-slate-600">{emp.position || '-'}</td>
                             <td className="hidden md:table-cell py-3 px-4 text-slate-600">{emp.department || '-'}</td>
                             <td className="py-3 px-2 md:px-4 relative">
                               <div className="flex items-center justify-center gap-1">
@@ -1342,7 +1342,7 @@ export default function Admissao() {
                     </tr>
                   ) : (
                     filteredEmployees.map((emp) => {
-                      const name = emp.full_name || `${emp.first_name || ''} ${emp.last_name || ''}`.trim() || 'Usuário Sem Nome';
+                      const name = emp.full_name || `${emp.first_name || ''} ${emp.last_name || ''}`.trim() || 'Sem nome';
                       const isSelected = selectedEmployees.includes(emp.id);
 
                       return (
@@ -1617,7 +1617,8 @@ export default function Admissao() {
               >
                 <ArrowLeft className="w-4 h-4 shrink-0" />
                 <span className="text-left">
-                  {activeAdmission.Employees?.full_name || 'Joquebede de Oliveira'} - Template "{activeAdmission.template_name || 'Admissão Matheus'}"
+                  {activeAdmission.Employees?.full_name || 'Colaborador'}
+                  {activeAdmission.template_name ? ` - Template "${activeAdmission.template_name}"` : ''}
                 </span>
               </button>
 

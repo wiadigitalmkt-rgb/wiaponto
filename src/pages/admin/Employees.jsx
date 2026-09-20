@@ -497,7 +497,7 @@ export default function Employees() {
 
   return (
     <div className="min-h-screen bg-[#edf2f7] flex flex-col font-sans text-slate-700 relative">
-      <Navbar selectedCompany="Sua Empresa" />
+      <Navbar />
 
       <main className="flex-1 min-w-0 max-w-7xl w-full mx-auto p-3 sm:p-4 md:p-6">
         {currentView === 'list' && (

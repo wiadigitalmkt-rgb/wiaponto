@@ -408,7 +408,16 @@ export default function Usuario() {
       }
       if (data?.error) throw new Error(data.error);
 
-      alert('Senha resetada para o CPF do usuário com sucesso (login e Supabase Auth já atualizados)!');
+      // O colaborador volta a ter a senha padrão (CPF): exige nova troca no
+      // próximo acesso. (Coluna criada no SQL de segurança; se ainda não
+      // existir, só registra no console e segue.)
+      const { error: flagError } = await supabase
+        .from('Employees')
+        .update({ must_change_password: true })
+        .eq('id', userId);
+      if (flagError) console.warn('Não foi possível marcar a troca obrigatória de senha:', flagError.message);
+
+      alert('Senha resetada para o CPF do usuário com sucesso! No próximo acesso, ele será obrigado a criar uma nova senha.');
     } catch (err) {
       console.error(err);
       alert('Não foi possível resetar a senha: ' + (err.message || 'erro desconhecido') + '. Nenhuma alteração foi feita.');
@@ -701,7 +710,7 @@ export default function Usuario() {
 
   return (
     <div className="min-h-screen bg-slate-100 flex flex-col font-sans text-slate-700">
-      <Navbar selectedCompany="Sua Empresa" />
+      <Navbar />
 
       <main className="flex-1 min-w-0 p-3 sm:p-4 md:p-6">
         <div className="max-w-6xl mx-auto mb-4">
@@ -753,7 +762,6 @@ export default function Usuario() {
                   {usuarioData.primeiroNome} {usuarioData.sobrenome}
                 </p>
                 <p className="text-slate-500 text-xs mt-0.5">{usuarioData.cargo || 'Cargo não definido'}</p>
-                <p className="text-slate-400 text-[11px] mt-0.5">{'Sua Empresa'}</p>
               </div>
             </div>
 

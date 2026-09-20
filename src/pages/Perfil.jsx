@@ -3,7 +3,8 @@ import { useSearchParams, Link } from 'react-router-dom';
 import Navbar from '@/components/Navbar';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/AuthContext';
-import { User, Clock, Plane, FileText, Loader2, PenLine, X, CheckCircle2 } from 'lucide-react';
+import { User, Clock, Plane, FileText, Loader2, PenLine, X, CheckCircle2, Lock } from 'lucide-react';
+import { clearForcePasswordChange } from '@/components/ForcePasswordChangeModal';
 
 const WEEKDAYS = [
   { key: 1, label: 'Segunda-feira' },
@@ -78,9 +79,9 @@ function ContractBody({ text, employeeSignatureUrl, managerSignatureUrl, employe
 }
 
 const Field = ({ label, value }) => (
-  <div>
+  <div className="min-w-0">
     <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">{label}</p>
-    <p className="text-slate-700 text-sm mt-0.5">{value || '—'}</p>
+    <p className="text-slate-700 text-sm mt-0.5 break-words">{value || '—'}</p>
   </div>
 );
 
@@ -148,6 +149,37 @@ export default function Perfil() {
   // um contrato específico pra ver.
   const [contractSignedUrls, setContractSignedUrls] = useState({ employee: null, manager: null, employer: null });
   const [resolvingSignatures, setResolvingSignatures] = useState(false);
+
+  // Troca de senha (aba "Segurança")
+  const [pwdCurrent, setPwdCurrent] = useState('');
+  const [pwdNew, setPwdNew] = useState('');
+  const [pwdConfirm, setPwdConfirm] = useState('');
+  const [showPwd, setShowPwd] = useState(false);
+  const [savingPwd, setSavingPwd] = useState(false);
+  const [pwdMsg, setPwdMsg] = useState(null); // { type: 'error' | 'success', text }
+  const [authEmail, setAuthEmail] = useState('');
+  const [hasPasswordLogin, setHasPasswordLogin] = useState(true);
+
+  // Descobre o e-mail de login e se a conta tem senha (quem só entra pelo
+  // Google não tem "senha atual" para conferir).
+  useEffect(() => {
+    (async () => {
+      const { data } = await supabase.auth.getSession();
+      const authUser = data?.session?.user;
+      if (!authUser) return;
+      setAuthEmail(authUser.email || '');
+      const providers = authUser.app_metadata?.providers || [];
+      setHasPasswordLogin(providers.length === 0 || providers.includes('email'));
+    })();
+  }, []);
+
+  // Celular: o menu vira uma fileira de abas com rolagem lateral; mantém a
+  // aba ativa visível na tela.
+  useEffect(() => {
+    document
+      .querySelector('[data-tab-active="true"]')
+      ?.scrollIntoView({ inline: 'center', block: 'nearest', behavior: 'smooth' });
+  }, [activeTab]);
 
   useEffect(() => {
     if (isLoadingAuth || !loggedInUser?.id) return;
@@ -226,6 +258,76 @@ export default function Perfil() {
     }
   }
 
+  async function handleChangePassword(e) {
+    e.preventDefault();
+    setPwdMsg(null);
+
+    if (hasPasswordLogin && !pwdCurrent) {
+      setPwdMsg({ type: 'error', text: 'Informe a sua senha atual.' });
+      return;
+    }
+    if (pwdNew.length < 8) {
+      setPwdMsg({ type: 'error', text: 'A nova senha deve ter pelo menos 8 caracteres.' });
+      return;
+    }
+    if (pwdNew !== pwdConfirm) {
+      setPwdMsg({ type: 'error', text: 'As senhas não coincidem.' });
+      return;
+    }
+    const cpfDigits = String(employee?.cpf || '').replace(/\D/g, '');
+    if (cpfDigits && pwdNew.replace(/\D/g, '') === cpfDigits) {
+      setPwdMsg({ type: 'error', text: 'Escolha uma senha diferente do seu CPF.' });
+      return;
+    }
+    if (hasPasswordLogin && pwdNew === pwdCurrent) {
+      setPwdMsg({ type: 'error', text: 'A nova senha precisa ser diferente da senha atual.' });
+      return;
+    }
+
+    setSavingPwd(true);
+    try {
+      // Confere a senha atual antes de trocar (protege caso alguém pegue o
+      // aparelho desbloqueado).
+      if (hasPasswordLogin) {
+        const { error: reauthError } = await supabase.auth.signInWithPassword({
+          email: authEmail,
+          password: pwdCurrent,
+        });
+        if (reauthError) {
+          setPwdMsg({ type: 'error', text: 'Senha atual incorreta.' });
+          return;
+        }
+      }
+
+      const { error } = await supabase.auth.updateUser({ password: pwdNew });
+      if (error) throw error;
+
+      try {
+        await supabase.rpc('clear_must_change_password');
+      } catch (_) {
+        /* ignora: a função pode ainda não existir */
+      }
+      clearForcePasswordChange();
+
+      setPwdCurrent('');
+      setPwdNew('');
+      setPwdConfirm('');
+      setPwdMsg({ type: 'success', text: 'Senha alterada com sucesso!' });
+    } catch (err) {
+      console.error('Erro ao trocar a senha:', err);
+      const msg = String(err?.message || '').toLowerCase();
+      if (msg.includes('different from the old password')) {
+        setPwdMsg({ type: 'error', text: 'A nova senha precisa ser diferente da senha atual.' });
+      } else if (msg.includes('weak') || msg.includes('at least')) {
+        setPwdMsg({ type: 'error', text: 'Essa senha é muito fraca. Use letras e números, com pelo menos 8 caracteres.' });
+      } else {
+        setPwdMsg({ type: 'error', text: 'Não foi possível alterar a senha. Tente novamente.' });
+      }
+    } finally {
+      setSavingPwd(false);
+    }
+  }
+
   if (isLoadingAuth || loading) {
     return (
       <div className="min-h-screen bg-[#f0f4f7] flex items-center justify-center">
@@ -248,41 +350,43 @@ export default function Perfil() {
     { id: 'jornada', label: 'Jornada de trabalho', icon: Clock },
     { id: 'ferias', label: 'Férias', icon: Plane },
     { id: 'contrato', label: 'Contrato', icon: PenLine },
+    { id: 'seguranca', label: 'Segurança', icon: Lock },
   ];
 
   return (
     <div className="min-h-screen bg-[#f0f4f7] flex flex-col font-sans text-slate-700">
-      <Navbar selectedCompany="Sua Empresa" />
+      <Navbar />
 
-      <div className="flex-1 max-w-5xl w-full mx-auto p-6 flex gap-6">
-        <aside className="w-56 shrink-0 space-y-1">
+      <div className="flex-1 min-w-0 max-w-5xl w-full mx-auto p-3 sm:p-4 md:p-6 flex flex-col md:flex-row gap-3 md:gap-6">
+        <aside className="w-full md:w-56 md:shrink-0 space-y-1">
           <div className="mb-3">
             <p className="font-bold text-slate-800 text-sm">{employee.full_name}</p>
             <p className="text-slate-400 text-xs">{employee.position || 'Meu perfil'}</p>
           </div>
-          <nav className="space-y-1">
+          <nav className="flex md:block gap-2 md:gap-0 md:space-y-1 overflow-x-auto md:overflow-visible -mx-3 sm:-mx-4 px-3 sm:px-4 md:mx-0 md:px-0 py-1 md:py-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             {menuItems.map((item) => (
               <button
                 key={item.id}
                 onClick={() => setActiveTab(item.id)}
-                className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded text-xs transition-colors ${
+                data-tab-active={activeTab === item.id}
+                className={`w-auto md:w-full shrink-0 whitespace-nowrap flex items-center gap-2.5 px-3 py-2.5 rounded text-xs transition-colors ${
                   activeTab === item.id
                     ? 'bg-white text-[#ff8b00] shadow-sm border border-slate-200/60 font-semibold'
-                    : 'text-slate-600 hover:bg-slate-200/50 font-medium'
+                    : 'bg-white/70 md:bg-transparent text-slate-600 md:hover:bg-slate-200/50 font-medium'
                 }`}
               >
-                <item.icon className={`w-4 h-4 ${activeTab === item.id ? 'text-[#ff8b00]' : 'text-slate-500'}`} />
+                <item.icon className={`w-4 h-4 shrink-0 ${activeTab === item.id ? 'text-[#ff8b00]' : 'text-slate-500'}`} />
                 <span>{item.label}</span>
               </button>
             ))}
           </nav>
         </aside>
 
-        <main className="flex-1 bg-white rounded-lg border border-slate-200 shadow-sm">
+        <main className="flex-1 min-w-0 bg-white rounded-lg border border-slate-200 shadow-sm">
           {/* INFORMAÇÕES */}
           {activeTab === 'informacoes' && (
-            <div className="p-6 space-y-6 text-xs">
-              <div className="flex items-center justify-between">
+            <div className="p-4 sm:p-6 space-y-6 text-xs">
+              <div className="flex flex-wrap items-center justify-between gap-2">
                 <h2 className="font-bold text-slate-800 text-sm">Meus dados</h2>
                 <button
                   onClick={() => setShowRequestModal(true)}
@@ -352,20 +456,20 @@ export default function Perfil() {
           {/* DOCUMENTOS — só visualização; quem anexa é o gestor, em
               Usuários → editar → Documentos */}
           {activeTab === 'documentos' && (
-            <div className="p-6 text-xs">
+            <div className="p-4 sm:p-6 text-xs">
               <h2 className="font-bold text-slate-800 text-sm mb-4">Meus documentos</h2>
               {documents.length === 0 ? (
-                <div className="border-2 border-dashed border-slate-200 rounded-lg p-12 text-center text-slate-400">
+                <div className="border-2 border-dashed border-slate-200 rounded-lg p-8 sm:p-12 text-center text-slate-400">
                   Nenhum documento disponível ainda.
                 </div>
               ) : (
                 <div className="divide-y divide-slate-100 border rounded-lg overflow-hidden">
                   {documents.map((doc) => (
-                    <div key={doc.id} className="flex items-center justify-between px-4 py-3">
-                      <div>
+                    <div key={doc.id} className="flex items-center justify-between gap-3 px-4 py-3">
+                      <div className="min-w-0">
                         <button
                           onClick={() => setPreviewFile({ url: doc.file_url, name: doc.file_name })}
-                          className="font-medium text-slate-700 hover:text-[#ff8b00] hover:underline text-left"
+                          className="font-medium text-slate-700 hover:text-[#ff8b00] hover:underline text-left break-all"
                         >
                           {doc.file_name}
                         </button>
@@ -382,10 +486,10 @@ export default function Perfil() {
 
           {/* JORNADA DE TRABALHO (estática — só leitura) */}
           {activeTab === 'jornada' && (
-            <div className="p-6 text-xs">
+            <div className="p-4 sm:p-6 text-xs">
               <h2 className="font-bold text-slate-800 text-sm mb-4">Minha jornada de trabalho</h2>
               {!schedule ? (
-                <div className="border-2 border-dashed border-slate-200 rounded-lg p-12 text-center text-slate-400">
+                <div className="border-2 border-dashed border-slate-200 rounded-lg p-8 sm:p-12 text-center text-slate-400">
                   Nenhuma jornada cadastrada ainda.
                 </div>
               ) : (
@@ -393,8 +497,8 @@ export default function Perfil() {
                   {WEEKDAYS.map((wd) => {
                     const day = (schedule.week_days || []).find((d) => d.weekday === wd.key);
                     return (
-                      <div key={wd.key} className="flex items-center justify-between px-4 py-3">
-                        <span className="font-medium text-slate-700 w-32">{wd.label}</span>
+                      <div key={wd.key} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 px-4 py-3">
+                        <span className="font-medium text-slate-700 sm:w-32">{wd.label}</span>
                         {day?.active ? (
                           <span className="text-slate-600">
                             {day.entry} — {day.exit}
@@ -415,16 +519,16 @@ export default function Perfil() {
 
           {/* FÉRIAS */}
           {activeTab === 'ferias' && (
-            <div className="p-6 text-xs">
+            <div className="p-4 sm:p-6 text-xs">
               <h2 className="font-bold text-slate-800 text-sm mb-4">Minhas férias</h2>
               {vacations.length === 0 ? (
-                <div className="border-2 border-dashed border-slate-200 rounded-lg p-12 text-center text-slate-400">
+                <div className="border-2 border-dashed border-slate-200 rounded-lg p-8 sm:p-12 text-center text-slate-400">
                   Nenhum período de férias registrado ainda.
                 </div>
               ) : (
                 <div className="space-y-2">
                   {vacations.map((v) => (
-                    <div key={v.id} className="border rounded-lg p-3 flex justify-between items-center">
+                    <div key={v.id} className="border rounded-lg p-3 flex flex-wrap justify-between items-center gap-2">
                       <span className="font-medium text-slate-700">
                         {formatDDMMYYYY(v.start_date)} até {formatDDMMYYYY(v.end_date)}
                       </span>
@@ -440,9 +544,102 @@ export default function Perfil() {
             </div>
           )}
 
+          {/* SEGURANÇA — trocar a própria senha */}
+          {activeTab === 'seguranca' && (
+            <div className="p-4 sm:p-6 text-xs">
+              <h2 className="font-bold text-slate-800 text-sm mb-1">Segurança</h2>
+              <p className="text-slate-500 mb-5">
+                Troque a sua senha de acesso. Use pelo menos 8 caracteres e não use o seu CPF.
+              </p>
+
+              <form onSubmit={handleChangePassword} className="max-w-sm space-y-4" noValidate>
+                {pwdMsg && (
+                  <div
+                    className={`p-3 rounded-lg border text-xs font-medium ${
+                      pwdMsg.type === 'success'
+                        ? 'bg-emerald-50 border-emerald-200 text-emerald-700'
+                        : 'bg-red-50 border-red-200 text-red-600'
+                    }`}
+                  >
+                    {pwdMsg.text}
+                  </div>
+                )}
+
+                {hasPasswordLogin ? (
+                  <div>
+                    <label htmlFor="pwd-current" className="block text-[11px] font-semibold text-slate-600 mb-1">
+                      Senha atual*
+                    </label>
+                    <input
+                      id="pwd-current"
+                      type={showPwd ? 'text' : 'password'}
+                      autoComplete="current-password"
+                      value={pwdCurrent}
+                      onChange={(e) => setPwdCurrent(e.target.value)}
+                      className="w-full border rounded px-3 py-2.5 text-base sm:text-xs focus:outline-none focus:border-[#ff8b00]"
+                    />
+                  </div>
+                ) : (
+                  <p className="text-slate-500 bg-slate-50 border border-slate-200 rounded-lg p-3">
+                    Você entra com a sua conta Google. Se quiser, defina uma senha abaixo para também poder
+                    entrar com e-mail e senha.
+                  </p>
+                )}
+
+                <div>
+                  <label htmlFor="pwd-new" className="block text-[11px] font-semibold text-slate-600 mb-1">
+                    Nova senha*
+                  </label>
+                  <input
+                    id="pwd-new"
+                    type={showPwd ? 'text' : 'password'}
+                    autoComplete="new-password"
+                    value={pwdNew}
+                    onChange={(e) => setPwdNew(e.target.value)}
+                    placeholder="Mínimo de 8 caracteres"
+                    className="w-full border rounded px-3 py-2.5 text-base sm:text-xs focus:outline-none focus:border-[#ff8b00]"
+                  />
+                </div>
+
+                <div>
+                  <label htmlFor="pwd-confirm" className="block text-[11px] font-semibold text-slate-600 mb-1">
+                    Confirmar nova senha*
+                  </label>
+                  <input
+                    id="pwd-confirm"
+                    type={showPwd ? 'text' : 'password'}
+                    autoComplete="new-password"
+                    value={pwdConfirm}
+                    onChange={(e) => setPwdConfirm(e.target.value)}
+                    className="w-full border rounded px-3 py-2.5 text-base sm:text-xs focus:outline-none focus:border-[#ff8b00]"
+                  />
+                </div>
+
+                <label className="flex items-center gap-2 text-slate-600 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={showPwd}
+                    onChange={(e) => setShowPwd(e.target.checked)}
+                    className="accent-[#ff8b00]"
+                  />
+                  Mostrar senhas
+                </label>
+
+                <button
+                  type="submit"
+                  disabled={savingPwd}
+                  className="w-full sm:w-auto bg-[#ff8b00] hover:bg-[#fc9314] text-white text-xs font-semibold px-6 py-2.5 rounded transition-colors disabled:opacity-50 flex items-center justify-center gap-1.5"
+                >
+                  {savingPwd && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                  {savingPwd ? 'Salvando...' : 'Alterar senha'}
+                </button>
+              </form>
+            </div>
+          )}
+
           {/* CONTRATO */}
           {activeTab === 'contrato' && (
-            <div className="p-6 text-xs space-y-3">
+            <div className="p-4 sm:p-6 text-xs space-y-3">
               <h2 className="font-bold text-slate-800 text-sm mb-1">Meu contrato</h2>
 
               {/* Aviso + link direto pra assinar — sem isso, não tinha como o
@@ -469,7 +666,7 @@ export default function Perfil() {
               )}
 
               {contracts.length === 0 ? (
-                <div className="border-2 border-dashed border-slate-200 rounded-lg p-12 text-center text-slate-400">
+                <div className="border-2 border-dashed border-slate-200 rounded-lg p-8 sm:p-12 text-center text-slate-400">
                   Nenhum contrato assinado ainda.
                 </div>
               ) : (

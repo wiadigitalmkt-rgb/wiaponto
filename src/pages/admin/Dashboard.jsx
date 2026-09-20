@@ -38,7 +38,6 @@ const minutesToDisplayHours = (mins) => {
 };
 
 export default function Dashboard() {
-  const [selectedCompany] = useState('Sua Empresa');
   const [, setActiveModal] = useState(null);
   const [inviteCopied, setInviteCopied] = useState(false);
 
@@ -249,7 +248,7 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-screen bg-slate-100/70 text-slate-800 pb-12 relative">
-      <Navbar selectedCompany={selectedCompany} />
+      <Navbar />
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-6 sm:space-y-8">
         {/* CONVITE PARA NOVOS COLABORADORES */}

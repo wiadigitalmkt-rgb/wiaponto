@@ -56,7 +56,11 @@ const AuthenticatedApp = () => {
   const { isLoadingAuth, authError, navigateToLogin } = useAuth();
   const location = useLocation();
 
-  const publicRoutes = ['/login', '/register', '/forgot-password', '/recuperar-senha', '/reset-password'];
+  const publicRoutes = [
+    '/login', '/register',
+    '/forgot-password', '/recuperar-senha', '/esqueci-minha-senha',
+    '/reset-password', '/redefinir-senha',
+  ];
   const isPublicRoute = publicRoutes.includes(location.pathname.toLowerCase());
 
   if (isLoadingAuth) {
@@ -83,7 +87,9 @@ const AuthenticatedApp = () => {
       <Route path="/register" element={<Register />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />
       <Route path="/recuperar-senha" element={<ForgotPassword />} />
+      <Route path="/esqueci-minha-senha" element={<ForgotPassword />} />
       <Route path="/reset-password" element={<ResetPassword />} />
+      <Route path="/redefinir-senha" element={<ResetPassword />} />
       <Route path="/preencher-admissao/:id" element={<PreencherAdmissao />} />
       
 

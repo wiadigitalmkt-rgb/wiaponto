@@ -364,11 +364,10 @@ export default function Usuario() {
   };
 
   // Resetar a senha do usuário para o padrão inicial (CPF, só dígitos).
-  // Chama a Edge Function `reset-employee-password`, que atualiza tanto
-  // Employees.password_hash quanto a senha real no Supabase Auth (só ela
-  // tem acesso à chave de admin necessária pra isso — ver Login.jsx, que
-  // tenta signInWithPassword primeiro). Se a função ainda não foi
-  // publicada, cai num fallback que atualiza só a tabela e avisa.
+  // Chama a Edge Function `reset-employee-password`, que atualiza a senha
+  // real no Supabase Auth (só ela tem acesso à chave de admin necessária
+  // pra isso). Se a função falhar, só mostra o erro: a senha NUNCA é
+  // gravada direto na tabela de colaboradores (sem plano B em texto puro).
   const handleResetPassword = () => {
     const cpfDigits = (usuarioData.cpf || '').replace(/\D/g, '');
     if (!cpfDigits) {
@@ -380,11 +379,11 @@ export default function Usuario() {
       message: `A senha de ${usuarioData.primeiroNome || 'usuário'} vai voltar para o padrão inicial: o CPF (${cpfDigits}).`,
       confirmLabel: 'Resetar senha',
       danger: false,
-      onConfirm: () => applyResetPassword(cpfDigits)
+      onConfirm: () => applyResetPassword()
     });
   };
 
-  const applyResetPassword = async (cpfDigits) => {
+  const applyResetPassword = async () => {
     if (!supabase || !userId) return;
     setResettingPassword(true);
     try {
@@ -412,22 +411,7 @@ export default function Usuario() {
       alert('Senha resetada para o CPF do usuário com sucesso (login e Supabase Auth já atualizados)!');
     } catch (err) {
       console.error(err);
-      try {
-        const { error: fallbackError } = await supabase
-          .from('Employees')
-          .update({ password_hash: cpfDigits })
-          .eq('id', userId);
-        if (fallbackError) throw fallbackError;
-
-        alert(
-          'A função de reset recusou o pedido (' + (err.message || 'erro desconhecido') + '). ' +
-          'Atualizei a senha só na tabela de colaboradores — se este usuário fizer login pelo Supabase Auth, ' +
-          'a senha antiga ainda vai valer até esse erro ser corrigido na Edge Function.'
-        );
-      } catch (fallbackErr) {
-        console.error(fallbackErr);
-        alert('Erro ao resetar a senha.');
-      }
+      alert('Não foi possível resetar a senha: ' + (err.message || 'erro desconhecido') + '. Nenhuma alteração foi feita.');
     } finally {
       setResettingPassword(false);
     }

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { ChevronDown, LogOut, Search, Menu, X } from 'lucide-react';
 import { useAuth } from '@/lib/AuthContext';
+import ForcePasswordChangeModal from '@/components/ForcePasswordChangeModal';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -11,7 +12,7 @@ import {
 
 import logoImg from '@/assets/LOGOWIANOVO.png';
 
-export default function Navbar({ selectedCompany = 'PontoMax' }) {
+export default function Navbar({ selectedCompany = '' }) {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
@@ -76,7 +77,10 @@ export default function Navbar({ selectedCompany = 'PontoMax' }) {
 
   const isAdmin = userRole === 'admin' || userRole === 'Administrador' || userRole === 'gestor';
 
-  const userCompanies = user?.companies || [user?.companyName || selectedCompany];
+  // Nome da empresa: vem do usuário logado (ou da página, se ela informar).
+  // Se não houver nome real, o seletor de empresa simplesmente não aparece.
+  const companyName = user?.companyName || selectedCompany || '';
+  const userCompanies = user?.companies || (companyName ? [companyName] : []);
 
   // Itens do menu lateral no celular. Itens com path: null ainda não têm
   // destino (no PC também não fazem nada) e ficam ocultos até você definir o path.
@@ -260,9 +264,10 @@ export default function Navbar({ selectedCompany = 'PontoMax' }) {
       </div>
 
       <div className="flex items-center gap-4 shrink-0">
+        {companyName && (
         <DropdownMenu modal={false}>
           <DropdownMenuTrigger className="hidden sm:flex items-center justify-between gap-6 border border-white/40 bg-transparent px-4 py-1.5 rounded-md text-xs font-semibold text-white hover:border-white/70 transition focus:outline-none cursor-pointer">
-            <span className="truncate">{selectedCompany}</span>
+            <span className="truncate">{companyName}</span>
             <ChevronDown size={13} className="text-white/80 shrink-0" />
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="bg-white p-0 text-slate-800 w-60 rounded-md overflow-hidden shadow-lg border-none">
@@ -280,7 +285,7 @@ export default function Navbar({ selectedCompany = 'PontoMax' }) {
 
             <div className="max-h-48 overflow-y-auto">
               {filteredCompanies.map((company) => {
-                const isSelected = company === selectedCompany;
+                const isSelected = company === companyName;
                 return (
                   <DropdownMenuItem
                     key={company}
@@ -297,6 +302,7 @@ export default function Navbar({ selectedCompany = 'PontoMax' }) {
             </div>
           </DropdownMenuContent>
         </DropdownMenu>
+        )}
 
         <DropdownMenu modal={false}>
           <DropdownMenuTrigger className="focus:outline-none">
@@ -369,10 +375,12 @@ export default function Navbar({ selectedCompany = 'PontoMax' }) {
           </button>
         </div>
 
-        <div className="px-4 py-3 border-b border-white/10">
-          <p className="text-[10px] font-bold uppercase tracking-wider text-white/50">Empresa</p>
-          <p className="text-sm font-semibold truncate">{selectedCompany}</p>
-        </div>
+        {companyName && (
+          <div className="px-4 py-3 border-b border-white/10">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-white/50">Empresa</p>
+            <p className="text-sm font-semibold truncate">{companyName}</p>
+          </div>
+        )}
 
         <nav className="flex-1 overflow-y-auto py-2">
           {mobileMenu.map((section, sIdx) => {
@@ -421,6 +429,9 @@ export default function Navbar({ selectedCompany = 'PontoMax' }) {
           </button>
         </div>
       </aside>
+
+      {/* Troca obrigatória de senha no primeiro acesso (só aparece quando necessário) */}
+      <ForcePasswordChangeModal />
     </header>
   );
 }
